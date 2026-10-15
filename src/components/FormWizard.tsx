@@ -23,8 +23,7 @@ import {
   SUB_SATKER_POLDA_LIST, 
   SUB_SATKER_POLRES_LIST, 
   SUB_SATKER_POLSEK_LIST, 
-  DAFTAR_38_POLDA, 
-  JENIS_ANGGOTA_LIST
+  DAFTAR_38_POLDA
 } from '@/data/polriStructure';
 
 interface FormWizardProps {
@@ -57,6 +56,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [penyakitLainnya, setPenyakitLainnya] = useState('');
 
   // Form State initialized from existing member or defaults
   const [formData, setFormData] = useState<Partial<AnggotaWiraSatya>>({
@@ -107,13 +107,21 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     if (existingMember) {
       setFormData({
         ...existingMember,
-        jenisAnggota: existingMember.jenisAnggota || 'ANGGOTA POLRI',
+        jenisAnggota: 'ANGGOTA POLRI',
         tipeSatker: existingMember.tipeSatker || (
           existingMember.polda?.toUpperCase().includes('MABES')
             ? 'MABES'
             : 'POLDA'
         ),
       });
+
+      // Extract any custom diseases not in DAFTAR_PENYAKIT
+      if (existingMember.daftarPenyakit && existingMember.daftarPenyakit.length > 0) {
+        const custom = existingMember.daftarPenyakit.filter((p) => !DAFTAR_PENYAKIT.includes(p));
+        if (custom.length > 0) {
+          setPenyakitLainnya(custom.join(', '));
+        }
+      }
     } else if (currentUser.role === 'ANGGOTA') {
       // Pre-fill user NRP and name
       setFormData((prev) => ({
@@ -199,6 +207,16 @@ export const FormWizard: React.FC<FormWizardProps> = ({
           : `${formData.namaPolsek || 'Polsek'} - ${formData.subSatker || ''}`
       );
 
+    const combinedDiseases = [...(formData.daftarPenyakit || [])];
+    if (penyakitLainnya.trim()) {
+      const customList = penyakitLainnya.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
+      customList.forEach((d) => {
+        if (!combinedDiseases.includes(d)) {
+          combinedDiseases.push(d);
+        }
+      });
+    }
+
     const memberToSave: AnggotaWiraSatya = {
       id: existingMember?.id || 'ws-' + (formData.nrp || Date.now()),
       nrp: formData.nrp || '',
@@ -211,7 +229,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       subSatker: formData.subSatker || '',
       namaPolres: formData.namaPolres || '',
       namaPolsek: formData.namaPolsek || '',
-      jenisAnggota: formData.jenisAnggota || 'ANGGOTA POLRI',
+      jenisAnggota: 'ANGGOTA POLRI',
       polda: derivedPolda,
       pendidikanTerakhir: formData.pendidikanTerakhir || '',
       nomorKtp: formData.nomorKtp || '',
@@ -253,9 +271,9 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       perasaanPensiun: formData.perasaanPensiun || 'OPTIMIS',
       dukunganKeluarga: formData.dukunganKeluarga || 'SANGAT MENDUKUNG',
 
-      adaPenyakitKronis: formData.adaPenyakitKronis || 'TIDAK ADA',
+      adaPenyakitKronis: combinedDiseases.length > 0 ? 'ADA' : (formData.adaPenyakitKronis || 'TIDAK ADA'),
       kondisiKesehatan: formData.kondisiKesehatan || 'BAIK',
-      daftarPenyakit: formData.daftarPenyakit || [],
+      daftarPenyakit: combinedDiseases,
       lamaMenderita: formData.lamaMenderita || '',
       kondisiSaatIni: formData.kondisiSaatIni || '',
       penangananPengobatan: formData.penangananPengobatan || '',
@@ -390,27 +408,15 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <span className="text-[10px] text-slate-500 font-medium">Dropdown Bertingkat</span>
               </div>
 
-              {/* Jenis Anggota & Pangkat */}
+              {/* Korps Alumni & Pangkat */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Jenis Personel <span className="text-red-500">*</span>
+                    Korps Personel <span className="text-red-500">*</span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {JENIS_ANGGOTA_LIST.map((ja) => (
-                      <button
-                        key={ja}
-                        type="button"
-                        onClick={() => handleInputChange('jenisAnggota', ja)}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold border text-center transition-all ${
-                          formData.jenisAnggota === ja
-                            ? 'bg-polri-navy text-polri-gold border-polri-navy shadow-sm'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {ja}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-polri-navy/5 border border-polri-navy/20 rounded-lg text-polri-navy font-bold text-xs h-[42px]">
+                    <Shield className="w-4 h-4 text-polri-gold flex-shrink-0" />
+                    <span>PERWIRA POLRI (ALUMNI AKPOL 1996)</span>
                   </div>
                 </div>
 
@@ -1120,6 +1126,29 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   );
                 })}
               </div>
+            </div>
+
+            {/* Opsi Diagnosa Lainnya / Tulis Sendiri */}
+            <div className="p-3.5 bg-amber-50/70 rounded-xl border border-amber-200/90 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse"></span>
+                  Penyakit Lainnya / Diagnosa Mandiri (Tulis sendiri jika belum ada di atas):
+                </label>
+                <span className="text-[10px] text-amber-700 font-semibold bg-amber-100 px-2 py-0.5 rounded">
+                  Bisa dipisah koma jika lebih dari satu
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="Contoh: GERD Kronis, Batu Ginjal, Vertigo, Cedera Tulang Belakang..."
+                value={penyakitLainnya}
+                onChange={(e) => setPenyakitLainnya(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-amber-300 text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none bg-white text-slate-800 placeholder-slate-400"
+              />
+              <p className="text-[10px] text-slate-500">
+                Diagnosa ini akan otomatis tersimpan dalam rekam medis profil Anda dan terpantau oleh Bidang Kesejahteraan & Sosial Leting.
+              </p>
             </div>
 
             <div>

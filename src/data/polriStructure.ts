@@ -157,7 +157,6 @@ export const DAFTAR_38_POLDA = [
 
 export const JENIS_ANGGOTA_LIST = [
   'ANGGOTA POLRI',
-  'ASN POLRI',
 ] as const;
 
 export type JenisAnggota = (typeof JENIS_ANGGOTA_LIST)[number];

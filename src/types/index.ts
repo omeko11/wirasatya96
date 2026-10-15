@@ -44,7 +44,7 @@ export interface AnggotaWiraSatya {
   subSatker?: string;
   namaPolres?: string;
   namaPolsek?: string;
-  jenisAnggota?: 'ANGGOTA POLRI' | 'ASN POLRI';
+  jenisAnggota?: 'ANGGOTA POLRI';
   polda: string;
   pendidikanTerakhir: string;
   nomorKtp?: string;
@@ -122,20 +122,6 @@ export const DAFTAR_PANGKAT_POLRI = [
   'AKP',
   'Iptu',
   'Ipda',
-  // Bintara Tinggi & Bintara
-  'Aiptu',
-  'Aipda',
-  'Bripka',
-  'Brigpol',
-  'Briptu',
-  'Bripda',
-  // Tamtama
-  'Abrip',
-  'Abriptu',
-  'Abripda',
-  'Bharaka',
-  'Bharatu',
-  'Bharada',
 ] as const;
 
 // Modul Kebendaharaan Paguyuban Wira Satya 1996
