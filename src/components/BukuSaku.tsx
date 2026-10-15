@@ -19,7 +19,8 @@ import {
   Newspaper,
   Users,
   Video,
-  PenSquare
+  PenSquare,
+  Edit3
 } from 'lucide-react';
 
 interface BukuSakuProps {
@@ -528,9 +529,21 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
               />
             </div>
-            <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
-              <b>{filteredMembers.length}</b> perwira
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
+                <b>{filteredMembers.length}</b> perwira
+              </span>
+              {['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role) && (
+                <button
+                  onClick={onAddNew}
+                  className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap"
+                  title="Tambah Anggota Baru"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">+ Input Anggota</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Member Feed Cards (LinkedIn-style Connection Cards) */}
@@ -592,7 +605,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="mt-3.5 flex items-center gap-2 pt-1">
+                  <div className="mt-3.5 flex items-center gap-2 pt-1 flex-wrap">
                     <a
                       href={formatWaUrl(member.noHp)}
                       target="_blank"
@@ -609,6 +622,18 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     >
                       Lihat Profil Lengkap
                     </button>
+
+                    {/* Role-based Edit: Pengurus (Sekretariat/Ketua/Superadmin) can edit any member, or user editing self */}
+                    {(['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role) || currentUser.nrp === member.nrp) && onEditMember && (
+                      <button
+                        onClick={() => onEditMember(member)}
+                        className="py-1.5 px-3 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors shadow-sm flex items-center gap-1"
+                        title={currentUser.nrp === member.nrp ? 'Edit Profil Saya' : `Edit Data Anggota (${currentUser.role})`}
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+                    )}
 
                     {member.kontakAdc && (
                       <a

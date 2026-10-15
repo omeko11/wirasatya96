@@ -120,9 +120,9 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       // Extract any custom diseases not in DAFTAR_PENYAKIT
       if (existingMember.daftarPenyakit && existingMember.daftarPenyakit.length > 0) {
         const custom = existingMember.daftarPenyakit.filter((p) => !DAFTAR_PENYAKIT.includes(p));
-        if (custom.length > 0) {
-          setPenyakitLainnya(custom.join(', '));
-        }
+        setPenyakitLainnya(custom.length > 0 ? custom.join(', ') : '');
+      } else {
+        setPenyakitLainnya('');
       }
     } else if (currentUser.role === 'ANGGOTA') {
       // Pre-fill user NRP and name
@@ -132,6 +132,20 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         namaLengkap: currentUser.nama,
         pangkat: currentUser.pangkat,
       }));
+    } else {
+      // Clean form for adding new member
+      setFormData((prev) => ({
+        ...prev,
+        id: undefined,
+        nrp: '',
+        namaLengkap: '',
+        jabatanTerakhir: '',
+        satuanKerja: '',
+        subSatker: '',
+        noHp: '',
+        email: '',
+      }));
+      setPenyakitLainnya('');
     }
   }, [existingMember, currentUser]);
 

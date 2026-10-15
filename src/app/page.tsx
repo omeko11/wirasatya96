@@ -29,6 +29,7 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [navbarSearchQuery, setNavbarSearchQuery] = useState('');
   const [viewingMember, setViewingMember] = useState<AnggotaWiraSatya | null>(null);
+  const [editingMember, setEditingMember] = useState<AnggotaWiraSatya | null | 'NEW'>(null);
 
   // Financial State
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(INITIAL_FINANCE_SUMMARY);
@@ -77,20 +78,41 @@ export default function Home() {
     }
   }, []);
 
+  // Start editing a specific member (leadership or self)
+  const handleStartEditMember = (member: AnggotaWiraSatya) => {
+    setViewingMember(null);
+    setEditingMember(member);
+    setActiveTab('form');
+  };
+
+  // Add a new member (leadership only)
+  const handleAddNewMember = () => {
+    setViewingMember(null);
+    setEditingMember('NEW');
+    setActiveTab('form');
+  };
+
   // Save member profile
   const handleSaveMember = async (newMember: AnggotaWiraSatya) => {
     const existingIndex = members.findIndex((m) => m.nrp === newMember.nrp);
     let updatedList: AnggotaWiraSatya[];
     if (existingIndex >= 0) {
       updatedList = [...members];
-      updatedList[existingIndex] = { ...newMember, id: members[existingIndex].id };
+      updatedList[existingIndex] = { ...newMember, id: members[existingIndex].id || newMember.id || ('ws-' + Date.now()) };
     } else {
-      updatedList = [newMember, ...members];
+      const createdMember: AnggotaWiraSatya = {
+        ...newMember,
+        id: newMember.id || ('ws-' + Date.now()),
+      };
+      updatedList = [createdMember, ...members];
     }
     setMembers(updatedList);
     if (typeof window !== 'undefined') {
       localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
     }
+
+    setEditingMember(null);
+    setActiveTab('direktori');
 
     // Try sync with API
     try {
@@ -230,6 +252,9 @@ export default function Home() {
         activeTab={activeTab}
         setActiveTab={(tab) => {
           setViewingMember(null);
+          if (tab !== 'form') {
+            setEditingMember(null);
+          }
           setActiveTab(tab);
         }}
         totalMembers={members.length}
@@ -287,9 +312,8 @@ export default function Home() {
             member={viewingMember}
             currentUser={currentUser}
             onClose={() => setViewingMember(null)}
-            onEditProfile={() => {
-              setViewingMember(null);
-              setActiveTab('form');
+            onEditProfile={(targetMember) => {
+              handleStartEditMember(targetMember || viewingMember);
             }}
             allMembers={members}
             onSelectMember={(m) => setViewingMember(m)}
@@ -300,9 +324,9 @@ export default function Home() {
             {activeTab === 'direktori' && (
               <BukuSaku
                 members={members}
-                onAddNew={() => setActiveTab('form')}
+                onAddNew={handleAddNewMember}
                 currentUser={currentUser}
-                onEditMember={() => setActiveTab('form')}
+                onEditMember={handleStartEditMember}
                 externalSearch={navbarSearchQuery}
               />
             )}
@@ -313,6 +337,8 @@ export default function Home() {
                 currentUser={currentUser}
                 members={members}
                 onSelectMember={(m) => setViewingMember(m)}
+                onAddNewMember={handleAddNewMember}
+                onEditMember={handleStartEditMember}
               />
             )}
 
@@ -321,7 +347,7 @@ export default function Home() {
               <LinkedInJobsPage
                 currentUser={currentUser}
                 members={members}
-                onOpenFormWizard={() => setActiveTab('form')}
+                onOpenFormWizard={handleAddNewMember}
                 onSelectMember={(m) => setViewingMember(m)}
               />
             )}
@@ -350,9 +376,18 @@ export default function Home() {
             {activeTab === 'form' && (
               <FormWizard
                 currentUser={currentUser}
-                existingMember={currentMemberProfile}
+                existingMember={
+                  editingMember === 'NEW'
+                    ? undefined
+                    : editingMember !== null
+                    ? editingMember
+                    : currentMemberProfile
+                }
                 onSave={handleSaveMember}
-                onCancel={() => setActiveTab('direktori')}
+                onCancel={() => {
+                  setEditingMember(null);
+                  setActiveTab('direktori');
+                }}
               />
             )}
 

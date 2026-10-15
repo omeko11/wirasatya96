@@ -26,7 +26,7 @@ import {
 interface LinkedInProfileViewProps {
   member: AnggotaWiraSatya;
   currentUser: AuthUser;
-  onEditProfile?: () => void;
+  onEditProfile?: (targetMember?: AnggotaWiraSatya) => void;
   onClose?: () => void;
   allMembers?: AnggotaWiraSatya[];
   onSelectMember?: (member: AnggotaWiraSatya) => void;
@@ -40,7 +40,10 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   allMembers = [],
   onSelectMember,
 }) => {
-  const isOwner = currentUser.nrp === member.nrp || currentUser.role === 'SUPERADMIN';
+  const isLeadership = ['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role);
+  const isSelf = currentUser.nrp === member.nrp;
+  const isOwner = isSelf;
+  const canEdit = isLeadership || isSelf;
 
   const getWaUrl = (phone?: string) => {
     if (!phone) return '#';
@@ -94,11 +97,11 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <Shield className="w-3.5 h-3.5" />
                   BATALYON WIRA SATYA 1996 • #SELALUBAHAGIA
                 </span>
-                {isOwner && (
+                {canEdit && (
                   <button
-                    onClick={onEditProfile}
+                    onClick={() => onEditProfile && onEditProfile(member)}
                     className="p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur transition-all"
-                    title="Edit Sampul Profil"
+                    title={isSelf ? "Edit Sampul Profil" : `Edit Data Anggota (${currentUser.role})`}
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
@@ -123,11 +126,11 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </span>
                 </div>
 
-                {isOwner && (
+                {canEdit && (
                   <button
-                    onClick={onEditProfile}
+                    onClick={() => onEditProfile && onEditProfile(member)}
                     className="p-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-600 transition-colors"
-                    title="Edit Profil"
+                    title={isSelf ? "Edit Foto Profil" : `Edit Data Anggota (${currentUser.role})`}
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
@@ -193,24 +196,30 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <span>Kirim Pesan WhatsApp</span>
                 </a>
 
-                {isOwner ? (
+                {canEdit ? (
                   <button
-                    onClick={onEditProfile}
-                    className="px-4 py-2 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs sm:text-sm transition-colors"
+                    onClick={() => onEditProfile && onEditProfile(member)}
+                    className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-sm"
                   >
-                    Perbarui Data Profil Saya
+                    <Edit3 className="w-4 h-4" />
+                    <span>{isSelf ? 'Perbarui Data Profil Saya' : `Edit Data Anggota (${currentUser.role})`}</span>
                   </button>
                 ) : (
-                  member.kontakAdc && (
-                    <a
-                      href={getWaUrl(member.kontakAdc)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="px-4 py-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5"
-                    >
-                      <span>Kontak ADC ({member.namaAdc || 'Ajudan'})</span>
-                    </a>
-                  )
+                  <span className="text-xs text-slate-500 font-medium px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200">
+                    Mode Lihat Saja (Anggota)
+                  </span>
+                )}
+
+                {member.kontakAdc && (
+                  <a
+                    href={getWaUrl(member.kontakAdc)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-slate-500" />
+                    <span>ADC: {member.namaAdc || 'Ajudan'}</span>
+                  </a>
                 )}
 
                 <button
@@ -267,8 +276,8 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               <h2 className="text-base sm:text-lg font-bold text-slate-900">
                 Tentang & Pengabdian
               </h2>
-              {isOwner && (
-                <button onClick={onEditProfile} className="text-slate-400 hover:text-slate-700">
+              {canEdit && (
+                <button onClick={() => onEditProfile && onEditProfile(member)} className="text-slate-400 hover:text-slate-700" title="Edit Tentang">
                   <Edit3 className="w-4 h-4" />
                 </button>
               )}
