@@ -173,9 +173,9 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
             <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold pt-1">
               {[
                 { key: 'semua', label: 'Semua' },
-                { key: 'health', label: '❤️ Atensi Kesehatan' },
-                { key: 'treasury', label: '💰 Kas & Iuran' },
-                { key: 'social', label: '💬 Posting & Komentar' },
+                { key: 'health', label: '❤️ Kesehatan' },
+                { key: 'treasury', label: '💰 Kas' },
+                { key: 'social', label: '💬 Postingan' },
               ].map((f) => (
                 <button
                   key={f.key}

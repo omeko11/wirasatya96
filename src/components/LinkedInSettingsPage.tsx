@@ -121,10 +121,10 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
         {/* ============================================================ */}
         <div className="md:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100 text-xs">
           {[
-            { key: 'account', label: 'Preferensi akun', icon: User },
-            { key: 'security', label: 'Login dan keamanan', icon: Lock },
+            { key: 'account', label: 'Akun', icon: User },
+            { key: 'security', label: 'Keamanan', icon: Lock },
             { key: 'visibility', label: 'Visibilitas', icon: Eye },
-            { key: 'privacy', label: 'Privasi data', icon: Shield },
+            { key: 'privacy', label: 'Privasi', icon: Shield },
             { key: 'notifications', label: 'Notifikasi', icon: Bell },
           ].map((item) => {
             const Icon = item.icon;

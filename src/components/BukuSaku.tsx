@@ -442,7 +442,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               }`}
             >
               <Newspaper className="w-4 h-4" />
-              <span>Feed Silaturahmi ({posts.length})</span>
+              <span>Feed ({posts.length})</span>
             </button>
             <button
               onClick={() => setActiveCenterTab('direktori')}
@@ -453,7 +453,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>Direktori 38 Wilayah ({filteredMembers.length})</span>
+              <span>Direktori ({filteredMembers.length})</span>
             </button>
           </div>
 

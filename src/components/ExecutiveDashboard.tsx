@@ -237,62 +237,62 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
         <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveSubTab('kesehatan')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'kesehatan'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <ShieldAlert className="w-4 h-4" />
-            Prioritas Atensi Kesehatan ({needHealthAttention.length})
+            Kesehatan ({needHealthAttention.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('hunian')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'hunian'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Home className="w-4 h-4" />
-            Program Hunian Purna Tugas ({stillRenting.length})
+            Hunian ({stillRenting.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('usaha')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'usaha'
                 ? 'bg-emerald-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Briefcase className="w-4 h-4" />
-            Katalog Usaha Leting ({withBusiness.length})
+            Usaha ({withBusiness.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('pemetaan')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'pemetaan'
                 ? 'bg-blue-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <MapPin className="w-4 h-4" />
-            Pemetaan Wilayah Penugasan ({regionalStats.length} Wilayah)
+            Pemetaan ({regionalStats.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('keuangan')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'keuangan'
                 ? 'bg-purple-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Wallet className="w-4 h-4" />
-            Analisis Beban Sosial & Pendidikan
+            Beban Sosial
           </button>
         </div>
 

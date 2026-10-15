@@ -256,14 +256,14 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             {/* Filter Pills based on Police Functions */}
             <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold pt-1 pb-1">
               {[
-                { key: 'SEMUA', label: 'Semua Fungsi' },
-                { key: 'RESERSE', label: '🔍 Reserse / Bareskrim' },
+                { key: 'SEMUA', label: 'Semua' },
+                { key: 'RESERSE', label: '🔍 Reserse' },
                 { key: 'INTELKAM', label: '🛡️ Intelkam' },
-                { key: 'LANTAS', label: '🚦 Lalu Lintas' },
-                { key: 'BRIMOB_SABHARA', label: '⚡ Brimob & Sabhara' },
-                { key: 'KEWILAYAHAN', label: '🏛️ Kewilayahan (Polda/Polres)' },
-                { key: 'LEMDIKLAT', label: '🎓 Lemdiklat / Sespim' },
-                { key: 'LUAR_STRUKTUR', label: '🇮🇩 Luar Struktur / Humas' },
+                { key: 'LANTAS', label: '🚦 Lantas' },
+                { key: 'BRIMOB_SABHARA', label: '⚡ Brimob' },
+                { key: 'KEWILAYAHAN', label: '🏛️ Wilayah' },
+                { key: 'LEMDIKLAT', label: '🎓 Lemdiklat' },
+                { key: 'LUAR_STRUKTUR', label: '🇮🇩 Luar Struktur' },
               ].map((f) => (
                 <button
                   key={f.key}
