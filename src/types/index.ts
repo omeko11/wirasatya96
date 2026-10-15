@@ -1,6 +1,29 @@
 export type UserRole = 'SUPERADMIN' | 'KETUA' | 'SEKRETARIAT' | 'BENDAHARA' | 'ANGGOTA';
 
+export type UserAccountStatus = 
+  | 'PENDING_VERIFIKASI'
+  | 'DISETUJUI_BELUM_PASSWORD'
+  | 'AKTIF'
+  | 'DITOLAK';
+
 export type MfaMethod = 'BIOMETRIC' | 'GOOGLE_AUTH' | 'EMAIL_OTP' | 'PIN';
+
+export interface PendingRegistration {
+  id: string;
+  nrp: string;
+  nama: string;
+  pangkat: string;
+  satker: string;
+  polda: string;
+  noHp: string;
+  email: string;
+  alasanDaftar?: string;
+  status: UserAccountStatus;
+  password?: string;
+  createdAt: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+}
 
 export interface AuthUser {
   id: string;
@@ -15,6 +38,8 @@ export interface AuthUser {
   fotoUrl?: string;
   satker?: string;
   polda?: string;
+  status?: UserAccountStatus;
+  password?: string;
 }
 
 export interface Anak {

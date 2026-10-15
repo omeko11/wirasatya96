@@ -7,7 +7,8 @@ import { BukuSaku } from '@/components/BukuSaku';
 import { FormWizard } from '@/components/FormWizard';
 import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
 import { BendaharaPortal } from '@/components/BendaharaPortal';
-import { RoleSwitcherModal } from '@/components/RoleSwitcherModal';
+import { AdminVerificationModal } from '@/components/AdminVerificationModal';
+import { RegistrationModal } from '@/components/RegistrationModal';
 import { LinkedInChatDock } from '@/components/LinkedInChatDock';
 import { LinkedInMessagingPage } from '@/components/LinkedInMessagingPage';
 import { LinkedInJobsPage } from '@/components/LinkedInJobsPage';
@@ -19,14 +20,16 @@ import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } from '@/data/mockFinance';
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
-import { ShieldCheck, UserCheck, KeyRound, LogOut, ExternalLink } from 'lucide-react';
+import { ShieldCheck, UserCheck, KeyRound, LogOut, ExternalLink, UserPlus } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AppTab>('direktori');
   const [members, setMembers] = useState<AnggotaWiraSatya[]>(INITIAL_MEMBERS);
   const [currentUser, setCurrentUser] = useState<AuthUser>(PRESET_USERS[0]); // Default Superadmin
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [pendingVerificationCount, setPendingVerificationCount] = useState(0);
   const [navbarSearchQuery, setNavbarSearchQuery] = useState('');
   const [viewingMember, setViewingMember] = useState<AnggotaWiraSatya | null>(null);
   const [editingMember, setEditingMember] = useState<AnggotaWiraSatya | null | 'NEW'>(null);
@@ -77,6 +80,17 @@ export default function Home() {
         console.error('Failed to parse saved finance data', err);
       }
     }
+
+    // Refresh pending verification count
+    fetch('/api/auth/register')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.registrations)) {
+          const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
+          setPendingVerificationCount(count);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Start editing a specific member (leadership or self)
@@ -267,7 +281,9 @@ export default function Home() {
         }}
         totalMembers={members.length}
         currentUser={currentUser}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
+        pendingVerificationCount={pendingVerificationCount}
+        onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
         onLogout={handleLogout}
         onSearchChange={setNavbarSearchQuery}
         onViewMyProfile={() => {
@@ -289,6 +305,13 @@ export default function Home() {
             <span>Terhubung: <b className="text-slate-200">{members.length} Perwira</b></span>
             <span>&bull;</span>
             <span>38 Polda & Mabes Polri</span>
+            <span className="hidden sm:inline">&bull;</span>
+            <button
+              onClick={() => setIsRegisterModalOpen(true)}
+              className="text-amber-300 hover:text-white font-bold transition-colors hidden sm:inline-flex items-center gap-1"
+            >
+              + Registrasi Alumni
+            </button>
           </div>
         </div>
       </div>
@@ -440,18 +463,46 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Role Switcher & Login Modal */}
-      <RoleSwitcherModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentUser={currentUser}
-        onSelectUser={handleSelectUser}
-        onAddNewMemberAccount={(newM) => {
-          const updated = [newM, ...members];
-          setMembers(updated);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('wirasatya96_members', JSON.stringify(updated));
-          }
+      {/* Superadmin Verification Modal */}
+      <AdminVerificationModal
+        isOpen={isVerificationModalOpen}
+        onClose={() => setIsVerificationModalOpen(false)}
+        adminName={currentUser.nama}
+        onVerificationUpdate={() => {
+          fetch('/api/auth/register')
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success && Array.isArray(data.registrations)) {
+                const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
+                setPendingVerificationCount(count);
+              }
+            })
+            .catch(() => {});
+          fetch('/api/members')
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success && Array.isArray(data.members)) {
+                setMembers(data.members);
+              }
+            })
+            .catch(() => {});
+        }}
+      />
+
+      {/* Alumnus Registration Modal */}
+      <RegistrationModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onSuccess={() => {
+          fetch('/api/auth/register')
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success && Array.isArray(data.registrations)) {
+                const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
+                setPendingVerificationCount(count);
+              }
+            })
+            .catch(() => {});
         }}
       />
 

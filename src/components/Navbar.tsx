@@ -14,6 +14,8 @@ import {
   ChevronDown,
   KeyRound,
   ShieldCheck,
+  ShieldAlert,
+  UserPlus,
   FileText,
   Settings,
   LayoutGrid,
@@ -41,7 +43,10 @@ interface NavbarProps {
   setActiveTab: (tab: AppTab) => void;
   totalMembers: number;
   currentUser: AuthUser;
-  onOpenAuthModal: () => void;
+  onOpenAuthModal?: () => void;
+  onOpenVerificationModal?: () => void;
+  pendingVerificationCount?: number;
+  onOpenRegisterModal?: () => void;
   onLogout?: () => void;
   onSearchChange?: (query: string) => void;
   onViewMyProfile?: () => void;
@@ -53,6 +58,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalMembers,
   currentUser,
   onOpenAuthModal,
+  onOpenVerificationModal,
+  pendingVerificationCount = 0,
+  onOpenRegisterModal,
   onLogout,
   onSearchChange,
   onViewMyProfile,
@@ -244,6 +252,25 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
+              {/* Verifikasi Registrasi Alumni (Admin/Sekretariat Only) */}
+              {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && onOpenVerificationModal && (
+                <button
+                  onClick={onOpenVerificationModal}
+                  className="relative flex flex-col items-center justify-center px-1.5 py-1 text-slate-600 hover:text-red-900 transition-colors"
+                  title="Verifikasi Pendaftaran Alumni Baru"
+                >
+                  <div className="relative">
+                    <ShieldAlert className="w-5 h-5 text-red-800" />
+                    {pendingVerificationCount > 0 && (
+                      <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-extrabold flex items-center justify-center absolute -top-1 -right-2 ring-2 ring-white animate-pulse">
+                        {pendingVerificationCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] mt-0.5 whitespace-nowrap font-medium text-red-900">Verifikasi</span>
+                </button>
+              )}
+
               {/* Vertical Divider */}
               <div className="h-7 w-px bg-slate-200 hidden sm:block mx-1" />
 
@@ -328,19 +355,45 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-900">FIDO2</span>
                       </button>
 
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          onOpenAuthModal();
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center justify-between text-slate-700"
-                      >
-                        <span className="flex items-center gap-2">
-                          <KeyRound className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Ganti Role Pengguna</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-400">Demo</span>
-                      </button>
+                      {/* Verifikasi Anggota (Superadmin / Sekretariat) */}
+                      {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && onOpenVerificationModal && (
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            onOpenVerificationModal();
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-red-50/80 flex items-center justify-between text-slate-700 transition-colors"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ShieldAlert className="w-3.5 h-3.5 text-red-800" />
+                            <span className="font-semibold text-red-950">Verifikasi Pendaftaran</span>
+                          </span>
+                          {pendingVerificationCount > 0 ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-700 text-white animate-pulse">
+                              {pendingVerificationCount} Baru
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-slate-400">0</span>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Pendaftaran Akun Alumni Baru */}
+                      {onOpenRegisterModal && (
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            onOpenRegisterModal();
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center justify-between text-slate-700"
+                        >
+                          <span className="flex items-center gap-2">
+                            <UserPlus className="w-3.5 h-3.5 text-slate-600" />
+                            <span>Pendaftaran Anggota Baru</span>
+                          </span>
+                          <span className="text-[10px] font-semibold text-red-800">Daftar</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => {

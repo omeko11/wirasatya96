@@ -1,4 +1,14 @@
-import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, ChatMessage } from '@/types';
+import { 
+  AnggotaWiraSatya, 
+  AuthUser, 
+  KasTransaction, 
+  IuranAnggota, 
+  FinanceSummary, 
+  ChatMessage, 
+  PendingRegistration,
+  UserAccountStatus,
+  MfaMethod
+} from '@/types';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY } from '@/data/mockFinance';
@@ -12,6 +22,7 @@ interface GlobalStore {
   financeSummary: FinanceSummary;
   activeSession: AuthUser | null;
   messages: ChatMessage[];
+  registrations: PendingRegistration[];
 }
 
 const INITIAL_MESSAGES: ChatMessage[] = [
@@ -20,7 +31,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     senderNrp: '74030456',
     senderName: 'Irjen Pol. Achmad Kartiko',
     senderPangkat: 'Irjen Pol',
-    receiverNrp: '96081299',
+    receiverNrp: '00000001',
     receiverName: 'Eko Agung',
     text: 'Assalamu’alaikum Komandan. Mohon izin mengingatkan konsolidasi pengurus paguyuban terkait atensi rekan leting kita yang sedang pemulihan.',
     timestamp: '14:45',
@@ -29,7 +40,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   },
   {
     id: 'msg-2',
-    senderNrp: '96081299',
+    senderNrp: '00000001',
     senderName: 'Eko Agung',
     senderPangkat: 'Briptu',
     receiverNrp: '74030456',
@@ -44,7 +55,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     senderNrp: '74030456',
     senderName: 'Irjen Pol. Achmad Kartiko',
     senderPangkat: 'Irjen Pol',
-    receiverNrp: '96081299',
+    receiverNrp: '00000001',
     receiverName: 'Eko Agung',
     text: 'Alhamdulillah mantap. Teruskan semangat #SelaluBahagia untuk rekan-rekan!',
     timestamp: '15:10',
@@ -53,7 +64,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
   },
   {
     id: 'msg-4',
-    senderNrp: '96081299',
+    senderNrp: '00000001',
     senderName: 'Eko Agung',
     senderPangkat: 'Briptu',
     receiverNrp: '74050234',
@@ -68,7 +79,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     senderNrp: '74050234',
     senderName: 'Kombes Pol. Bambang Prasetyo',
     senderPangkat: 'Kombes Pol',
-    receiverNrp: '96081299',
+    receiverNrp: '00000001',
     receiverName: 'Eko Agung',
     text: 'Siap Komandan, iuran kas paguyuban bulan Oktober sudah terverifikasi lunas. Rekap neraca bisa dilihat langsung di portal kebendaharaan.',
     timestamp: 'Kemarin 10:15',
@@ -80,12 +91,43 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     senderNrp: '74080123',
     senderName: 'Kombes Pol. Hadi Wicaksono',
     senderPangkat: 'Kombes Pol',
-    receiverNrp: '96081299',
+    receiverNrp: '00000001',
     receiverName: 'Eko Agung',
     text: 'Data penempatan perwira di Polda Papua Tengah sudah diupdate di direktori 38 Polda komandan.',
     timestamp: '12 Okt 11:20',
     createdAt: new Date(Date.now() - 172800000).toISOString(),
     isRead: true,
+  },
+];
+
+const INITIAL_REGISTRATIONS: PendingRegistration[] = [
+  {
+    id: 'reg-01',
+    nrp: '74090999',
+    nama: 'Kombes Pol. Dedi Supriyadi, S.I.K., M.H.',
+    pangkat: 'Kombes Pol',
+    satker: 'Ditreskrimum Polda Jabar',
+    polda: 'POLDA JAWA BARAT',
+    noHp: '081298765432',
+    email: 'dedi.supriyadi96@polri.go.id',
+    alasanDaftar: 'Registrasi mandiri alumni Batalyon Wira Satya 1996 Polda Jabar.',
+    status: 'PENDING_VERIFIKASI',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+  },
+  {
+    id: 'reg-02',
+    nrp: '74070888',
+    nama: 'Kombes Pol. Hendra Gunawan, S.I.K.',
+    pangkat: 'Kombes Pol',
+    satker: 'Bareskrim Polri',
+    polda: 'POLDA METRO JAYA',
+    noHp: '081312345678',
+    email: 'hendra.gunawan96@polri.go.id',
+    alasanDaftar: 'Registrasi akun alumni leting 96 wilayah Mabes Polri.',
+    status: 'DISETUJUI_BELUM_PASSWORD',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    verifiedAt: new Date(Date.now() - 43200000).toISOString(),
+    verifiedBy: 'Eko Agung (Superadmin)',
   },
 ];
 
@@ -97,6 +139,7 @@ const globalStore: GlobalStore = {
   financeSummary: { ...INITIAL_FINANCE_SUMMARY },
   activeSession: PRESET_USERS[0], // default Superadmin
   messages: [...INITIAL_MESSAGES],
+  registrations: [...INITIAL_REGISTRATIONS],
 };
 
 export const serverStore = {
@@ -129,19 +172,287 @@ export const serverStore = {
     return globalStore.activeSession;
   },
 
-  authenticate: (identifier: string) => {
+  // ==============================================================
+  // REGISTRATION & VERIFICATION METHODS
+  // ==============================================================
+  getRegistrations: () => globalStore.registrations,
+
+  registerUser: (regData: {
+    nrp: string;
+    nama: string;
+    pangkat: string;
+    satker: string;
+    polda: string;
+    noHp: string;
+    email: string;
+    alasanDaftar?: string;
+  }): { success: boolean; message: string; registration?: PendingRegistration } => {
+    const cleanNrp = regData.nrp.trim();
+    
+    // Check if already registered in registrations list
+    const existingReg = globalStore.registrations.find((r) => r.nrp === cleanNrp);
+    if (existingReg) {
+      if (existingReg.status === 'PENDING_VERIFIKASI') {
+        return { success: false, message: 'NRP ini sudah mendaftar dan sedang menunggu verifikasi Superadmin.' };
+      }
+      if (existingReg.status === 'DISETUJUI_BELUM_PASSWORD') {
+        return { success: false, message: 'Pendaftaran Anda telah disetujui! Silakan masuk untuk membuat kata sandi pertama kali.' };
+      }
+      if (existingReg.status === 'AKTIF') {
+        return { success: false, message: 'NRP ini sudah memiliki akun aktif. Silakan langsung masuk di portal login.' };
+      }
+    }
+
+    // Check if user already exists in active users
+    const existingUser = globalStore.users.find((u) => u.nrp === cleanNrp);
+    if (existingUser && existingUser.status === 'AKTIF') {
+      return { success: false, message: 'Akun dengan NRP ini sudah terdaftar dan aktif di sistem.' };
+    }
+
+    const newReg: PendingRegistration = {
+      id: 'reg-' + Date.now(),
+      nrp: cleanNrp,
+      nama: regData.nama.trim(),
+      pangkat: regData.pangkat,
+      satker: regData.satker.trim(),
+      polda: regData.polda,
+      noHp: regData.noHp.trim(),
+      email: regData.email.trim(),
+      alasanDaftar: regData.alasanDaftar || 'Pendaftaran alumni Wira Satya Akpol 1996',
+      status: 'PENDING_VERIFIKASI',
+      createdAt: new Date().toISOString(),
+    };
+
+    globalStore.registrations.unshift(newReg);
+    return {
+      success: true,
+      message: 'Pendaftaran berhasil diajukan. Akun Anda akan diverifikasi oleh Superadmin / Sekretariat WS96.',
+      registration: newReg,
+    };
+  },
+
+  verifyRegistration: (
+    idOrNrp: string, 
+    action: 'APPROVE' | 'REJECT', 
+    verifierName: string = 'Superadmin'
+  ): { success: boolean; message: string; registration?: PendingRegistration } => {
+    const reg = globalStore.registrations.find((r) => r.id === idOrNrp || r.nrp === idOrNrp);
+    if (!reg) return { success: false, message: 'Data pendaftaran tidak ditemukan.' };
+
+    if (action === 'APPROVE') {
+      reg.status = 'DISETUJUI_BELUM_PASSWORD';
+      reg.verifiedAt = new Date().toISOString();
+      reg.verifiedBy = verifierName;
+
+      // Ensure user entry exists in users
+      let user = globalStore.users.find((u) => u.nrp === reg.nrp);
+      if (!user) {
+        user = {
+          id: 'u-' + reg.nrp,
+          nrp: reg.nrp,
+          nama: reg.nama,
+          pangkat: reg.pangkat,
+          email: reg.email,
+          role: 'ANGGOTA',
+          profileId: 'ws-' + reg.nrp,
+          mfaEnabled: false,
+          mfaMethod: 'PIN',
+          satker: reg.satker,
+          polda: reg.polda,
+          status: 'DISETUJUI_BELUM_PASSWORD',
+        };
+        globalStore.users.push(user);
+      } else {
+        user.status = 'DISETUJUI_BELUM_PASSWORD';
+      }
+
+      // Also ensure member exists in directory
+      const existingMember = globalStore.members.find((m) => m.nrp === reg.nrp);
+      if (!existingMember) {
+        globalStore.members.unshift({
+          id: 'ws-' + reg.nrp,
+          namaLengkap: reg.nama,
+          nrp: reg.nrp,
+          pangkat: reg.pangkat,
+          jabatanTerakhir: 'Pamen ' + reg.satker,
+          satuanKerja: reg.satker,
+          polda: reg.polda,
+          tipeSatker: reg.polda === 'MABES POLRI' ? 'MABES' : 'POLDA',
+          pendidikanTerakhir: 'S1 Ilmu Kepolisian / Akpol 1996',
+          tempatLahir: 'Jakarta',
+          tanggalLahir: '1974-01-01',
+          usia: 52,
+          jenisKelamin: 'LAKI-LAKI',
+          noHp: reg.noHp,
+          email: reg.email,
+          alamatTempatTinggal: reg.polda,
+          statusTempatTinggal: 'MILIK PRIBADI',
+          statusPerkawinan: 'MENIKAH',
+          jumlahAnak: 0,
+          daftarAnak: [],
+          tahunPurnaTugas: 2032,
+          sisaTahunDinas: 6,
+          alamatPurnaTugas: reg.polda,
+          statusRumahPurnaTugas: 'MILIK PRIBADI',
+          sudahPembekalan: 'SUDAH',
+          rencanaAktivitas: ['USAHA SENDIRI'],
+          sumberPenghasilanPasca: ['DANA PENSIUN'],
+          kecukupanDanaPensiun: 'CUKUP',
+          kesiapanPensiun: 'SIAP',
+          perasaanPensiun: 'TENANG',
+          dukunganKeluarga: 'SANGAT MENDUKUNG',
+          adaPenyakitKronis: 'TIDAK ADA',
+          kondisiKesehatan: 'SANGAT BAIK',
+          asuransiAktif: ['BPJS'],
+          rutinMcu: 'YA',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      return {
+        success: true,
+        message: `Pendaftaran ${reg.nama} berhasil disetujui. Akun siap diaktivasi oleh personel bersangkutan.`,
+        registration: reg,
+      };
+    } else {
+      reg.status = 'DITOLAK';
+      reg.verifiedAt = new Date().toISOString();
+      reg.verifiedBy = verifierName;
+      return {
+        success: true,
+        message: `Pendaftaran ${reg.nama} telah ditolak.`,
+        registration: reg,
+      };
+    }
+  },
+
+  setPassword: (
+    nrp: string, 
+    newPassword: string, 
+    mfaMethod: MfaMethod = 'PIN'
+  ): { success: boolean; user?: AuthUser; message: string } => {
+    const cleanNrp = nrp.trim();
+
+    // Update in registrations
+    const reg = globalStore.registrations.find((r) => r.nrp === cleanNrp);
+    if (reg) {
+      reg.status = 'AKTIF';
+      reg.password = newPassword;
+    }
+
+    // Update in users
+    let user = globalStore.users.find((u) => u.nrp === cleanNrp);
+    if (!user && reg) {
+      user = {
+        id: 'u-' + reg.nrp,
+        nrp: reg.nrp,
+        nama: reg.nama,
+        pangkat: reg.pangkat,
+        email: reg.email,
+        role: 'ANGGOTA',
+        profileId: 'ws-' + reg.nrp,
+        mfaEnabled: mfaMethod !== 'PIN',
+        mfaMethod: mfaMethod,
+        satker: reg.satker,
+        polda: reg.polda,
+        status: 'AKTIF',
+        password: newPassword,
+      };
+      globalStore.users.push(user);
+    } else if (user) {
+      user.status = 'AKTIF';
+      user.password = newPassword;
+      user.mfaMethod = mfaMethod;
+      user.mfaEnabled = mfaMethod !== 'PIN';
+    }
+
+    if (user) {
+      globalStore.activeSession = user;
+    }
+
+    return {
+      success: true,
+      user,
+      message: 'Kata sandi berhasil disimpan dan akun aktif!',
+    };
+  },
+
+  // ==============================================================
+  // AUTHENTICATION & LOGIN FLOW
+  // ==============================================================
+  authenticate: (
+    identifier: string, 
+    passwordInput?: string
+  ): {
+    success: boolean;
+    user?: AuthUser;
+    requiresPasswordSetup?: boolean;
+    status?: UserAccountStatus;
+    nrp?: string;
+    nama?: string;
+    pangkat?: string;
+    message: string;
+  } => {
     const cleanId = identifier.trim();
-    // Match by nrp, id, or email in registered users
+
+    // 1. Check registrations for pending/approved status
+    const reg = globalStore.registrations.find(
+      (r) => r.nrp === cleanId || r.email.toLowerCase() === cleanId.toLowerCase()
+    );
+
+    if (reg) {
+      if (reg.status === 'PENDING_VERIFIKASI') {
+        return {
+          success: false,
+          status: 'PENDING_VERIFIKASI',
+          message: 'Pendaftaran akun Anda sedang dalam proses verifikasi oleh Superadmin / Sekretariat Wira Satya 96. Harap menunggu konfirmasi.',
+        };
+      }
+
+      if (reg.status === 'DITOLAK') {
+        return {
+          success: false,
+          status: 'DITOLAK',
+          message: 'Permohonan pendaftaran akun Anda ditolak oleh Pengurus Batalyon.',
+        };
+      }
+
+      if (reg.status === 'DISETUJUI_BELUM_PASSWORD' || (!reg.password && !passwordInput)) {
+        return {
+          success: false,
+          requiresPasswordSetup: true,
+          status: 'DISETUJUI_BELUM_PASSWORD',
+          nrp: reg.nrp,
+          nama: reg.nama,
+          pangkat: reg.pangkat,
+          message: 'Pendaftaran Anda telah disetujui Superadmin! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
+        };
+      }
+    }
+
+    // 2. Check registered users list
     let user = globalStore.users.find(
       (u) =>
         u.nrp === cleanId ||
         u.id === cleanId ||
-        u.email.toLowerCase() === cleanId.toLowerCase() ||
-        u.id.toLowerCase().includes(cleanId.toLowerCase())
+        u.email.toLowerCase() === cleanId.toLowerCase()
     );
 
-    // If not found in users, check if matches any of the 286 members in the directory
-    if (!user) {
+    if (user && user.status === 'DISETUJUI_BELUM_PASSWORD') {
+      return {
+        success: false,
+        requiresPasswordSetup: true,
+        status: 'DISETUJUI_BELUM_PASSWORD',
+        nrp: user.nrp,
+        nama: user.nama,
+        pangkat: user.pangkat,
+        message: 'Pendaftaran Anda telah disetujui! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
+      };
+    }
+
+    // 3. Fallback: check 286 directory members if not yet in users table
+    if (!user && !reg) {
       const member = globalStore.members.find(
         (m) =>
           m.nrp === cleanId ||
@@ -163,17 +474,48 @@ export const serverStore = {
           polda: member.polda,
           email: `${member.nrp}@polri.go.id`,
           fotoUrl: member.fotoUrl,
+          status: 'DISETUJUI_BELUM_PASSWORD',
         };
         globalStore.users.push(user);
+        return {
+          success: false,
+          requiresPasswordSetup: true,
+          status: 'DISETUJUI_BELUM_PASSWORD',
+          nrp: member.nrp,
+          nama: member.namaLengkap,
+          pangkat: member.pangkat,
+          message: 'Data alumni Anda terverifikasi di Batalyon Wira Satya 96! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
+        };
       }
     }
 
-    if (user) {
-      globalStore.activeSession = user;
+    if (!user) {
+      return {
+        success: false,
+        message: 'NRP / Email dinas tidak terdaftar di sistem Batalyon Wira Satya 96. Silakan lakukan pendaftaran anggota terlebih dahulu.',
+      };
     }
-    return user || null;
+
+    // Password validation for active users
+    if (user.password && passwordInput && user.password !== passwordInput) {
+      return {
+        success: false,
+        message: 'Kata sandi yang Anda masukkan salah. Silakan coba kembali.',
+      };
+    }
+
+    user.status = 'AKTIF';
+    globalStore.activeSession = user;
+    return {
+      success: true,
+      user,
+      message: `Login berhasil sebagai ${user.nama} (${user.role})`,
+    };
   },
 
+  // ==============================================================
+  // FINANCIAL METHODS
+  // ==============================================================
   getFinance: () => ({
     summary: globalStore.financeSummary,
     transactions: globalStore.transactions,
@@ -197,7 +539,7 @@ export const serverStore = {
       }
     } else {
       globalStore.financeSummary.saldoUtama -= newTrx.nominal;
-      globalStore.financeSummary.totalPengeluaranBulanIni += newTrx.nominal;
+      globalStore.financeSummary.totalPengeluaranBulanIni -= newTrx.nominal;
       if (newTrx.kategori === 'SANTUNAN_KESEHATAN') {
         globalStore.financeSummary.kasSosialKesehatan -= newTrx.nominal;
       } else if (newTrx.kategori === 'SANTUNAN_DUKA_CITA') {
