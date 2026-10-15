@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { AnggotaWiraSatya, Anak } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { AnggotaWiraSatya, Anak, AuthUser } from '@/types';
 import { 
   Shield, 
   Users, 
@@ -12,12 +12,15 @@ import {
   ChevronLeft, 
   Plus, 
   Trash2, 
-  Save 
+  Save, 
+  Lock 
 } from 'lucide-react';
 
 interface FormWizardProps {
   onSave: (newMember: AnggotaWiraSatya) => void;
   onCancel: () => void;
+  currentUser: AuthUser;
+  existingMember?: AnggotaWiraSatya;
 }
 
 const DAFTAR_POLDA = [
@@ -73,11 +76,16 @@ const DAFTAR_PENYAKIT = [
   'PENYAKIT LIVER',
 ];
 
-export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
+export const FormWizard: React.FC<FormWizardProps> = ({
+  onSave,
+  onCancel,
+  currentUser,
+  existingMember,
+}) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Form State initialized with realistic defaults
+  // Form State initialized from existing member or defaults
   const [formData, setFormData] = useState<Partial<AnggotaWiraSatya>>({
     pangkat: 'Kombes Pol',
     polda: 'Polda Metro Jaya',
@@ -114,6 +122,21 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
     rutinMcu: 'YA',
     mcuTerakhir: '< 6 BULAN',
   });
+
+  // Prepopulate if existingMember is provided
+  useEffect(() => {
+    if (existingMember) {
+      setFormData(existingMember);
+    } else if (currentUser.role === 'ANGGOTA') {
+      // Pre-fill user NRP and name
+      setFormData((prev) => ({
+        ...prev,
+        nrp: currentUser.nrp,
+        namaLengkap: currentUser.nama,
+        pangkat: currentUser.pangkat,
+      }));
+    }
+  }, [existingMember, currentUser]);
 
   const handleInputChange = (field: keyof AnggotaWiraSatya, value: string | number | string[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -168,13 +191,13 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.namaLengkap || !formData.nrp) {
-      alert('Mohon isi Nama Lengkap dan NRP terlebih dahulu');
+      alert('Mohon lengkapi Nama Lengkap dan NRP');
       setCurrentStep(1);
       return;
     }
 
-    const newMember: AnggotaWiraSatya = {
-      id: 'ws-' + Date.now(),
+    const memberToSave: AnggotaWiraSatya = {
+      id: existingMember?.id || 'ws-' + (formData.nrp || Date.now()),
       nrp: formData.nrp || '',
       namaLengkap: formData.namaLengkap || '',
       pangkat: formData.pangkat || 'Kombes Pol',
@@ -234,11 +257,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
       harapanLayananKesehatan: formData.harapanLayananKesehatan || '',
       harapanDukunganLeting: formData.harapanDukunganLeting || '',
 
-      createdAt: new Date().toISOString(),
+      createdAt: existingMember?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    onSave(newMember);
+    onSave(memberToSave);
     setIsSubmitted(true);
   };
 
@@ -248,16 +271,16 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
         <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-10 h-10" />
         </div>
-        <h3 className="text-xl font-extrabold text-slate-900">Data Berhasil Tersimpan!</h3>
+        <h3 className="text-xl font-extrabold text-slate-900">Data Berhasil Diperbarui!</h3>
         <p className="text-sm text-slate-600 leading-relaxed">
-          Terima kasih Komandan. Profil dan data kesiapan purna tugas Batalyon Wira Satya 1996 telah berhasil diperbarui dan tersinkronisasi ke sistem.
+          Terima kasih Komandan. Perubahan data profil dan keluarga Anda telah berhasil disimpan dan disinkronkan ke direktori pusat Batalyon Wira Satya 1996.
         </p>
         <div className="pt-4 flex justify-center gap-3">
           <button
             onClick={onCancel}
             className="px-6 py-2.5 rounded-lg bg-polri-navy hover:bg-polri-navyLight text-polri-gold text-sm font-bold shadow-md transition-colors"
           >
-            Kembali ke Buku Saku
+            Lihat di Buku Saku
           </button>
         </div>
       </div>
@@ -277,11 +300,20 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div>
-            <h2 className="text-lg sm:text-xl font-extrabold text-polri-navy">
-              Formulir Pendataan & Kesejahteraan Wira Satya 96
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-extrabold text-polri-navy">
+                {currentUser.role === 'ANGGOTA' ? 'Pembaruan Data Mandiri Personel' : 'Formulir Pendataan & Kesejahteraan'}
+              </h2>
+              {currentUser.role === 'ANGGOTA' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-900 flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Akun Pribadi
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Pengisian bertahap (4 Modul). Data dapat diperbarui sewaktu-waktu saat ada mutasi atau perubahan.
+              {currentUser.role === 'ANGGOTA'
+                ? `Login sebagai ${currentUser.nama}. Anda hanya memperbarui data profil dan keluarga Anda sendiri.`
+                : 'Pengurus memiliki hak untuk memverifikasi dan memperbarui data anggota se-Indonesia.'}
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full self-start">
@@ -330,7 +362,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
                 Modul 1: Identitas Pribadi & Kedinasan
               </h3>
               <p className="text-xs text-slate-500">
-                Data resmi pangkat, penempatan satker, dan alamat domisili saat ini.
+                Pembaruan satker mutasi, Polda penugasan, dan alamat domisili saat ini.
               </p>
             </div>
 
@@ -356,11 +388,19 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
                 <input
                   type="text"
                   required
+                  readOnly={currentUser.role === 'ANGGOTA' && !!existingMember}
                   placeholder="Contoh: 74080123"
                   value={formData.nrp || ''}
                   onChange={(e) => handleInputChange('nrp', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  className={`w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none ${
+                    currentUser.role === 'ANGGOTA' && existingMember ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
+                  }`}
                 />
+                {currentUser.role === 'ANGGOTA' && existingMember && (
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    NRP terkunci sebagai Primary Key akun Anda.
+                  </span>
+                )}
               </div>
 
               <div>
@@ -377,7 +417,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Wilayah Polda / Mabes</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Wilayah Penempatan (Polda / Mabes)</label>
                 <select
                   value={formData.polda || 'Mabes Polri'}
                   onChange={(e) => handleInputChange('polda', e.target.value)}
@@ -839,7 +879,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({ onSave, onCancel }) => {
               className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md transition-colors"
             >
               <Save className="w-4 h-4" />
-              Simpan Seluruh Data Profil
+              Simpan Pembaruan Data
             </button>
           )}
         </div>

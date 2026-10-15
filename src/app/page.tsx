@@ -5,25 +5,41 @@ import { Navbar } from '@/components/Navbar';
 import { BukuSaku } from '@/components/BukuSaku';
 import { FormWizard } from '@/components/FormWizard';
 import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
+import { RoleSwitcherModal } from '@/components/RoleSwitcherModal';
 import { INITIAL_MEMBERS } from '@/data/mockData';
-import { AnggotaWiraSatya } from '@/types';
-import { ShieldCheck } from 'lucide-react';
+import { PRESET_USERS } from '@/data/mockUsers';
+import { AnggotaWiraSatya, AuthUser } from '@/types';
+import { ShieldCheck, UserCheck, KeyRound } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'direktori' | 'form' | 'dashboard'>('direktori');
   const [members, setMembers] = useState<AnggotaWiraSatya[]>(INITIAL_MEMBERS);
+  const [currentUser, setCurrentUser] = useState<AuthUser>(PRESET_USERS[0]); // Default to Ketua
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Load from localStorage if available
   useEffect(() => {
-    const saved = localStorage.getItem('wirasatya96_members');
-    if (saved) {
+    const savedMembers = localStorage.getItem('wirasatya96_members');
+    if (savedMembers) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = JSON.parse(savedMembers);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setMembers(parsed);
         }
       } catch (err) {
         console.error('Failed to parse saved members', err);
+      }
+    }
+
+    const savedUser = localStorage.getItem('wirasatya96_current_user');
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser && parsedUser.nrp) {
+          setCurrentUser(parsedUser);
+        }
+      } catch (err) {
+        console.error('Failed to parse saved user', err);
       }
     }
   }, []);
@@ -44,6 +60,20 @@ export default function Home() {
     }
   };
 
+  const handleSelectUser = (user: AuthUser) => {
+    setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_current_user', JSON.stringify(user));
+    }
+    // If Anggota logs in and was on dashboard, redirect to direktori
+    if (user.role === 'ANGGOTA' && activeTab === 'dashboard') {
+      setActiveTab('direktori');
+    }
+  };
+
+  // Find logged-in user profile if exists
+  const currentMemberProfile = members.find((m) => m.nrp === currentUser.nrp);
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 selection:bg-polri-gold selection:text-polri-navy">
       {/* Top Navbar */}
@@ -51,7 +81,31 @@ export default function Home() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         totalMembers={members.length}
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
+
+      {/* Role Banner Notification Bar */}
+      <div className="bg-slate-900 border-b border-slate-800 text-slate-300 text-xs py-2 px-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 text-polri-gold font-bold">
+              <UserCheck className="w-3.5 h-3.5" />
+              Sesi Login:
+            </span>
+            <span>
+              {currentUser.nama} ({currentUser.pangkat}) &bull; Hak Akses: <b className="text-white uppercase">{currentUser.role}</b>
+            </span>
+          </div>
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="text-polri-gold hover:underline text-[11px] font-semibold flex items-center gap-1"
+          >
+            <KeyRound className="w-3 h-3" />
+            Ganti Peran / Login Akun Lain
+          </button>
+        </div>
+      </div>
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -64,14 +118,17 @@ export default function Home() {
 
         {activeTab === 'form' && (
           <FormWizard
+            currentUser={currentUser}
+            existingMember={currentMemberProfile}
             onSave={handleSaveMember}
             onCancel={() => setActiveTab('direktori')}
           />
         )}
 
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && currentUser.role !== 'ANGGOTA' && (
           <ExecutiveDashboard
             members={members}
+            currentUser={currentUser}
           />
         )}
       </main>
@@ -90,6 +147,14 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Role Switcher & Login Modal */}
+      <RoleSwitcherModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        currentUser={currentUser}
+        onSelectUser={handleSelectUser}
+      />
     </div>
   );
 }

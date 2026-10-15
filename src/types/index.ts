@@ -1,3 +1,14 @@
+export type UserRole = 'KETUA' | 'SEKRETARIAT' | 'BENDAHARA' | 'ANGGOTA';
+
+export interface AuthUser {
+  id: string;
+  nrp: string;
+  nama: string;
+  pangkat: string;
+  role: UserRole;
+  profileId: string; // ID of their AnggotaWiraSatya profile
+}
+
 export interface Anak {
   id: string;
   nama: string;

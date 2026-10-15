@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AnggotaWiraSatya } from '@/types';
+import { AnggotaWiraSatya, AuthUser } from '@/types';
 import { 
   BarChart3, 
   Heart, 
@@ -10,15 +10,26 @@ import {
   Users, 
   Download, 
   MessageCircle, 
-  ShieldAlert 
+  ShieldAlert,
+  MapPin,
+  GraduationCap,
+  Wallet
 } from 'lucide-react';
 
 interface ExecutiveDashboardProps {
   members: AnggotaWiraSatya[];
+  currentUser: AuthUser;
 }
 
-export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'kesehatan' | 'hunian' | 'usaha'>('kesehatan');
+export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members, currentUser }) => {
+  // Default subtab according to role
+  const getInitialSubTab = () => {
+    if (currentUser.role === 'SEKRETARIAT') return 'pemetaan';
+    if (currentUser.role === 'BENDAHARA') return 'keuangan';
+    return 'kesehatan';
+  };
+
+  const [activeSubTab, setActiveSubTab] = useState<'kesehatan' | 'hunian' | 'usaha' | 'pemetaan' | 'keuangan'>(getInitialSubTab());
 
   // Stats calculation
   const total = members.length;
@@ -31,6 +42,45 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members 
   const withBusiness = members.filter(
     (m) => m.statusUsaha === 'SUDAH JALAN' || m.statusUsaha === 'DALAM PERSIAPAN'
   );
+
+  // Regional distribution (for Kesekretariatan)
+  const regionalStats = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    members.forEach((m) => {
+      const p = m.polda || 'Lainnya';
+      counts[p] = (counts[p] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [members]);
+
+  // Financial & Education stats (for Bendahara)
+  const financialStats = React.useMemo(() => {
+    let collegeCount = 0;
+    let highCostEdu = 0;
+    let midCostEdu = 0;
+    let lowCostEdu = 0;
+
+    members.forEach((m) => {
+      (m.daftarAnak || []).forEach((a) => {
+        if (a.status === 'PELAJAR') {
+          collegeCount++;
+          if (a.biayaPendidikanTahunan === '> 25.000.000') highCostEdu++;
+          else if (a.biayaPendidikanTahunan === '5.000.000 S.D. 25.000.000') midCostEdu++;
+          else lowCostEdu++;
+        }
+      });
+    });
+
+    const needFinancialAidPension = members.filter((m) => m.kecukupanDanaPensiun === 'KURANG').length;
+
+    return {
+      collegeCount,
+      highCostEdu,
+      midCostEdu,
+      lowCostEdu,
+      needFinancialAidPension,
+    };
+  }, [members]);
 
   const formatWaUrl = (phone?: string) => {
     if (!phone) return '#';
@@ -101,13 +151,15 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members 
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-polri-gold/20 text-polri-gold text-xs font-bold mb-2">
             <BarChart3 className="w-3.5 h-3.5" />
-            Panel Pengurus Paguyuban
+            Panel Khusus: {currentUser.role === 'KETUA' ? 'Ketua Batalyon' : currentUser.role === 'BENDAHARA' ? 'Bendahara Paguyuban' : 'Kesekretariatan'}
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-white">
-            Executive Summary Kesejahteraan Leting 96
+            Executive Dashboard Wira Satya 96
           </h2>
           <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-            Monitoring kondisi kesehatan rekan leting, kesiapan hunian masa pensiun, dan pemetaan potensi kemitraan usaha purna tugas.
+            {currentUser.role === 'KETUA' && 'Ikhtisar komprehensif kondisi kesehatan leting, kesiapan hunian masa pensiun, dan pemetaan keanggotaan se-Indonesia.'}
+            {currentUser.role === 'SEKRETARIAT' && 'Pemetaan sebaran penugasan leting di seluruh Polda (termasuk wilayah perbatasan/terluar) dan manajemen pembaruan data.'}
+            {currentUser.role === 'BENDAHARA' && 'Pemetaan beban tanggungan pendidikan putra/putri leting, alokasi santunan kesehatan, dan kesiapan finansial purna tugas.'}
           </p>
         </div>
 
@@ -209,6 +261,30 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members 
           >
             <Briefcase className="w-4 h-4" />
             Katalog Usaha Leting ({withBusiness.length})
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('pemetaan')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeSubTab === 'pemetaan'
+                ? 'bg-blue-700 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <MapPin className="w-4 h-4" />
+            Pemetaan Wilayah Penugasan ({regionalStats.length} Wilayah)
+          </button>
+
+          <button
+            onClick={() => setActiveSubTab('keuangan')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeSubTab === 'keuangan'
+                ? 'bg-purple-700 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <Wallet className="w-4 h-4" />
+            Analisis Beban Sosial & Pendidikan
           </button>
         </div>
 
@@ -354,6 +430,125 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members 
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: PEMETAAN WILAYAH (KESEKRETARIATAN) */}
+        {activeSubTab === 'pemetaan' && (
+          <div className="p-5 sm:p-6 space-y-5">
+            <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs">
+              <span className="font-bold block mb-1">🗺️ Pemetaan Keanggotaan Wilayah (Kesekretariatan):</span>
+              Memudahkan pengurus mendeteksi keberadaan rekan perwira di wilayah yang selama ini sulit dijangkau (seperti Papua, Maluku, Kaltara, NTT) serta jajaran Mabes dan Lemdiklat.
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Regional Summary Table */}
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <div className="bg-slate-100 px-4 py-2.5 border-b font-bold text-xs text-slate-800 flex justify-between">
+                  <span>Wilayah Penugasan</span>
+                  <span>Jumlah Personel</span>
+                </div>
+                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                  {regionalStats.map(([polda, count]) => (
+                    <div key={polda} className="px-4 py-2 flex justify-between text-xs items-center hover:bg-slate-50">
+                      <span className="font-medium text-slate-800">{polda}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[11px]">
+                        {count} Perwira
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Update List */}
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <div className="bg-slate-100 px-4 py-2.5 border-b font-bold text-xs text-slate-800 flex justify-between">
+                  <span>Personel Terdaftar</span>
+                  <span>Satker & Status</span>
+                </div>
+                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                  {members.map((m) => (
+                    <div key={m.id} className="px-4 py-2.5 text-xs hover:bg-slate-50 flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-900 block">{m.namaLengkap}</span>
+                        <span className="text-slate-500 text-[11px]">{m.polda} • {m.satuanKerja}</span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        Aktif
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 5: ANALISIS KEUANGAN & BEBAN PENDIDIKAN (BENDAHARA) */}
+        {activeSubTab === 'keuangan' && (
+          <div className="p-5 sm:p-6 space-y-5">
+            <div className="p-4 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 text-xs">
+              <span className="font-bold block mb-1">💰 Analisis Sosial & Beban Keuangan (Bendahara Paguyuban):</span>
+              Data agregat untuk merancang program subsidi pendidikan putra/putri, dana darurat kesehatan, serta iuran paguyuban Wira Satya 96.
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-purple-50 border border-purple-200 text-purple-900">
+                <div className="flex items-center gap-2 mb-1">
+                  <GraduationCap className="w-4 h-4 text-purple-700" />
+                  <span className="text-xs font-bold">Total Pelajar / Mahasiswa</span>
+                </div>
+                <span className="text-2xl font-black">{financialStats.collegeCount} Anak</span>
+                <span className="text-[11px] text-purple-700 block mt-1">Dalam tanggungan leting</span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+                <div className="flex items-center gap-2 mb-1">
+                  <Wallet className="w-4 h-4 text-amber-700" />
+                  <span className="text-xs font-bold">Biaya Pendidikan Tinggi (&gt; 25jt)</span>
+                </div>
+                <span className="text-2xl font-black">{financialStats.highCostEdu} Anak</span>
+                <span className="text-[11px] text-amber-700 block mt-1">Kuliah Kedokteran/Swasta</span>
+              </div>
+
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldAlert className="w-4 h-4 text-red-700" />
+                  <span className="text-xs font-bold">Kesiapan Dana Pensiun Kurang</span>
+                </div>
+                <span className="text-2xl font-black">{financialStats.needFinancialAidPension} Rekan</span>
+                <span className="text-[11px] text-red-700 block mt-1">Butuh dukungan usaha</span>
+              </div>
+            </div>
+
+            {/* List of Education Details */}
+            <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-white">
+              <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wide">
+                Rekapitulasi Putra / Putri dalam Tanggungan Pendidikan:
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {members.map((m) => {
+                  const studentChildren = (m.daftarAnak || []).filter((a) => a.status === 'PELAJAR');
+                  if (studentChildren.length === 0) return null;
+                  return (
+                    <div key={m.id} className="p-3 rounded-lg border border-slate-100 bg-slate-50 space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-900">{m.namaLengkap}</span>
+                        <span className="text-[11px] text-slate-500 font-mono">{studentChildren.length} Pelajar</span>
+                      </div>
+                      <div className="space-y-1">
+                        {studentChildren.map((a, i) => (
+                          <div key={i} className="flex justify-between items-center text-[11px] text-slate-600 bg-white p-1.5 rounded border border-slate-200">
+                            <span>• {a.nama}</span>
+                            <span className="font-semibold text-purple-700">{a.biayaPendidikanTahunan}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
