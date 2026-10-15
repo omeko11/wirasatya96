@@ -80,15 +80,15 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
   {
     id: 'reg-98010710',
     nrp: '98010710',
-    nama: 'Eko Agung',
+    nama: 'Eko Agung Krisdianto, S.Kom.',
     pangkat: 'Briptu',
-    satker: 'Bareskrim Polri / Tim IT Developer Wira Satya 96',
+    satker: 'Bareskrim Polri',
     polda: 'MABES POLRI',
     noHp: '081298010710',
     email: '98010710@polri.go.id',
     secondaryEmail: 'agungkrisdianto98@gmail.com',
-    alasanDaftar: 'Superadmin & Lead Developer Sistem Informasi Batalyon Wira Satya Akpol 1996.',
-    status: 'DISETUJUI_BELUM_PASSWORD',
+    alasanDaftar: 'Personel Bareskrim Polri (S1 Teknik Informatika) — Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.',
+    status: 'AKTIF',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Sistem Otentikasi Bareskrim Polri (Dev Lead)',
@@ -144,7 +144,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     nama: 'Eko_5',
     pangkat: 'Kombes Pol',
     satker: 'Ditreskrimsus Polda Metro Jaya',
-    polda: 'POLDA METRO JAYA',
+    polda: 'MABES POLRI',
     noHp: '0812980107105',
     email: '980107105@polri.go.id',
     alasanDaftar: 'Akun Testing Role ANGGOTA Batalyon Wira Satya 96.',
@@ -251,8 +251,17 @@ export function readDb(): GlobalStore {
       loadedUsers.forEach((u) => {
         u.email = migrateOfficialEmail(u.nrp, u.email);
         if (u.nrp === '98010710') {
+          if (!u.nama || u.nama === 'Eko Agung') u.nama = 'Eko Agung Krisdianto, S.Kom.';
+          u.pangkat = u.pangkat || 'Briptu';
+          if (!u.satker || u.satker.includes('Tim IT Developer')) u.satker = 'Bareskrim Polri';
+          u.polda = u.polda || 'MABES POLRI';
           u.email = '98010710@polri.go.id';
-          u.secondaryEmail = 'agungkrisdianto98@gmail.com';
+          u.secondaryEmail = u.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          u.status = 'AKTIF';
+          if (!u.bio) {
+            u.bio =
+              'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
+          }
         }
         const ref = akpolRefMap.get(u.nrp);
         if (ref) {
@@ -264,8 +273,24 @@ export function readDb(): GlobalStore {
       loadedMembers.forEach((m) => {
         m.email = migrateOfficialEmail(m.nrp, m.email);
         if (m.nrp === '98010710') {
+          if (!m.namaLengkap || m.namaLengkap === 'Eko Agung') {
+            m.namaLengkap = 'Eko Agung Krisdianto, S.Kom.';
+          }
+          m.pangkat = m.pangkat || 'Briptu';
+          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Superadmin / Lead Developer')) {
+            m.jabatanTerakhir = 'Lead Developer — Bareskrim Polri';
+          }
+          m.satuanKerja = m.satuanKerja || 'Bareskrim Polri';
+          m.polda = m.polda || 'MABES POLRI';
+          if (!m.pendidikanTerakhir || m.pendidikanTerakhir === 'S1 Teknik Informatika / Kepolisian') {
+            m.pendidikanTerakhir = 'S1 Teknik Informatika';
+          }
           m.email = '98010710@polri.go.id';
-          m.secondaryEmail = 'agungkrisdianto98@gmail.com';
+          m.secondaryEmail = m.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          if (!m.bio) {
+            m.bio =
+              'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
+          }
         }
         const ref = akpolRefMap.get(m.nrp);
         if (ref) {
@@ -277,8 +302,11 @@ export function readDb(): GlobalStore {
       loadedRegs.forEach((r) => {
         r.email = migrateOfficialEmail(r.nrp, r.email);
         if (r.nrp === '98010710') {
+          if (!r.nama || r.nama === 'Eko Agung') r.nama = 'Eko Agung Krisdianto, S.Kom.';
+          if (!r.satker || r.satker.includes('Tim IT Developer')) r.satker = 'Bareskrim Polri';
           r.email = '98010710@polri.go.id';
-          r.secondaryEmail = 'agungkrisdianto98@gmail.com';
+          r.secondaryEmail = r.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          r.status = 'AKTIF';
         }
         const ref = akpolRefMap.get(r.nrp);
         if (ref) {
@@ -288,6 +316,9 @@ export function readDb(): GlobalStore {
       });
 
       loadedIuran.forEach((i) => {
+        if (i.nrp === '98010710' && (!i.namaLengkap || i.namaLengkap === 'Eko Agung')) {
+          i.namaLengkap = 'Eko Agung Krisdianto, S.Kom.';
+        }
         const ref = akpolRefMap.get(i.nrp);
         if (ref) {
           i.pangkat = ref.pangkat;
@@ -307,8 +338,19 @@ export function readDb(): GlobalStore {
       if (activeSession) {
         activeSession.email = migrateOfficialEmail(activeSession.nrp, activeSession.email);
         if (activeSession.nrp === '98010710') {
+          if (!activeSession.nama || activeSession.nama === 'Eko Agung') {
+            activeSession.nama = 'Eko Agung Krisdianto, S.Kom.';
+          }
+          if (!activeSession.satker || activeSession.satker.includes('Tim IT Developer')) {
+            activeSession.satker = 'Bareskrim Polri';
+          }
           activeSession.email = '98010710@polri.go.id';
-          activeSession.secondaryEmail = 'agungkrisdianto98@gmail.com';
+          activeSession.secondaryEmail = activeSession.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          activeSession.status = 'AKTIF';
+          if (!activeSession.bio) {
+            activeSession.bio =
+              'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
+          }
         }
         const ref = akpolRefMap.get(activeSession.nrp);
         if (ref) {
@@ -368,22 +410,41 @@ export const serverStore = {
     const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
     const idx = globalStore.members.findIndex((m) => m.id === member.id || m.nrp === member.nrp);
     if (idx >= 0) {
-      globalStore.members[idx] = { ...member, updatedAt: new Date().toISOString() };
-      // Also sync name/pangkat to user if exists
+      globalStore.members[idx] = {
+        ...globalStore.members[idx],
+        ...member,
+        updatedAt: new Date().toISOString(),
+      };
+      const savedMember = globalStore.members[idx];
+      // Also sync name/pangkat/fotoUrl/coverUrl/bio/email/secondaryEmail to user if exists
       const uIdx = globalStore.users.findIndex((u) => u.nrp === member.nrp);
       if (uIdx >= 0) {
-        globalStore.users[uIdx].nama = member.namaLengkap;
-        globalStore.users[uIdx].pangkat = member.pangkat;
-        globalStore.users[uIdx].satker = member.satuanKerja;
-        globalStore.users[uIdx].polda = member.polda;
-        if (member.email) globalStore.users[uIdx].email = member.email;
-        if (member.secondaryEmail !== undefined) globalStore.users[uIdx].secondaryEmail = member.secondaryEmail;
+        globalStore.users[uIdx].nama = savedMember.namaLengkap;
+        globalStore.users[uIdx].pangkat = savedMember.pangkat;
+        globalStore.users[uIdx].satker = savedMember.satuanKerja;
+        globalStore.users[uIdx].polda = savedMember.polda;
+        if (savedMember.email) globalStore.users[uIdx].email = savedMember.email;
+        if (savedMember.secondaryEmail !== undefined) globalStore.users[uIdx].secondaryEmail = savedMember.secondaryEmail;
+        if (savedMember.fotoUrl !== undefined) globalStore.users[uIdx].fotoUrl = savedMember.fotoUrl;
+        if (savedMember.coverUrl !== undefined) globalStore.users[uIdx].coverUrl = savedMember.coverUrl;
+        if (savedMember.bio !== undefined) globalStore.users[uIdx].bio = savedMember.bio;
+      }
+      if (globalStore.activeSession && globalStore.activeSession.nrp === member.nrp) {
+        globalStore.activeSession.nama = savedMember.namaLengkap;
+        globalStore.activeSession.pangkat = savedMember.pangkat;
+        globalStore.activeSession.satker = savedMember.satuanKerja;
+        globalStore.activeSession.polda = savedMember.polda;
+        if (savedMember.email) globalStore.activeSession.email = savedMember.email;
+        if (savedMember.secondaryEmail !== undefined) globalStore.activeSession.secondaryEmail = savedMember.secondaryEmail;
+        if (savedMember.fotoUrl !== undefined) globalStore.activeSession.fotoUrl = savedMember.fotoUrl;
+        if (savedMember.coverUrl !== undefined) globalStore.activeSession.coverUrl = savedMember.coverUrl;
+        if (savedMember.bio !== undefined) globalStore.activeSession.bio = savedMember.bio;
       }
       const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === member.nrp);
       if (iIdx >= 0) {
-        globalStore.iuranList[iIdx].namaLengkap = member.namaLengkap;
-        globalStore.iuranList[iIdx].pangkat = member.pangkat;
-        globalStore.iuranList[iIdx].polda = member.polda;
+        globalStore.iuranList[iIdx].namaLengkap = savedMember.namaLengkap;
+        globalStore.iuranList[iIdx].pangkat = savedMember.pangkat;
+        globalStore.iuranList[iIdx].polda = savedMember.polda;
       }
     } else {
       globalStore.members.unshift({ ...member, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });

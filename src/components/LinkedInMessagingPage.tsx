@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthUser, AnggotaWiraSatya, ChatMessage } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
+import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 import { 
   Search, 
   Send, 
@@ -199,9 +200,13 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     const partnerMap = new Map<string, { member: AnggotaWiraSatya; lastMessage?: ChatMessage; unread: number }>();
 
     // 1. Process all messages to find active chat threads
+    const isSuperAdminViewer =
+      currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN';
+
     messages.forEach((msg) => {
       const otherNrp = msg.senderNrp === currentUser.nrp ? msg.receiverNrp : msg.senderNrp;
       if (!otherNrp || otherNrp === currentUser.nrp) return;
+      if (otherNrp === '98010710' && !isSuperAdminViewer) return;
 
       const member = members.find((m) => m.nrp === otherNrp) || {
         id: 'ws-' + otherNrp,
@@ -235,6 +240,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
 
     // 2. Ensure ALL registered members in directory are accessible when searching or picking
     members.forEach((m) => {
+      if (m.nrp === '98010710' && !isSuperAdminViewer) return;
       if (m.nrp !== currentUser.nrp && !partnerMap.has(m.nrp)) {
         partnerMap.set(m.nrp, {
           member: m,
@@ -252,7 +258,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
       if (bPinned !== aPinned) return bPinned - aPinned;
       return a.member.namaLengkap.localeCompare(b.member.namaLengkap);
     });
-  }, [messages, currentUser.nrp, members, pinnedNrps]);
+  }, [messages, currentUser.nrp, currentUser.role, members, pinnedNrps]);
 
   // Auto-select most recent active conversation if none selected yet
   useEffect(() => {
@@ -416,6 +422,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
   // Filter for new chat modal
   const searchableMembers = members.filter((m) => {
     if (m.nrp === currentUser.nrp) return false;
+    if (m.nrp === '98010710' && currentUser.nrp !== '98010710' && currentUser.role !== 'SUPERADMIN') return false;
     const q = newChatSearch.toLowerCase().trim();
     if (!q) return true;
     return (
@@ -442,7 +449,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-red-800" />
-              <h3 className="text-sm font-bold text-slate-900">Obrolan Leting 96</h3>
+              <h3 className="text-sm font-bold text-slate-900">Pesan</h3>
             </div>
             
             <button
@@ -511,7 +518,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              📌 Disematkan ({pinnedCount})
+              Disematkan ({pinnedCount})
             </button>
             {isDirectoryMode && (
               <button
@@ -559,7 +566,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   className="px-3.5 py-1.5 rounded-full bg-red-800 hover:bg-red-900 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-all"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>+ Mulai Obrolan Baru</span>
+                  <span>+ Obrolan</span>
                 </button>
               </div>
             ) : (
@@ -598,6 +605,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                       <div className="flex items-center justify-between gap-1">
                         <h4 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
                           <span className="truncate">{member.namaLengkap.split(',')[0]}</span>
+                          <MetaVerifiedBadge nrp={member.nrp} size="sm" />
                           {isPinned && (
                             <span title="Disematkan" className="text-[10px] text-amber-600 flex-shrink-0">
                               📌
@@ -655,7 +663,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 <MessageSquare className="w-8 h-8" />
               </div>
               <div className="max-w-sm space-y-1">
-                <h3 className="text-sm font-bold text-slate-900">Obrolan Leting Wira Satya 96</h3>
+                <h3 className="text-sm font-bold text-slate-900">Pesan Wira Satya 96</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Pilih rekan perwira dari daftar di sebelah kiri atau mulai obrolan baru untuk berkomunikasi langsung.
                 </p>
@@ -665,7 +673,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Mulai Obrolan Baru</span>
+                <span>+ Obrolan</span>
               </button>
             </div>
           ) : (
@@ -687,7 +695,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                         className="text-xs sm:text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer flex items-center gap-1 truncate"
                       >
                         <span className="truncate">{activePartner.namaLengkap}</span>
-                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600 inline flex-shrink-0" />
+                        <MetaVerifiedBadge nrp={activePartner.nrp} size="md" />
                       </h3>
                     </div>
                     <p className="text-[10px] sm:text-xs text-slate-500 truncate">
@@ -947,8 +955,9 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-slate-900 truncate">
-                        {m.namaLengkap}
+                      <h4 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
+                        <span className="truncate">{m.namaLengkap}</span>
+                        <MetaVerifiedBadge nrp={m.nrp} size="sm" />
                       </h4>
                       <p className="text-[11px] text-slate-500 truncate">
                         {m.pangkat} &bull; {m.jabatanTerakhir}

@@ -99,11 +99,10 @@ Mengadopsi praktik terbaik dari arsitektur CAS Bareskrim, sistem ini mengimpleme
 
 ### Pola 3: Hierarchical RBAC & Segregasi Akses Kedinasan
 Data dan fitur dibatasi berdasarkan peran pengguna:
-* **SUPERADMIN** (Pengembang & Bareskrim): Manajemen infrastruktur, database, dan otorisasi verifikasi anggota.
 * **KETUA PAGUYUBAN**: Hak persetujuan program kerja, visibilitas eksekutif penuh pada Anev Leting, dan penetapan kebijakan yayasan.
-* **SEKRETARIAT**: Pengelolaan formulir SIPP, verifikasi pendaftaran alumni baru, administrasi persuratan (TR & Sprint paguyuban), serta pemutakhiran direktori.
+* **SEKRETARIS**: Pengelolaan formulir SIPP, verifikasi pendaftaran alumni baru, administrasi persuratan (TR & Sprint paguyuban), serta pemutakhiran direktori.
 * **BENDAHARA**: Pengelolaan neraca kas yayasan, verifikasi iuran bulanan alumni, dan pencatatan santunan kesehatan/duka cita.
-* **ANGGOTA (ALUMNI)**: Membaca direktori 286 perwira, mengobrol di Obrolan Leting, memutakhirkan profil mandiri, serta melihat laporan transparansi kas.
+* **ANGGOTA (ALUMNI)**: Membaca direktori perwira, mengobrol di Obrolan Leting, memutakhirkan profil mandiri, serta melihat laporan transparansi kas.
 
 ### Pola 4: Standar Integritas & Tamper-Evident Storage
 * Setiap bukti transfer kas, dokumen Sprint, dan Surat Telegram yang diunggah ke MinIO S3 diberi penamaan berbasis hash kriptografis SHA-256:
@@ -123,7 +122,7 @@ sequenceDiagram
     participant FE as 🌐 Frontend (/login)
     participant API as ⚡ Core API (/api/auth)
     participant DB as 🐘 Basis Data (Store)
-    actor Admin as 🛡️ Superadmin / Sekretariat
+    actor Admin as 🛡️ Sekretaris
 
     Officer->>FE: Buka Tab "Pendaftaran Anggota Baru"<br/>Isi NRP, Pangkat, Satker, Polda, WhatsApp, Email Dinas
     FE->>API: POST /api/auth/register

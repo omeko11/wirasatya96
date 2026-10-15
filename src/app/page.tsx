@@ -22,7 +22,7 @@ import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INIT
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem, FeedPost, ChatMessage } from '@/types';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v9';
+const STORAGE_VERSION = 'ws96_akpol96_real_v10';
 
 export default function Home() {
   const router = useRouter();
@@ -550,6 +550,136 @@ export default function Home() {
     return healthCount + verifCount + unreadMessagesCount;
   }, [members, currentUser.role, pendingVerificationCount, unreadMessagesCount]);
 
+  // Synchronized live notifications for the top running-text ticker
+  const liveTickerNotifications = React.useMemo(() => {
+    const items: { id: string; badge: string; text: string; onClick: () => void }[] = [];
+
+    // 1. Pending Verification Alert for Admin & Sekretaris
+    if (
+      (currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') &&
+      pendingVerificationCount > 0
+    ) {
+      items.push({
+        id: `ticker-verif-${pendingVerificationCount}`,
+        badge: '[Verifikasi User]',
+        text: `${pendingVerificationCount} pendaftar baru menunggu persetujuan di menu User`,
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('users');
+        },
+      });
+    }
+
+    // 2. Incoming Direct Messages
+    const incomingMsgs = messages
+      .filter((m) => m.receiverNrp === currentUser.nrp)
+      .slice(-3)
+      .reverse();
+    incomingMsgs.forEach((msg) => {
+      items.push({
+        id: `ticker-msg-${msg.id}`,
+        badge: `[Pesan Masuk • ${msg.senderName}]`,
+        text: `"${msg.text}"`,
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('pesan');
+        },
+      });
+    });
+
+    // 3. Health Attention Alerts
+    const healthMembers = members.filter(
+      (m) =>
+        m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' ||
+        m.kondisiKesehatan === 'SAKIT' ||
+        m.adaPenyakitKronis === 'ADA' ||
+        (m.daftarPenyakit && m.daftarPenyakit.length > 0)
+    );
+    healthMembers.forEach((m) => {
+      const diagnosa =
+        m.daftarPenyakit && m.daftarPenyakit.length > 0
+          ? m.daftarPenyakit.join(', ')
+          : m.kondisiKesehatan;
+      items.push({
+        id: `ticker-health-${m.nrp}`,
+        badge: '[Atensi Kesehatan]',
+        text: `${m.namaLengkap} (${m.polda}) — ${diagnosa}`,
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('notifikasi');
+        },
+      });
+    });
+
+    // 4. Recent Treasury Cashflow Transactions
+    transactions.slice(0, 4).forEach((trx) => {
+      const rp = new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0,
+      }).format(trx.nominal || 0);
+      items.push({
+        id: `ticker-trx-${trx.id}`,
+        badge: trx.jenis === 'MASUK' ? '[Kas Masuk]' : '[Kas Keluar]',
+        text: `${rp} — ${trx.keterangan} (${trx.tanggal})`,
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('bendahara');
+        },
+      });
+    });
+
+    // 5. Recent Portfolio Assets
+    assets.slice(0, 2).forEach((ast) => {
+      items.push({
+        id: `ticker-ast-${ast.id}`,
+        badge: '[Portofolio Aset]',
+        text: `${ast.namaAset} (${ast.jumlahUnit} ${ast.satuan})`,
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('bendahara');
+        },
+      });
+    });
+
+    // 6. Recent Feed Posts
+    posts.slice(0, 3).forEach((post) => {
+      const snippet = post.content.length > 70 ? `${post.content.slice(0, 70)}...` : post.content;
+      items.push({
+        id: `ticker-post-${post.id}`,
+        badge: `[Linimasa • ${post.authorName}]`,
+        text: snippet,
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('direktori');
+        },
+      });
+    });
+
+    if (items.length === 0) {
+      items.push({
+        id: 'ticker-empty',
+        badge: '[Notifikasi]',
+        text: 'Belum ada notifikasi baru saat ini — Klik untuk membuka pusat Notifikasi',
+        onClick: () => {
+          setViewingMember(null);
+          setActiveTab('notifikasi');
+        },
+      });
+    }
+
+    return items;
+  }, [
+    currentUser.role,
+    currentUser.nrp,
+    pendingVerificationCount,
+    messages,
+    members,
+    transactions,
+    assets,
+    posts,
+  ]);
+
   // Update active member's jabatan & satker when a new mutation is recorded in Menu Jabatan
   const handleUpdateMemberJabatan = async (
     nrp: string,
@@ -616,33 +746,38 @@ export default function Home() {
         onStopImpersonating={handleStopImpersonating}
       />
 
-      {/* Official Platform Sub-header - Prestigious Bareskrim Theme */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/40 text-slate-300 text-xs py-1 px-4 sm:px-8 relative z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px]">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-amber-400 font-extrabold tracking-wide">BATALYON WIRA SATYA 1996</span>
-            <span className="text-slate-500 hidden sm:inline">&bull;</span>
-            <span className="text-slate-300 hidden sm:inline font-medium">Sistem Informasi Alumni & Soliditas Bhayangkara #SelaluBahagia</span>
+      {/* Top Red Ribbon: [Green Lamp Beacon] Online | Running Text Notifikasi */}
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/40 text-slate-200 text-xs py-1.5 px-3 sm:px-6 relative z-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto flex items-center gap-2.5 text-[11px]">
+          {/* Left: Green Lamp Beacon + Online */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+            </span>
+            <span className="text-emerald-400 font-extrabold tracking-wide">Online</span>
           </div>
-          <div className="flex items-center gap-3 text-slate-400 text-[10px] sm:text-[11px]">
-            <span>Terhubung: <b className="text-slate-200">{members.length} Perwira</b></span>
-            <span>&bull;</span>
-            <span>38 Polda & Mabes Polri</span>
-            {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
-              <>
-                <span className="hidden sm:inline">&bull;</span>
+
+          {/* Divider | */}
+          <span className="text-red-400/50 font-bold shrink-0 select-none">|</span>
+
+          {/* Right: Synchronized Notification Running Text */}
+          <div className="flex-1 overflow-hidden relative">
+            <div className="ws96-marquee items-center gap-8 whitespace-nowrap">
+              {[...liveTickerNotifications, ...liveTickerNotifications].map((item, idx) => (
                 <button
-                  onClick={() => {
-                    setViewingMember(null);
-                    setActiveTab('users');
-                  }}
-                  className="text-amber-300 hover:text-white font-bold transition-colors hidden sm:inline-flex items-center gap-1"
+                  key={`${item.id}-${idx}`}
+                  type="button"
+                  onClick={item.onClick}
+                  className="inline-flex items-center gap-1.5 text-slate-200 hover:text-amber-300 transition-colors cursor-pointer text-[11px]"
+                  title="Klik untuk membuka detail notifikasi"
                 >
-                  + Manajemen User
+                  <span className="font-bold text-amber-300">{item.badge}</span>
+                  <span>{item.text}</span>
+                  <span className="text-red-400/50 mx-3 select-none">&bull;</span>
                 </button>
-              </>
-            )}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -654,6 +789,7 @@ export default function Home() {
           <LinkedInProfileView
             member={viewingMember}
             currentUser={currentUser}
+            memberRole={viewingMember.nrp === currentUser.nrp ? currentUser.role : undefined}
             onClose={() => setViewingMember(null)}
             onEditProfile={(targetMember) => {
               handleStartEditMember(targetMember || viewingMember);
@@ -661,6 +797,28 @@ export default function Home() {
             onOpenChat={handleOpenChatWithMember}
             allMembers={members}
             onSelectMember={(m) => setViewingMember(m)}
+            onUpdateMemberDirect={(updated) => {
+              setMembers((prev) =>
+                prev.map((m) => (m.nrp === updated.nrp || m.id === updated.id ? updated : m))
+              );
+              setViewingMember(updated);
+              if (updated.nrp === currentUser.nrp) {
+                const nextUser: AuthUser = {
+                  ...currentUser,
+                  nama: updated.namaLengkap,
+                  pangkat: updated.pangkat,
+                  fotoUrl: updated.fotoUrl,
+                  coverUrl: updated.coverUrl,
+                  bio: updated.bio,
+                };
+                setCurrentUser(nextUser);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('ws96_auth_user', JSON.stringify(nextUser));
+                  localStorage.setItem('ws96_active_user', JSON.stringify(nextUser));
+                  localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextUser));
+                }
+              }
+            }}
           />
         ) : (
           <>

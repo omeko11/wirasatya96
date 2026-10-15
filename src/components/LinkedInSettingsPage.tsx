@@ -142,14 +142,11 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
             />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>Pengaturan & Privasi</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-900 border border-red-200 font-semibold">
-                Bareskrim Security Tier-3
-              </span>
+            <h1 className="text-base sm:text-lg font-bold text-slate-900">
+              Pengaturan &amp; Privasi
             </h1>
             <p className="text-xs text-slate-500">
-              Kelola kredensial keamanan FIDO2, visibilitas profil, dan preferensi akun Batalyon Wira Satya 96
+              {currentUser.pangkat} {currentUser.nama} &bull; NRP {currentUser.nrp}
             </p>
           </div>
         </div>
@@ -212,7 +209,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
               {/* Section: Informasi profil */}
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <h3 className="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100 mb-3">
-                  Informasi profil
+                  Informasi Profil
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
                   <div 
@@ -220,9 +217,9 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">Nama, lokasi, dan institusi</div>
+                      <div className="font-semibold text-slate-800">Identitas &amp; Satker</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        {currentUser.nama} &bull; Kepolisian Negara Republik Indonesia
+                        {currentUser.nama} &bull; {currentUser.satker || 'Mabes Polri'}
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -232,8 +229,8 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">Info demografi dinas</div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">NRP {currentUser.nrp} &bull; Pangkat {currentUser.pangkat}</div>
+                      <div className="font-semibold text-slate-800">NRP &amp; Pangkat</div>
+                      <div className="text-slate-500 text-[11px] mt-0.5">NRP {currentUser.nrp} &bull; {currentUser.pangkat}</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
@@ -242,10 +239,10 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">Verifikasi Anggota Akpol 1996</div>
+                      <div className="font-semibold text-slate-800">Status Akun</div>
                       <div className="text-emerald-600 font-semibold text-[11px] flex items-center gap-1 mt-0.5">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Terverifikasi Batalyon Wira Satya
+                        Aktif &amp; Terdaftar ({currentUser.role})
                       </div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />

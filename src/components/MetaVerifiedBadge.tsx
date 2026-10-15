@@ -1,0 +1,121 @@
+'use client';
+
+import React from 'react';
+import { UserRole } from '@/types';
+
+export interface MetaVerifiedBadgeProps {
+  role?: UserRole | string;
+  nrp?: string;
+  size?: 'xs' | 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+export function resolveRoleForBadge(nrp?: string, explicitRole?: UserRole | string): UserRole | undefined {
+  if (explicitRole && ['SUPERADMIN', 'KETUA', 'SEKRETARIAT', 'BENDAHARA', 'ANGGOTA'].includes(explicitRole)) {
+    return explicitRole as UserRole;
+  }
+  if (!nrp) return undefined;
+  const cleanNrp = nrp.trim();
+  if (cleanNrp === '98010710') return 'SUPERADMIN';
+  if (cleanNrp === '980107102') return 'KETUA';
+  if (cleanNrp === '980107103') return 'SEKRETARIAT';
+  if (cleanNrp === '980107104') return 'BENDAHARA';
+  return 'ANGGOTA';
+}
+
+/**
+ * Meta-style Scalloped Verification Badge:
+ * - SUPERADMIN -> Hitam (#0f172a)
+ * - KETUA -> Merah (#dc2626)
+ * - SEKRETARIAT / BENDAHARA (Pejabat Angkatan) -> Kuning Emas (#eab308 / #d97706)
+ * - ANGGOTA / lainnya -> Tanpa Badge (null)
+ */
+export const MetaVerifiedBadge: React.FC<MetaVerifiedBadgeProps> = ({
+  role,
+  nrp,
+  size = 'sm',
+  className = '',
+}) => {
+  const effectiveRole = resolveRoleForBadge(nrp, role);
+
+  if (!effectiveRole || effectiveRole === 'ANGGOTA') {
+    return null;
+  }
+
+  let fillHex = '#0f172a';
+  let strokeHex = '#334155';
+  let titleText = 'Terverifikasi';
+
+  if (effectiveRole === 'SUPERADMIN') {
+    fillHex = '#0f172a'; // Hitam (Superadmin)
+    strokeHex = '#475569';
+    titleText = 'Verified Superadmin (Administrator Sistem)';
+  } else if (effectiveRole === 'KETUA') {
+    fillHex = '#dc2626'; // Merah (Ketua)
+    strokeHex = '#fca5a5';
+    titleText = 'Verified Ketua Batalyon Wira Satya 96';
+  } else if (effectiveRole === 'SEKRETARIAT' || effectiveRole === 'BENDAHARA') {
+    fillHex = '#eab308'; // Kuning Emas (Pejabat Angkatan: Sekretaris / Bendahara)
+    strokeHex = '#fef08a';
+    titleText =
+      effectiveRole === 'SEKRETARIAT'
+        ? 'Verified Pejabat Angkatan (Sekretaris)'
+        : 'Verified Pejabat Angkatan (Bendahara)';
+  } else {
+    return null;
+  }
+
+  const sizeMap: Record<'xs' | 'sm' | 'md' | 'lg', number> = {
+    xs: 14,
+    sm: 16,
+    md: 20,
+    lg: 26,
+  };
+
+  const px = sizeMap[size] || 16;
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}
+      title={titleText}
+      aria-label={titleText}
+    >
+      <svg
+        width={px}
+        height={px}
+        viewBox="0 0 24 24"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="drop-shadow-xs"
+      >
+        {/* Meta-style 10-lobed scalloped seal path */}
+        <path
+          d="M12 1.5L14.45 3.38L17.5 3.04L18.62 5.91L21.46 7.08L21.07 10.13L22.91 12.61L20.77 14.84L20.79 17.92L17.85 18.88L16.38 21.58L13.38 20.89L10.62 22.34L8.55 20.06L5.5 20.03L4.7 17.05L2.04 15.5L3.02 12.57L1.64 9.81L4.08 7.91L4.38 4.84L7.39 4.18L9.18 1.66L12 2.68L12 1.5Z"
+          fill={fillHex}
+          stroke={strokeHex}
+          strokeWidth="0.8"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 2C13.1 2 14.1 2.6 14.6 3.5C15.6 3.1 16.8 3.3 17.6 4.1C18.4 4.9 18.6 6.1 18.2 7.1C19.1 7.6 19.7 8.6 19.7 9.7C19.7 10.8 19.1 11.8 18.2 12.3C18.6 13.3 18.4 14.5 17.6 15.3C16.8 16.1 15.6 16.3 14.6 15.9C14.1 16.8 13.1 17.4 12 17.4"
+          fill={fillHex}
+        />
+        {/* Clean crisp Meta-style scalloped rosette */}
+        <path
+          d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z"
+          fill={fillHex}
+          stroke="#ffffff"
+          strokeWidth="1.2"
+        />
+        {/* Checkmark */}
+        <path
+          d="M8.5 12.3L10.8 14.6L15.8 9.4"
+          stroke="#ffffff"
+          strokeWidth="2.3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  );
+};

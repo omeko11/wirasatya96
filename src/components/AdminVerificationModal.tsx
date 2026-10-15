@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
+import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 import { 
   ShieldCheck, 
   X, 
@@ -27,7 +28,8 @@ import {
   Eye,
   EyeOff,
   IdCard,
-  Check
+  Check,
+  Info
 } from 'lucide-react';
 
 interface AdminVerificationModalProps {
@@ -373,6 +375,14 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       return;
     }
 
+    const rawEmail = newEmail.trim();
+    const resolvedEmail =
+      !rawEmail
+        ? `${newNrp.trim()}@polri.go.id`
+        : /^\d+$/.test(rawEmail)
+        ? `${rawEmail}@polri.go.id`
+        : rawEmail;
+
     setCreatingUser(true);
     try {
       const res = await fetch('/api/users', {
@@ -385,7 +395,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           role: newRole,
           satker: newComposedSatker || newSatkerUtama || 'MABES POLRI',
           polda: newPolda || 'MABES POLRI',
-          email: newEmail.trim() || `${newNrp.trim()}@polri.go.id`,
+          email: resolvedEmail,
           secondaryEmail: newSecondaryEmail.trim() || undefined,
           noHp: newNoHp.trim(),
           password: newPassword.trim() || undefined,
@@ -409,7 +419,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     }
   };
 
-  const filteredUsers = users.filter((u) => {
+  const visibleRoleOptions = canImpersonate
+    ? ROLE_OPTIONS
+    : ROLE_OPTIONS.filter((r) => r.value !== 'SUPERADMIN');
+
+  const visibleUsers = canImpersonate
+    ? users
+    : users.filter((u) => u.role !== 'SUPERADMIN' && u.nrp !== '98010710');
+
+  const filteredUsers = visibleUsers.filter((u) => {
     const q = userSearch.toLowerCase();
     const matchesSearch =
       u.nama.toLowerCase().includes(q) ||
@@ -424,6 +442,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   });
 
   const filteredRegistrations = registrations.filter((r) => {
+    if (!canImpersonate && r.nrp === '98010710') return false;
     const q = regSearch.toLowerCase();
     const matchesSearch = 
       r.nama.toLowerCase().includes(q) ||
@@ -435,14 +454,45 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     return matchesSearch && r.status === filterStatus;
   });
 
-  const pendingCount = registrations.filter((r) => r.status === 'PENDING_VERIFIKASI').length;
+  const pendingCount = registrations.filter(
+    (r) => (canImpersonate || r.nrp !== '98010710') && r.status === 'PENDING_VERIFIKASI'
+  ).length;
+
+  const isUserAccountActive = (u: AuthUser, regInfo?: PendingRegistration): boolean => {
+    if (
+      u.status === 'AKTIF' ||
+      regInfo?.status === 'AKTIF' ||
+      u.nrp === '98010710' ||
+      u.nrp === currentUserNrp ||
+      Boolean(u.password || regInfo?.password)
+    ) {
+      return true;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        const savedAuth = localStorage.getItem('ws96_auth_user');
+        if (savedAuth) {
+          const parsed = JSON.parse(savedAuth);
+          if (parsed?.nrp === u.nrp) return true;
+        }
+        const savedImp = localStorage.getItem('ws96_impersonator_user');
+        if (savedImp) {
+          const parsed = JSON.parse(savedImp);
+          if (parsed?.nrp === u.nrp) return true;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return false;
+  };
 
   // Shared 2-Column CAS Add User Form Content
   const renderCasAddUserForm = (onCancel: () => void) => (
-    <form onSubmit={handleAddUser} className="space-y-5 text-xs">
+    <form onSubmit={handleAddUser} autoComplete="off" className="space-y-5 text-xs">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* KOLOM KIRI: IDENTITAS & SATKER */}
-        <div className="space-y-3.5">
+        <div className="space-y-3.5 min-w-0">
           <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
             <IdCard className="w-4 h-4" />
             <span>🪪 IDENTITAS &amp; SATKER</span>
@@ -455,6 +505,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             <input
               type="text"
               required
+              autoComplete="off"
+              name="ws96_new_nama"
               value={newNama}
               onChange={(e) => setNewNama(e.target.value)}
               placeholder="Contoh: Kombes Pol. Budi Santoso, S.I.K."
@@ -469,6 +521,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             <input
               type="text"
               required
+              autoComplete="off"
+              name="ws96_new_nrp"
               value={newNrp}
               onChange={(e) => handleNewNrpChange(e.target.value)}
               placeholder="Contoh: 98010710"
@@ -499,7 +553,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 onChange={(e) => setNewRole(e.target.value as UserRole)}
                 className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
               >
-                {ROLE_OPTIONS.map((r) => (
+                {visibleRoleOptions.map((r) => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
@@ -511,10 +565,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             <label className="block font-semibold text-slate-700 mb-1">
               Satker Melekat <span className="text-red-600">*</span>
             </label>
-            <div className="flex items-stretch gap-2">
+            <div className="flex flex-col gap-2 min-w-0">
               <div
                 onClick={() => openSatkerPicker('ADD')}
-                className={`flex-1 px-3 py-2.5 rounded-xl border cursor-pointer flex items-center gap-2 transition-colors ${
+                className={`w-full min-w-0 overflow-hidden px-3 py-2.5 rounded-xl border cursor-pointer flex items-center gap-2 transition-colors ${
                   newComposedSatker
                     ? 'bg-slate-50 border-slate-200 hover:border-blue-400'
                     : 'bg-slate-50 border-dashed border-slate-300 hover:border-blue-400'
@@ -523,14 +577,14 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 {newComposedSatker ? (
                   <>
                     <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 overflow-hidden">
                       <span className="font-bold text-slate-900 block truncate text-[11px]">
                         {newComposedSatker}
                       </span>
-                      <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                        <span>{newPolda}</span>
+                      <span className="text-[10px] text-slate-500 flex items-center gap-1.5 truncate">
+                        <span className="truncate">{newPolda}</span>
                         {newKodeSatker && (
-                          <span className="font-mono text-slate-400">({newKodeSatker})</span>
+                          <span className="font-mono text-slate-400 shrink-0">({newKodeSatker})</span>
                         )}
                       </span>
                     </div>
@@ -544,16 +598,17 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               <button
                 type="button"
                 onClick={() => openSatkerPicker('ADD')}
-                className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] whitespace-nowrap transition-colors"
+                className="w-full px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
               >
-                Pilih Satker Berjenjang
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Pilih Satker Berjenjang</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* KOLOM KANAN: AKUN & KREDENSIAL */}
-        <div className="space-y-3.5">
+        <div className="space-y-3.5 min-w-0">
           <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
             <Lock className="w-4 h-4" />
             <span>🔐 AKUN &amp; KREDENSIAL</span>
@@ -565,8 +620,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             </label>
             <input
               type="email"
+              autoComplete="off"
+              name="ws96_new_email_dinas"
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
+              onBlur={() => {
+                if (/^\d+$/.test(newEmail.trim())) {
+                  setNewEmail(`${newEmail.trim()}@polri.go.id`);
+                }
+              }}
               placeholder={newNrp ? `${newNrp}@polri.go.id` : 'nrp@polri.go.id'}
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
             />
@@ -578,6 +640,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             </label>
             <input
               type="email"
+              autoComplete="off"
+              name="ws96_new_email_sekunder"
               value={newSecondaryEmail}
               onChange={(e) => setNewSecondaryEmail(e.target.value)}
               placeholder="Contoh: agungkrisdianto98@gmail.com"
@@ -589,6 +653,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             <label className="block font-semibold text-slate-700 mb-1">No. HP / WhatsApp</label>
             <input
               type="tel"
+              autoComplete="off"
+              name="ws96_new_nohp"
               value={newNoHp}
               onChange={(e) => setNewNoHp(e.target.value)}
               placeholder="Contoh: 081234567890"
@@ -602,6 +668,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               <div className="relative">
                 <input
                   type={showNewPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  name="ws96_new_password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Kosongkan jika set mandiri"
@@ -622,6 +690,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               <div className="relative">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  name="ws96_new_confirm_password"
                   value={newConfirmPassword}
                   onChange={(e) => setNewConfirmPassword(e.target.value)}
                   placeholder="Ulangi password"
@@ -670,7 +740,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             className="px-5 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-red-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50"
           >
             <Check className="w-4 h-4 stroke-[2.5]" />
-            <span>{creatingUser ? 'Menyimpan...' : 'Simpan & Aktifkan Pengguna'}</span>
+            <span>{creatingUser ? 'Menyimpan...' : 'Simpan Pengguna'}</span>
           </button>
         </div>
       </div>
@@ -694,11 +764,17 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-base sm:text-lg text-white">
-                Manajemen Pengguna &amp; Verifikasi Akun
+              <h3 className="font-bold text-base sm:text-lg text-white flex items-center gap-1.5">
+                <span>User</span>
+                <span
+                  title="Kelola daftar pengguna, hak akses role, impersonate, dan verifikasi pendaftaran"
+                  className="inline-flex items-center text-slate-300 hover:text-white cursor-help"
+                >
+                  <Info className="w-4 h-4" />
+                </span>
               </h3>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
-                Otoritas: Admin &amp; Sekretaris
+                Otoritas: Sekretaris
               </span>
               {pendingCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold animate-pulse">
@@ -706,9 +782,6 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-300 mt-0.5">
-              Kelola daftar pengguna, ubah role/hak akses, impersonate akun, tambahkan personel baru, dan verifikasi pendaftaran alumni.
-            </p>
           </div>
         </div>
         {!asPage && (
@@ -733,7 +806,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Daftar Pengguna ({users.length})</span>
+            <span>Daftar Pengguna ({visibleUsers.length})</span>
           </button>
 
           <button
@@ -751,20 +824,6 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 {pendingCount}
               </span>
             )}
-          </button>
-
-          <button
-            onClick={() => {
-              setShowAddUserModal(true);
-            }}
-            className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
-              activeTab === 'ADD_USER' || showAddUserModal
-                ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
-                : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
-            }`}
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>+ Tambah Pengguna Baru</span>
           </button>
         </div>
 
@@ -809,8 +868,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 onChange={(e) => setRoleFilter(e.target.value as 'ALL' | UserRole)}
                 className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-800"
               >
-                <option value="ALL">Semua Role ({users.length})</option>
-                <option value="SUPERADMIN">Superadmin</option>
+                <option value="ALL">Semua Role ({visibleUsers.length})</option>
+                {canImpersonate && <option value="SUPERADMIN">Superadmin</option>}
                 <option value="KETUA">Ketua Paguyuban</option>
                 <option value="SEKRETARIAT">Sekretaris</option>
                 <option value="BENDAHARA">Bendahara</option>
@@ -819,7 +878,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setShowAddUserModal(true)}
+                onClick={() => {
+                  resetAddUserForm();
+                  setShowAddUserModal(true);
+                }}
                 className="px-3 py-1.5 rounded-lg bg-red-900 hover:bg-red-800 text-white font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm transition-colors"
               >
                 <UserPlus className="w-3.5 h-3.5" />
@@ -828,7 +890,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
             {filteredUsers.length === 0 ? (
               <div className="py-12 text-center">
                 <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -836,56 +898,60 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               </div>
             ) : (
               filteredUsers.map((u) => {
-                const roleBadge = ROLE_PERMISSIONS[u.role];
                 const regInfo = registrations.find((r) => r.nrp === u.nrp);
-                const accountStatus = regInfo?.status || u.status || 'DISETUJUI_BELUM_PASSWORD';
+                const isActive = isUserAccountActive(u, regInfo);
                 const secondaryEmail = u.secondaryEmail || regInfo?.secondaryEmail;
+                const showPangkat =
+                  Boolean(u.pangkat) &&
+                  !u.nama.toLowerCase().trim().startsWith((u.pangkat || '').toLowerCase().trim());
 
                 return (
                   <div
                     key={u.nrp}
-                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="bg-white rounded-xl border border-slate-200 p-3.5 hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-extrabold text-sm text-slate-900">{u.nama}</span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
+                        <span className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
+                          <span>{u.nama}</span>
+                          <MetaVerifiedBadge role={u.role} nrp={u.nrp} size="sm" />
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-600">
                           NRP {u.nrp}
+                          {showPangkat ? ` • ${u.pangkat}` : ''}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-900 font-bold border border-red-200">
-                          {u.pangkat}
-                        </span>
-                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${roleBadge?.badgeColor || 'bg-slate-700 text-white'}`}>
-                          {roleBadge?.label || u.role}
-                        </span>
-                        {accountStatus === 'AKTIF' ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
-                            <UserCheck className="w-3 h-3" /> Password Aktif
+                        {isActive ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span>Aktif</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
-                            <KeyRound className="w-3 h-3" /> Belum Set Password
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400 ml-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                            <span>Belum Aktivasi</span>
                           </span>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-0.5">
                         <span className="flex items-center gap-1">
-                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                          {u.satker || 'Mabes Polri'} &bull; {u.polda || 'MABES POLRI'}
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{u.satker || 'Mabes Polri'} &bull; {u.polda || 'MABES POLRI'}</span>
                         </span>
                         <span className="flex items-center gap-1.5 flex-wrap">
-                          <Mail className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-mono text-slate-600">{u.email || `${u.nrp}@polri.go.id`}</span>
+                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="font-mono text-slate-600">
+                            {u.email || `${u.nrp}@polri.go.id`}
+                          </span>
                           {secondaryEmail && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-                              &bull; Sekunder: {secondaryEmail}
+                            <span className="text-slate-400">
+                              ({secondaryEmail})
                             </span>
                           )}
                         </span>
                         {(u.noHp || regInfo?.noHp) && (
                           <span className="flex items-center gap-1">
-                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                             <span>{u.noHp || regInfo?.noHp}</span>
                           </span>
                         )}
@@ -901,7 +967,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                           onChange={(e) => handleRoleChange(u.nrp, e.target.value as UserRole)}
                           className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800 disabled:opacity-50"
                         >
-                          {ROLE_OPTIONS.map((opt) => (
+                          {visibleRoleOptions.map((opt) => (
                             <option key={opt.value} value={opt.value}>
                               {opt.value === 'SEKRETARIAT' ? 'SEKRETARIS' : opt.value}
                             </option>
@@ -1111,7 +1177,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                               }
                               className="w-full px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800"
                             >
-                              {ROLE_OPTIONS.map((opt) => (
+                              {visibleRoleOptions.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
                                   {opt.value === 'SEKRETARIAT' ? 'SEKRETARIS' : opt.value}
                                 </option>
@@ -1159,7 +1225,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-5 flex items-start justify-between gap-3">
               <div>
                 <h4 className="text-xs font-extrabold text-amber-900">
-                  Penambahan Langsung oleh Admin / Sekretaris
+                  Penambahan Langsung oleh Sekretaris
                 </h4>
                 <p className="text-[11px] text-amber-800 mt-0.5">
                   Akun yang ditambahkan di sini langsung terdaftar sebagai pengguna terverifikasi, masuk ke Direktori Anggota, dan terdaftar di Buku Kas/Iuran.
@@ -1177,7 +1243,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       {showAddUserModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div
-            className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp"
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
@@ -1216,7 +1282,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
           <div
-            className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp"
+            className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
@@ -1242,10 +1308,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditUser} className="p-6 space-y-5 text-xs max-h-[82vh] overflow-y-auto">
+            <form onSubmit={handleSaveEditUser} autoComplete="off" className="p-6 space-y-5 text-xs max-h-[82vh] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* KOLOM KIRI: IDENTITAS & SATKER */}
-                <div className="space-y-3.5">
+                <div className="space-y-3.5 min-w-0">
                   <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
                     <IdCard className="w-4 h-4" />
                     <span>🪪 IDENTITAS &amp; SATKER</span>
@@ -1256,6 +1322,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     <input
                       type="text"
                       required
+                      autoComplete="off"
                       value={editNama}
                       onChange={(e) => setEditNama(e.target.value)}
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
@@ -1283,7 +1350,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                         onChange={(e) => setEditRole(e.target.value as UserRole)}
                         className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                       >
-                        {ROLE_OPTIONS.map((r) => (
+                        {visibleRoleOptions.map((r) => (
                           <option key={r.value} value={r.value}>
                             {r.value === 'SEKRETARIAT' ? 'SEKRETARIS' : r.value}
                           </option>
@@ -1295,20 +1362,20 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                   {/* SATKER MELEKAT (ALA CAS) */}
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Satker Melekat</label>
-                    <div className="flex items-stretch gap-2">
+                    <div className="flex flex-col gap-2 min-w-0">
                       <div
                         onClick={() => openSatkerPicker('EDIT')}
-                        className="flex-1 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-400 cursor-pointer flex items-center gap-2 transition-colors"
+                        className="w-full min-w-0 overflow-hidden px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-400 cursor-pointer flex items-center gap-2 transition-colors"
                       >
                         <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           <span className="font-bold text-slate-900 block truncate text-[11px]">
                             {editComposedSatker || editSatkerUtama}
                           </span>
-                          <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                            <span>{editPolda}</span>
+                          <span className="text-[10px] text-slate-500 flex items-center gap-1.5 truncate">
+                            <span className="truncate">{editPolda}</span>
                             {editKodeSatker && (
-                              <span className="font-mono text-slate-400">({editKodeSatker})</span>
+                              <span className="font-mono text-slate-400 shrink-0">({editKodeSatker})</span>
                             )}
                           </span>
                         </div>
@@ -1316,16 +1383,17 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       <button
                         type="button"
                         onClick={() => openSatkerPicker('EDIT')}
-                        className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] whitespace-nowrap transition-colors"
+                        className="w-full px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors"
                       >
-                        Pilih Satker Berjenjang
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Pilih Satker Berjenjang</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
                 {/* KOLOM KANAN: AKUN & KREDENSIAL */}
-                <div className="space-y-3.5">
+                <div className="space-y-3.5 min-w-0">
                   <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
                     <Lock className="w-4 h-4" />
                     <span>🔐 AKUN &amp; KREDENSIAL</span>
@@ -1345,8 +1413,14 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     <label className="block font-semibold text-slate-700 mb-1">Email Dinas (@polri.go.id)</label>
                     <input
                       type="email"
+                      autoComplete="off"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
+                      onBlur={() => {
+                        if (/^\d+$/.test(editEmail.trim())) {
+                          setEditEmail(`${editEmail.trim()}@polri.go.id`);
+                        }
+                      }}
                       placeholder={`${editingUser.nrp}@polri.go.id`}
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
@@ -1358,6 +1432,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     </label>
                     <input
                       type="email"
+                      autoComplete="off"
                       value={editSecondaryEmail}
                       onChange={(e) => setEditSecondaryEmail(e.target.value)}
                       placeholder="Contoh: agungkrisdianto98@gmail.com"
@@ -1369,6 +1444,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     <label className="block font-semibold text-slate-700 mb-1">No. HP / WhatsApp Aktif</label>
                     <input
                       type="tel"
+                      autoComplete="off"
                       value={editNoHp}
                       onChange={(e) => setEditNoHp(e.target.value)}
                       placeholder="Contoh: 081234567890"
@@ -1434,7 +1510,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-1.5">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Otoritas Manajemen Pengguna: <strong>Hanya Admin (Superadmin) &amp; Sekretaris</strong></span>
+          <span>Otoritas Manajemen Pengguna: <strong>Sekretaris Batalyon Wira Satya 96</strong></span>
         </div>
         {!asPage && (
           <button

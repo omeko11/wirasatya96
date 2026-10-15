@@ -721,44 +721,48 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   return (
     <div className="space-y-6 pb-20 md:pb-8">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-6 md:p-7 rounded-2xl border border-emerald-700/40 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold mb-2.5">
-            <Wallet className="w-3.5 h-3.5" />
-            Sistem Cashflow, Iuran &amp; Portofolio Aset Wira Satya 1996
+      <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 p-4 sm:p-5 rounded-2xl border border-emerald-700/40 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+            <Wallet className="w-5 h-5" />
+          </span>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-extrabold text-white">
+              Kas &amp; Aset
+            </h2>
+            <span
+              className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-help text-[11px] font-bold"
+              title="Pembukuan arus kas masuk/keluar, iuran wajib, dan portofolio aset berharga (SBN, Valas, Crypto, Emas)."
+            >
+              <Info className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-white">
-            Pembukuan Arus Kas, Iuran Wajib &amp; Portofolio Aset (SBN / Valas / Crypto)
-          </h2>
-          <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
-            Manajemen arus kas masuk/keluar (cashflow), konfigurasi tarif iuran wajib, serta portofolio aset likuid paguyuban Batalyon Wira Satya Akpol 1996 secara akuntabel dan transparan.
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {canInputKas ? (
             <>
               <button
                 onClick={() => handleOpenMutasiModal('MASUK')}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
               >
                 <PlusCircle className="w-4 h-4" />
-                + Catat Mutasi Kas
+                + Kas
               </button>
               <button
                 onClick={() => setIsAssetModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition-all"
               >
                 <Coins className="w-4 h-4" />
-                + Input Aset / Valas / Crypto
+                + Aset
               </button>
               <button
                 onClick={handleOpenConfigModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-xs border border-amber-400/30 transition-all"
-                title="Pengaturan Tarif Iuran Wajib & Master Kategori Cashflow"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-xs border border-amber-400/30 transition-all"
+                title="Pengaturan Iuran & Kategori Kas"
               >
                 <Settings className="w-4 h-4" />
-                Atur Iuran &amp; Kategori
+                Atur
               </button>
             </>
           ) : (
@@ -781,14 +785,13 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               </button>
 
               {showReadOnlyInfo && (
-                <div className="absolute right-0 top-full mt-2 w-80 p-3.5 rounded-xl bg-slate-950/95 text-slate-100 text-[11px] leading-relaxed border border-amber-500/40 shadow-2xl z-40">
+                <div className="absolute right-0 top-full mt-2 w-72 p-3 rounded-xl bg-slate-950/95 text-slate-100 text-[11px] leading-relaxed border border-amber-500/40 shadow-2xl z-40">
                   <div className="font-bold text-amber-300 mb-1 flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5" />
-                    Otoritas Akses Kebendaharaan
+                    Akses Kebendaharaan
                   </div>
-                  Penginputan kas masuk/keluar, pengaturan iuran wajib, dan portofolio aset dikelola oleh{' '}
-                  <b className="text-emerald-300">Bendahara</b> (serta <b className="text-amber-300">Superadmin</b> untuk
-                  keperluan pemeliharaan/testing). Ketua dan Anggota dapat menyimak laporan secara transparan.
+                  Input kas masuk/keluar, pengaturan iuran wajib, dan portofolio aset dikelola khusus oleh{' '}
+                  <b className="text-emerald-300">Bendahara</b>.
                 </div>
               )}
             </div>
@@ -797,11 +800,11 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           {canRekap && (
             <button
               onClick={handleExportFinanceCSV}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/25 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/25 transition-all"
               title="Unduh Rekap Kas & Aset (CSV)"
             >
               <Download className="w-4 h-4 text-amber-300" />
-              Rekap Kas &amp; Aset (CSV)
+              CSV
             </button>
           )}
         </div>
@@ -809,10 +812,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
       {/* Top KPI Cards — Cashflow Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Saldo Kas Tunai (IDR) */}
+        {/* 1. Saldo Kas Tunai */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600">1. Saldo Kas Tunai (IDR)</span>
+            <span className="text-xs font-bold text-slate-600">Saldo Kas Tunai</span>
             <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
               <Wallet className="w-5 h-5" />
             </span>
@@ -828,10 +831,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           </div>
         </div>
 
-        {/* 2. Cashflow Masuk (Total Inflow) & Cashflow Keluar (Total Outflow) */}
+        {/* 2. Arus Kas (Cashflow) */}
         <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/40 via-white to-red-50/30 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">2. Arus Kas (Inflow &amp; Outflow)</span>
+            <span className="text-xs font-bold text-slate-700">Arus Kas (Cashflow)</span>
             <div className="flex items-center gap-1">
               <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700" title="Total Kas Masuk">
                 <ArrowUpRight className="w-4 h-4" />
@@ -843,13 +846,13 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           </div>
           <div className="mt-3 space-y-2">
             <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200/70 px-3 py-1.5 rounded-xl">
-              <span className="text-[11px] font-bold text-emerald-800">Cashflow Masuk</span>
+              <span className="text-[11px] font-bold text-emerald-800">Kas Masuk</span>
               <span className="text-xs sm:text-sm font-black text-emerald-700">
                 + {formatRupiah(totalKasMasuk)}
               </span>
             </div>
             <div className="flex items-center justify-between bg-red-50/80 border border-red-200/70 px-3 py-1.5 rounded-xl">
-              <span className="text-[11px] font-bold text-red-800">Cashflow Keluar</span>
+              <span className="text-[11px] font-bold text-red-800">Kas Keluar</span>
               <span className="text-xs sm:text-sm font-black text-red-600">
                 - {formatRupiah(totalKasKeluar)}
               </span>
@@ -857,10 +860,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           </div>
         </div>
 
-        {/* 3. Nilai Aset Berharga Saat Ini (IDR) */}
+        {/* 3. Nilai Aset Berharga */}
         <div className="bg-white p-5 rounded-2xl border border-blue-200 bg-blue-50/20 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-blue-900">3. Nilai Aset Berharga Saat Ini (IDR)</span>
+            <span className="text-xs font-bold text-blue-900">Portofolio Aset</span>
             <span className="p-2 rounded-xl bg-blue-100 text-blue-800">
               <Coins className="w-5 h-5" />
             </span>
@@ -870,23 +873,23 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               {formatRupiah(totalValuasiAset)}
             </span>
             <span className="text-[11px] text-blue-700 font-medium block mt-1.5">
-              {localAssets.length} instrumen (Surat Berharga, Valas, Crypto, Logam Mulia)
+              {localAssets.length} instrumen (SBN, Valas, Crypto, Emas)
             </span>
           </div>
         </div>
 
-        {/* 4. Tarif Iuran Wajib & Kolektibilitas */}
+        {/* 4. Iuran Wajib */}
         <div className="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-sm relative overflow-hidden flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-amber-950">4. Tarif Iuran Wajib &amp; Kolektibilitas</span>
+              <span className="text-xs font-bold text-amber-950">Iuran Wajib</span>
               {canInputKas && (
                 <button
                   type="button"
                   onClick={handleOpenConfigModal}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] shadow-sm transition-all whitespace-nowrap"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] shadow-sm transition-all whitespace-nowrap shrink-0"
                 >
-                  ⚙️ Atur Iuran &amp; Kategori
+                  ⚙️ Atur
                 </button>
               )}
             </div>
@@ -895,7 +898,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 {formatRupiah(financeConfig.iuranWajibPerBulan)}{' '}
                 <span className="text-xs font-bold text-slate-500">/ Bulan</span>
               </span>
-              <span className="text-[11px] text-amber-800 font-semibold block mt-1">
+              <span className="text-[11px] text-amber-800 font-semibold block mt-1.5">
                 Target {financeConfig.tahunBuku}: {formatRupiah(financeConfig.iuranWajibPerBulan * 12)} / Thn &bull;{' '}
                 <b>{iuranCompliancePct}% Lunas</b> ({lunasCount} Lunas, {sebagianCount} Cicil)
               </span>
@@ -916,7 +919,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            Buku Kas &amp; Cashflow ({localTransactions.length})
+            Buku Kas ({localTransactions.length})
           </button>
 
           <button
@@ -928,7 +931,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <Briefcase className="w-4 h-4" />
-            Portofolio Aset: Surat Berharga / Valas / Crypto ({localAssets.length})
+            Portofolio ({localAssets.length})
           </button>
 
           <button
@@ -940,7 +943,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            Iuran Leting ({localIuranList.length})
+            Iuran Wajib ({localIuranList.length})
           </button>
 
           <button
@@ -952,7 +955,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <Heart className="w-4 h-4" />
-            Santunan Rekan Sakit ({chronicIllMembers.length})
+            Santunan ({chronicIllMembers.length})
           </button>
 
           <button
@@ -964,7 +967,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <GraduationCap className="w-4 h-4" />
-            Data Pendidikan Anak
+            Pendidikan Anak
           </button>
         </div>
 
@@ -1720,8 +1723,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                   <input
                     type="number"
                     required
-                    min={1000}
-                    step={10000}
+                    min={1}
+                    step="any"
                     value={trxNominal}
                     onChange={(e) => setTrxNominal(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-base font-black text-slate-900"
@@ -1915,7 +1918,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     type="number"
                     required
                     min={0}
-                    step={50000}
+                    step="any"
                     value={astNilaiBeli}
                     onChange={(e) => setAstNilaiBeli(Number(e.target.value))}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 font-semibold"
@@ -1928,7 +1931,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     type="number"
                     required
                     min={0}
-                    step={50000}
+                    step="any"
                     value={astEstimasiIdr}
                     onChange={(e) => setAstEstimasiIdr(Number(e.target.value))}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 font-black text-blue-900"
@@ -2044,8 +2047,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 </div>
                 <input
                   type="number"
-                  min={50000}
-                  step={50000}
+                  min={1}
+                  step="any"
                   value={payNominal}
                   onChange={(e) => setPayNominal(Number(e.target.value))}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-black text-slate-900"
@@ -2085,10 +2088,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               <div>
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <Settings className="w-4 h-4 text-amber-400" />
-                  ⚙️ Pengaturan Kebendaharaan (Tarif Iuran Wajib &amp; Master Kategori Cashflow)
+                  Pengaturan Iuran &amp; Kategori Kas
                 </h3>
                 <p className="text-[11px] text-slate-300 mt-0.5">
-                  Perubahan tarif iuran wajib otomatis memperbarui target tahunan (12 &times; tarif bulanan) seluruh anggota.
+                  Perubahan tarif iuran otomatis memperbarui target tahunan seluruh anggota.
                 </p>
               </div>
               <button onClick={() => setIsConfigModalOpen(false)} className="text-slate-300 hover:text-white">
@@ -2101,7 +2104,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-amber-950 text-xs">
-                    1. Konfigurasi Tarif Iuran Wajib Bulanan per Perwira
+                    1. Tarif Iuran Wajib Bulanan
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-950 font-bold text-[10px]">
                     Target Tahunan: {formatRupiah((Number(draftIuranPerBulan) || 0) * 12)} / Tahun
@@ -2116,8 +2119,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     <input
                       type="number"
                       required
-                      min={10000}
-                      step={25000}
+                      min={0}
+                      step="any"
                       value={draftIuranPerBulan}
                       onChange={(e) => setDraftIuranPerBulan(Number(e.target.value))}
                       className="w-full px-3.5 py-2 rounded-lg border border-amber-300 bg-white text-sm font-black text-slate-900"
@@ -2160,7 +2163,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 {/* Sub-Kategori Saldo Masuk */}
                 <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 space-y-3">
                   <div className="font-extrabold text-emerald-950 flex items-center justify-between">
-                    <span>2A. Sub-Kategori Saldo Masuk (Inflow)</span>
+                    <span>2A. Kategori Kas Masuk</span>
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
                       {draftSubMasuk.length} Kategori
                     </span>
@@ -2193,7 +2196,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                   <div className="flex gap-1.5 pt-1">
                     <input
                       type="text"
-                      placeholder="Tambah sub-kategori masuk baru..."
+                      placeholder="Tambah sub-kategori masuk..."
                       value={newMasukLabel}
                       onChange={(e) => setNewMasukLabel(e.target.value)}
                       className="flex-1 px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-white text-xs"
@@ -2212,7 +2215,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 {/* Sub-Kategori Saldo Keluar */}
                 <div className="p-4 rounded-xl border border-red-200 bg-red-50/30 space-y-3">
                   <div className="font-extrabold text-red-950 flex items-center justify-between">
-                    <span>2B. Sub-Kategori Saldo Keluar (Outflow)</span>
+                    <span>2B. Kategori Kas Keluar</span>
                     <span className="text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
                       {draftSubKeluar.length} Kategori
                     </span>
@@ -2245,7 +2248,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                   <div className="flex gap-1.5 pt-1">
                     <input
                       type="text"
-                      placeholder="Tambah sub-kategori keluar baru..."
+                      placeholder="Tambah sub-kategori keluar..."
                       value={newKeluarLabel}
                       onChange={(e) => setNewKeluarLabel(e.target.value)}
                       className="flex-1 px-2.5 py-1.5 rounded-lg border border-red-300 bg-white text-xs"
@@ -2264,7 +2267,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
               <div className="flex items-center justify-between pt-3 border-t border-slate-200">
                 <span className="text-[11px] text-slate-500">
-                  Terakhir diperbarui oleh: <b>{financeConfig.updatedBy}</b>
+                  Terakhir diperbarui: <b>{financeConfig.updatedBy}</b>
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -2279,7 +2282,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     disabled={isSavingConfig}
                     className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold shadow-md transition-colors"
                   >
-                    {isSavingConfig ? 'Menyimpan...' : 'Simpan Pengaturan Kebendaharaan'}
+                    {isSavingConfig ? 'Menyimpan...' : 'Simpan Pengaturan'}
                   </button>
                 </div>
               </div>

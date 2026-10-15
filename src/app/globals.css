@@ -25,3 +25,22 @@ body {
     text-wrap: balance;
   }
 }
+
+@keyframes ws96Marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ws96-marquee {
+  display: inline-flex;
+  width: max-content;
+  animation: ws96Marquee 32s linear infinite;
+}
+
+.ws96-marquee:hover {
+  animation-play-state: paused;
+}

@@ -7,6 +7,7 @@ import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
 import { LinkedInPostCard } from './LinkedInPostCard';
 import { CreatePostModal } from './CreatePostModal';
+import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 import {
   Phone,
   Heart,
@@ -165,11 +166,29 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
   const [feedCategoryFilter, setFeedCategoryFilter] = useState<string>('SEMUA');
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [memberOverrides, setMemberOverrides] = useState<Record<string, AnggotaWiraSatya>>({});
+
+  const effectiveMembers = useMemo(
+    () => members.map((m) => memberOverrides[m.nrp] || memberOverrides[m.id] || m),
+    [members, memberOverrides]
+  );
+
+  // Public directory members (hide Superadmin 98010710 from non-Superadmin viewers)
+  const publicMembers = useMemo(
+    () =>
+      effectiveMembers.filter(
+        (m) =>
+          m.nrp !== '98010710' ||
+          currentUser?.nrp === '98010710' ||
+          currentUser?.role === 'SUPERADMIN'
+      ),
+    [effectiveMembers, currentUser?.nrp, currentUser?.role]
+  );
 
   // Current logged in member profile
   const currentMemberObj = useMemo(
-    () => getOrBuildUserProfile(currentUser, members),
-    [currentUser, members]
+    () => getOrBuildUserProfile(currentUser, effectiveMembers),
+    [currentUser, effectiveMembers]
   );
 
   // Current logged in member's Iuran 2026 status
@@ -329,7 +348,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   const quickSearchResults = useMemo(() => {
     const q = externalSearch.trim().toLowerCase();
     if (!q) return [];
-    return members
+    return publicMembers
       .filter(
         (m) =>
           m.namaLengkap.toLowerCase().includes(q) ||
@@ -339,7 +358,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           m.polda.toLowerCase().includes(q)
       )
       .slice(0, 6);
-  }, [members, externalSearch]);
+  }, [publicMembers, externalSearch]);
 
   const formatWaUrl = (phone?: string) => {
     if (!phone) return '#';
@@ -358,7 +377,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
   // Find members needing health attention
   const healthAttentionMembers = useMemo(() => {
-    return members
+    return publicMembers
       .filter(
         (m) =>
           m.adaPenyakitKronis === 'ADA' ||
@@ -378,9 +397,20 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         const pB = priorityOrder[b.kondisiKesehatan] || 99;
         return pA - pB;
       });
-  }, [members]);
+  }, [publicMembers]);
 
   if (selectedMember) {
+    const extraProfileProps = {
+      memberRole: selectedMember.nrp === currentUser?.nrp ? currentUser?.role : undefined,
+      onUpdateMemberDirect: async (updated: AnggotaWiraSatya) => {
+        setMemberOverrides((prev) => ({
+          ...prev,
+          [updated.nrp]: updated,
+          [updated.id]: updated,
+        }));
+        setSelectedMember(updated);
+      },
+    };
     return (
       <LinkedInProfileView
         member={selectedMember}
@@ -388,11 +418,14 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         onClose={() => setSelectedMember(null)}
         onEditProfile={() => onEditMember && onEditMember(selectedMember)}
         onOpenChat={onOpenChat}
-        allMembers={members}
+        allMembers={publicMembers}
         onSelectMember={(m) => setSelectedMember(m)}
+        {...(extraProfileProps as Record<string, unknown>)}
       />
     );
   }
+
+  const miniCardCoverUrl = currentMemberObj?.coverUrl || currentUser?.coverUrl;
 
   return (
     <div className="font-sans text-slate-900 pb-20">
@@ -403,13 +436,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         <div className="order-2 lg:order-1 lg:col-span-3 space-y-4">
           {/* User Mini Profile Card */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            <div className="h-16 bg-slate-900 relative overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/default-cover.jpg"
-                alt="Sampul Polri"
-                className="w-full h-full object-cover"
-              />
+            <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
+              {miniCardCoverUrl !== 'none' && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={miniCardCoverUrl || '/default-cover.jpg'}
+                  alt="Sampul Polri"
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
 
             <div className="px-4 pb-4 relative">
@@ -419,7 +454,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getAvatarUrl(currentUser.fotoUrl || currentMemberObj.fotoUrl)}
+                  src={getAvatarUrl(currentMemberObj?.fotoUrl || currentUser.fotoUrl)}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -427,13 +462,16 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
               <h3
                 onClick={() => setSelectedMember(currentMemberObj)}
-                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight"
+                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight flex items-center justify-center gap-1"
               >
-                {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
+                <span className="truncate">
+                  {(currentMemberObj?.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}
+                </span>
+                <MetaVerifiedBadge role={currentUser?.role} nrp={currentUser?.nrp} size="md" />
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                {currentUser.nrp === '98010710'
-                  ? 'Briptu • Lead Developer'
+                {currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN'
+                  ? `${currentUser.pangkat || 'Briptu'} • ${currentMemberObj?.jabatanTerakhir || 'Lead Developer — Bareskrim Polri'}`
                   : `${currentUser.pangkat} • Alumni Akpol 1996`}
               </p>
 
@@ -441,7 +479,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Rekan Letting:</span>
-                  <span className="font-bold text-red-900">{members.length} Perwira</span>
+                  <span className="font-bold text-red-900">{publicMembers.length} Perwira</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Satker / Wilayah:</span>
@@ -490,7 +528,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   className="w-full mt-2 py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Briefcase className="w-3.5 h-3.5 text-red-800" />
-                  <span>Lihat Daftar Jabatan ({members.length})</span>
+                  <span>Lihat Daftar Jabatan ({publicMembers.length})</span>
                 </button>
               )}
             </div>
@@ -546,7 +584,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                           className="w-8 h-8 rounded-full object-cover border border-slate-200 flex-shrink-0"
                         />
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-900 truncate">{m.namaLengkap}</div>
+                          <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
+                            <span className="truncate">{m.namaLengkap}</span>
+                            <MetaVerifiedBadge nrp={m.nrp} size="sm" />
+                          </div>
                           <div className="text-[10px] text-slate-500 truncate">
                             {m.pangkat} &bull; NRP {m.nrp} &bull; {m.jabatanTerakhir}
                           </div>
@@ -613,7 +654,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="flex items-center justify-between gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
                 <Newspaper className="w-4 h-4 text-red-800" />
-                <span>Feed Kabar Leting ({filteredPosts.length})</span>
+                <span>Linimasa ({filteredPosts.length})</span>
               </div>
 
               <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
@@ -676,7 +717,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <Heart className="w-3.5 h-3.5 text-red-500" />
-                Atensi Kesehatan Leting
+                Atensi Kesehatan
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-extrabold border border-red-200">
                 {healthAttentionMembers.filter(
@@ -687,7 +728,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </div>
 
             <p className="text-[11px] text-slate-500 leading-snug">
-              Program kepedulian leting bagi rekan yang memerlukan doa, atensi medis khusus, dan bantuan:
+              Program kepedulian bagi rekan yang memerlukan doa, atensi medis, dan bantuan:
             </p>
 
             {healthAttentionMembers.length > 0 ? (
@@ -705,10 +746,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span
                           onClick={() => setSelectedMember(m)}
-                          className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px]"
+                          className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px] flex items-center gap-1"
                           title={m.namaLengkap}
                         >
-                          {m.namaLengkap.split(',')[0]}
+                          <span className="truncate">{m.namaLengkap.split(',')[0]}</span>
+                          <MetaVerifiedBadge nrp={m.nrp} size="xs" />
                         </span>
                         <span
                           className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 ${
@@ -752,12 +794,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             )}
           </div>
 
-          {/* Widget 2: Status Arus Kas & Aset (Cashflow & Aset Summary) */}
+          {/* Widget 2: Status Kas & Aset (Cashflow & Aset Summary) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="font-bold text-slate-900 flex items-center gap-1.5">
                 <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                Arus Kas &amp; Aset
+                <span>Kas &amp; Aset</span>
+                <span title="Ringkasan saldo kas tunai, arus kas masuk/keluar, dan portofolio aset">
+                  <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                </span>
               </span>
               <span className="text-[10px] text-slate-400 font-semibold">2026</span>
             </div>
@@ -793,7 +838,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   onClick={onNavigateToBendahara}
                   className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
                 >
-                  Buka Cashflow &amp; Portofolio Aset →
+                  Detail Arus Kas →
                 </button>
               )}
               <span
@@ -806,7 +851,32 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </div>
           </div>
 
-          {/* Widget 3: Info Footer */}
+          {/* Widget 3: Tour of Duty (TOD) Ringkas */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-red-800" />
+                <span className="sm:hidden">TOD</span>
+                <span className="hidden sm:inline">Tour of Duty</span>
+                <span title="Sebaran penempatan personel aktif di Mabes Polri, 38 Polda, dan Luar Struktur">
+                  <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
+                </span>
+              </span>
+              <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
+                {publicMembers.length} Perwira
+              </span>
+            </div>
+            {onNavigateToJabatan && (
+              <button
+                onClick={onNavigateToJabatan}
+                className="w-full py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs transition-colors"
+              >
+                Lihat Direktori →
+              </button>
+            )}
+          </div>
+
+          {/* Widget 4: Info Footer */}
           <div className="text-[11px] text-slate-400 text-center space-y-1 p-2">
             <p className="font-bold text-slate-600">BATALYON WIRA SATYA 1996</p>
             <p>Akademi Kepolisian Republik Indonesia</p>

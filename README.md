@@ -70,7 +70,7 @@ graph LR
 | **Anev Leting & Kesehatan** | 🩺 | Panel monitoring atensi rekan atau keluarga yang membutuhkan pendampingan medis, pemetaan penyakit kronis, dan monitoring fasilitas rujukan RS Bhayangkara. | Bidang Kesejahteraan & Pimpinan |
 | **Bendahara Portal** | 💰 | Sistem transparansi kas paguyuban: total saldo kas, grafik pemasukan & pengeluaran, rekapitulasi iuran sukarela leting, dan unduh laporan perbendaharaan transparan. | Bendahara & Seluruh Alumni |
 | **Kesiapan Purna Tugas** | 👔 | Analisis tahun pensiun, kalkulasi sisa tahun dinas perwira leting, direktori unit usaha/bisnis mandiri rekan leting, dan fasilitas sinergi ekonomi pasca dinas aktif. | Pamen/Pati & Bhayangkara Purna |
-| **Executive Dashboard** | 📊 | Dashboard analitik komprehensif bagi pimpinan dan sekretariat: rasio sebaran penugasan perwira di seluruh Indonesia, visualisasi demografi, dan rekapitulasi data belum terisi. | Ketua, Sekretariat & Superadmin |
+| **Executive Dashboard** | 📊 | Dashboard analitik komprehensif bagi pimpinan dan sekretaris: rasio sebaran penugasan perwira di seluruh Indonesia, visualisasi demografi, dan rekapitulasi data belum terisi. | Ketua & Sekretaris |
 
 ---
 
@@ -229,14 +229,13 @@ Sistem menerapkan prinsip *Least Privilege* dan segregasi tugas kedinasan (*Sepa
 
 | Peran (Role) | Lingkup Kedinasan | Wewenang Khusus & Tanggung Jawab |
 |---|---|---|
-| **SUPERADMIN** | Tim IT / Pengembang Bareskrim | Kontrol infrastruktur, pemeliharaan basis data, audit log keamanan, dan otorisasi verifikasi akun personel. |
 | **KETUA PAGUYUBAN** | Pimpinan Batalyon WS 1996 | Akses Executive Dashboard (Anev Leting), pengesahan program kerja, atensi kesehatan kritis, dan arah kebijakan. |
-| **SEKRETARIAT** | Kesekretariatan Batalyon | Verifikasi pendaftaran alumni baru, pengelolaan direktori 286 perwira, pembaruan penempatan 38 Polda, dan tata naskah dinas (TR/Sprint). |
-| **BENDAHARA** | Kebendaharaan Yayasan | Akses penuh modul Bendahara Portal, pencatatan mutasi kas masuk/keluar, rekapitulasi iuran, dan penyaluran santunan sosial. |
+| **SEKRETARIS** | Sekretaris Batalyon | Verifikasi pendaftaran anggota baru, pengelolaan direktori personel, pembaruan penempatan 38 Polda, dan tata naskah dinas (TR/Sprint). |
+| **BENDAHARA** | Kebendaharaan Paguyuban | Akses penuh modul Bendahara Portal, pencatatan mutasi kas masuk/keluar, konfigurasi iuran wajib, portofolio aset, dan penyaluran santunan sosial. |
 | **ANGGOTA** | Alumni Akpol 1996 | Buku Saku digital 38 Polda & Mabes, partisipasi obrolan leting realtime, pembaruan data profil mandiri, dan transparansi kas. |
 
 > [!IMPORTANT]
-> **Kebijakan Keamanan Akun**: Seluruh personel alumni wajib melalui alur pendaftaran resmi (`NRP Dinas`) dan verifikasi oleh Superadmin / Sekretariat sebelum diberikan akses membuat kata sandi mandiri dan masuk ke portal.
+> **Kebijakan Keamanan Akun**: Seluruh personel wajib melalui alur pendaftaran resmi (`NRP Dinas`) dan verifikasi oleh Sekretaris sebelum diberikan akses membuat kata sandi mandiri dan masuk ke portal.
 
 ---
 

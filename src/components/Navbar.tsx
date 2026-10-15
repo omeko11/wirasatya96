@@ -23,6 +23,7 @@ import {
 import { AuthUser, UserRole, AnggotaWiraSatya } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
+import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 
 export type AppTab = 
   | 'direktori' 
@@ -286,7 +287,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Right: Stacked Nav Items (Bareskrim Red Active Colors) */}
             <nav className="flex items-center gap-0.5 sm:gap-2 lg:gap-3 flex-shrink-0">
               
-              {/* 1. Halaman Utama */}
+              {/* 1. Beranda */}
               <button
                 onClick={() => setActiveTab('direktori')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -294,16 +295,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-red-900 text-red-900 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
-                title="Beranda & Feed Silaturahmi"
+                title="Beranda & Linimasa"
               >
                 <div className="relative">
                   <Home className="w-5 h-5" />
                   <span className="w-2 h-2 rounded-full bg-red-800 absolute -top-0.5 -right-0.5" />
                 </div>
-                <span className="text-[10px] mt-0.5 whitespace-nowrap">Halaman Utama</span>
+                <span className="text-[10px] mt-0.5 whitespace-nowrap">Beranda</span>
               </button>
 
-              {/* 2. Riwayat Jabatan & Penugasan Leting 96 */}
+              {/* 2. Jabatan / TOD */}
               <button
                 onClick={() => setActiveTab('purnaTugas')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -311,7 +312,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-red-900 text-red-900 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
-                title="Riwayat Jabatan & Tour of Duty Leting 96"
+                title="Jabatan & Tour of Duty"
               >
                 <Briefcase className="w-5 h-5" />
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Jabatan</span>
@@ -325,7 +326,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-red-900 text-red-900 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
-                title="Pesan & Obrolan Leting"
+                title="Pesan"
               >
                 <div className="relative">
                   <MessageSquare className="w-5 h-5" />
@@ -346,7 +347,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-red-900 text-red-900 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
-                title="Notifikasi & Atensi Leting"
+                title="Notifikasi"
               >
                 <div className="relative">
                   <Bell className="w-5 h-5" />
@@ -359,7 +360,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Notifikasi</span>
               </button>
 
-              {/* 5. Arus Kas */}
+              {/* 5. Kas & Aset */}
               <button
                 onClick={() => setActiveTab('bendahara')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -367,38 +368,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-amber-700 text-amber-800 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
-                title="Arus Kas & Iuran"
+                title="Kas & Aset"
               >
                 <Wallet className="w-5 h-5" />
-                <span className="text-[10px] mt-0.5 whitespace-nowrap">Arus Kas</span>
+                <span className="text-[10px] mt-0.5 whitespace-nowrap">Kas &amp; Aset</span>
               </button>
 
-              {/* Anev Leting (Leadership) */}
+              {/* Anev (Leadership) */}
               {isLeadership && (
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`hidden lg:flex flex-col items-center justify-center px-2 py-1 min-w-[56px] text-center transition-all border-b-2 ${
+                  className={`hidden lg:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] text-center transition-all border-b-2 ${
                     activeTab === 'dashboard'
                       ? 'border-red-900 text-red-900 font-bold'
                       : 'border-transparent text-slate-500 hover:text-slate-900'
                   }`}
-                  title="Dashboard Eksekutif Batalyon"
+                  title="Analisa & Evaluasi"
                 >
                   <BarChart3 className="w-5 h-5" />
-                  <span className="text-[10px] mt-0.5 whitespace-nowrap">Anev Leting</span>
+                  <span className="text-[10px] mt-0.5 whitespace-nowrap">Anev</span>
                 </button>
               )}
 
-              {/* 6. Manajemen User (Full-Page Tab for Superadmin & Sekretaris Only) */}
+              {/* 6. User (Full-Page Tab for Superadmin & Sekretaris Only) */}
               {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
                 <button
                   onClick={() => setActiveTab('users')}
-                  className={`flex flex-col items-center justify-center px-2 py-1 min-w-[56px] text-center transition-all border-b-2 ${
+                  className={`flex flex-col items-center justify-center px-2 py-1 min-w-[48px] text-center transition-all border-b-2 ${
                     activeTab === 'users'
                       ? 'border-red-900 text-red-900 font-bold'
                       : 'border-transparent text-slate-600 hover:text-red-900'
                   }`}
-                  title="Manajemen Pengguna & Verifikasi Akun"
+                  title="Manajemen User & Verifikasi"
                 >
                   <div className="relative">
                     <Users className="w-5 h-5" />
@@ -408,7 +409,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] mt-0.5 whitespace-nowrap">Manajemen User</span>
+                  <span className="text-[10px] mt-0.5 whitespace-nowrap">User</span>
                 </button>
               )}
 
@@ -453,9 +454,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <h4 className="font-bold text-slate-900 text-xs sm:text-sm truncate">
                             {cleanDisplayName}
                           </h4>
-                          <ShieldCheck className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                          <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
                         </div>
-                        <p className="text-[11px] text-slate-500 truncate">{currentUser.pangkat} &bull; {currentUser.satker || 'Bareskrim Polri'}</p>
+                        <p className="text-[11px] text-slate-500 truncate">{currentUser.pangkat} &bull; {currentUser.satker || 'Mabes Polri'}</p>
                         <span className={`inline-block text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border mt-1 ${roleBadgeColors[currentUser.role]}`}>
                           {roleDisplayLabels[currentUser.role]}
                         </span>
@@ -471,7 +472,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }}
                         className="w-full py-1.5 px-3 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors text-center"
                       >
-                        Lihat profil
+                        Lihat Profil
                       </button>
                     </div>
 
@@ -491,12 +492,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                       >
                         <span className="flex items-center gap-2">
                           <Settings className="w-3.5 h-3.5 text-red-800" />
-                          <span className="font-semibold text-slate-900">Pengaturan & Privasi</span>
+                          <span className="font-semibold text-slate-900">Pengaturan</span>
                         </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-900">FIDO2</span>
                       </button>
 
-                      {/* Manajemen Pengguna & Verifikasi (Hanya Admin & Sekretaris) */}
+                      {/* User (Hanya Admin & Sekretaris) */}
                       {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
                         <button
                           onClick={() => {
@@ -507,7 +507,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         >
                           <span className="flex items-center gap-2">
                             <Users className="w-3.5 h-3.5 text-red-800" />
-                            <span className="font-semibold text-red-950">Manajemen User (Tambah/Edit/Verifikasi)</span>
+                            <span className="font-semibold text-red-950">User</span>
                           </span>
                           {pendingVerificationCount > 0 ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-700 text-white animate-pulse">
@@ -523,7 +523,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {/* Section: Kelola */}
                     <div className="py-2 border-b border-slate-100">
                       <div className="px-4 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        Kelola
+                        Menu
                       </div>
                       <button
                         onClick={() => {
@@ -533,7 +533,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                       >
                         <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Arus Kas &amp; Portofolio Aset</span>
+                        <span>Kas &amp; Aset</span>
                       </button>
                       <button
                         onClick={() => {
@@ -543,7 +543,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                       >
                         <Briefcase className="w-3.5 h-3.5 text-red-800" />
-                        <span>Jabatan &amp; Sebaran 164 Perwira</span>
+                        <span>Jabatan / TOD</span>
                       </button>
                     </div>
 

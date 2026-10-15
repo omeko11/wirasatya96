@@ -20,7 +20,7 @@ Pembaruan keamanan dan patch kerentanan secara aktif diberikan pada branch utama
 Sistem menerapkan prinsip *Defense in Depth* dan *Least Privilege*:
 
 ### A. Autentikasi Multi-Faktor (MFA) & FIDO2 WebAuthn
-- **Multi-Role Access Control (RBAC)**: Pemisahan hak akses berjenjang (`SUPERADMIN`, `KETUA`, `SEKRETARIAT`, `BENDAHARA`, `ANGGOTA`).
+- **Multi-Role Access Control (RBAC)**: Pemisahan hak akses berjenjang (`KETUA`, `SEKRETARIS`, `BENDAHARA`, `ANGGOTA`).
 - **WebAuthn / Biometrik (Touch ID / Face ID / Windows Hello)**: Mendukung autentikasi aman tanpa kata sandi menggunakan standar FIDO2.
 - **PIN Enkripsi & Password Hashing**: Kredensial pengguna di-hash secara aman menggunakan algoritma Argon2 / Bcrypt.
 

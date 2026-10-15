@@ -5,7 +5,7 @@ export const PRESET_USERS: AuthUser[] = [
   {
     id: 'u-superadmin',
     nrp: '98010710',
-    nama: 'Eko Agung',
+    nama: 'Eko Agung Krisdianto, S.Kom.',
     pangkat: 'Briptu',
     email: '98010710@polri.go.id',
     secondaryEmail: 'agungkrisdianto98@gmail.com',
@@ -14,9 +14,10 @@ export const PRESET_USERS: AuthUser[] = [
     mfaEnabled: false,
     mfaMethod: 'PIN',
     fotoUrl: '/default-avatar.png',
-    satker: 'Bareskrim Polri / Tim IT Developer Wira Satya 96',
+    bio: 'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.',
+    satker: 'Bareskrim Polri',
     polda: 'MABES POLRI',
-    status: 'DISETUJUI_BELUM_PASSWORD',
+    status: 'AKTIF',
   },
   {
     id: 'u-ketua',

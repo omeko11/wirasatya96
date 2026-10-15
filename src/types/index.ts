@@ -39,6 +39,8 @@ export interface AuthUser {
   mfaEnabled: boolean;
   mfaMethod: MfaMethod;
   fotoUrl?: string;
+  coverUrl?: string;
+  bio?: string;
   satker?: string;
   polda?: string;
   status?: UserAccountStatus;
@@ -89,6 +91,8 @@ export interface AnggotaWiraSatya {
   kontakAdc?: string;
   namaAdc?: string;
   fotoUrl?: string;
+  coverUrl?: string;
+  bio?: string;
   alamatTempatTinggal: string;
   statusTempatTinggal: 'MILIK PRIBADI' | 'RUMAH KELUARGA' | 'DINAS' | 'SEWA/KONTRAK';
 

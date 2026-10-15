@@ -10,6 +10,7 @@ import {
   ChatMessage,
 } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
+import { MetaVerifiedBadge } from '@/components/MetaVerifiedBadge';
 import {
   Bell,
   CheckCheck,
@@ -96,7 +97,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
     const items: NotificationItem[] = [];
     const readSet = new Set(readIds);
 
-    // 0. Pending Verification Alert for Admin & Sekretariat
+    // 0. Pending Verification Alert for Admin & Sekretaris
     if (
       (currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') &&
       pendingVerificationCount > 0
@@ -105,12 +106,12 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
       items.push({
         id,
         type: 'SOCIAL',
-        title: `Antrean Verifikasi Akun Baru (${pendingVerificationCount} Pendaftar)`,
-        description: `Terdapat ${pendingVerificationCount} pendaftar akun alumni yang menunggu persetujuan Admin / Kesekretariatan di Manajemen User.`,
-        timeAgo: 'Menunggu Tindakan',
+        title: `Verifikasi Akun Baru (${pendingVerificationCount})`,
+        description: `${pendingVerificationCount} pendaftar menunggu persetujuan Admin / Sekretaris.`,
+        timeAgo: 'Menunggu',
         isRead: readSet.has(id),
         avatarUrl: '/default-avatar.png',
-        actionLabel: 'Buka Manajemen User',
+        actionLabel: 'Manajemen User',
         openVerification: true,
       });
     }
@@ -293,32 +294,28 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
 
               <h3
                 onClick={() => onViewMyProfile && onViewMyProfile()}
-                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2"
+                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 inline-flex items-center justify-center gap-1"
               >
-                {currentUser.nama.split('(')[0].trim()}
+                <span>{currentUser.nama.split('(')[0].trim()}</span>
+                <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
               </h3>
               <p className="text-[11px] text-slate-500">
-                {currentUser.pangkat} &bull; Alumni Akpol 1996
-              </p>
-              <p className="text-[11px] font-semibold text-blue-700 mt-0.5">
-                Pusat Pemberitahuan Angkatan
+                {currentUser.pangkat} &bull; {currentUser.satker || 'Mabes Polri'}
               </p>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2.5 text-xs">
-            <h4 className="font-bold text-slate-900 pb-1 border-b border-slate-100">
-              Kelola Notifikasi Anda
-            </h4>
-            <p className="text-slate-500 leading-snug">
-              Semua atensi kesehatan ({countByType.health}), mutasi kas &amp; aset ({countByType.treasury}), serta aktivitas postingan &amp; pesan ({countByType.social}) disinkronkan otomatis dari database lokal.
-            </p>
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-slate-900">Notifikasi</h4>
+              <span className="text-[11px] text-slate-500">{unreadCount} belum dibaca</span>
+            </div>
             <button
               onClick={markAllAsRead}
               className="text-red-900 font-bold hover:underline pt-1 flex items-center gap-1.5"
             >
               <CheckCheck className="w-3.5 h-3.5" />
-              <span>Tandai semua telah dibaca ({unreadCount})</span>
+              <span>Tandai semua dibaca</span>
             </button>
           </div>
         </div>
@@ -332,10 +329,10 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <Bell className="w-5 h-5 text-red-800" />
-                Notifikasi Batalyon Wira Satya 96
+                Notifikasi
               </h2>
               <span className="text-xs text-red-800 bg-red-50 px-2.5 py-1 rounded-full font-bold border border-red-200">
-                {unreadCount} Belum Dibaca
+                {unreadCount} Baru
               </span>
             </div>
 
@@ -345,7 +342,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
                 { key: 'semua', label: `Semua (${countByType.semua})` },
                 { key: 'health', label: `❤️ Kesehatan (${countByType.health})` },
                 { key: 'treasury', label: `💰 Kas (${countByType.treasury})` },
-                { key: 'social', label: `💬 Postingan & Pesan (${countByType.social})` },
+                { key: 'social', label: `💬 Aktivitas (${countByType.social})` },
               ].map((f) => (
                 <button
                   key={f.key}
