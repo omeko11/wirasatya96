@@ -9,6 +9,7 @@ import {
   Download, 
   Heart, 
   GraduationCap, 
+  Shield,
   ShieldCheck, 
   Search,
   Filter,
@@ -147,6 +148,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       }))
   );
 
+  const canManageFinance = currentUser.role === 'BENDAHARA' || currentUser.role === 'SUPERADMIN';
+
   return (
     <div className="space-y-6 pb-20 md:pb-8">
       {/* Header Banner */}
@@ -165,13 +168,20 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-extrabold text-xs shadow-lg transition-all"
-          >
-            <PlusCircle className="w-4 h-4" />
-            Catat Transaksi Kas
-          </button>
+          {canManageFinance ? (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-extrabold text-xs shadow-lg transition-all"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Catat Transaksi Kas
+            </button>
+          ) : (
+            <div className="px-3.5 py-2 rounded-xl bg-white/10 text-slate-200 text-xs flex items-center gap-2 border border-white/15">
+              <Shield className="w-4 h-4 text-polri-gold" />
+              <span>Otoritas Transaksi: Khusus Bendahara</span>
+            </div>
+          )}
 
           <button
             onClick={handleExportFinanceCSV}
@@ -480,15 +490,21 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                       </td>
                       <td className="px-4 py-3 text-center">
                         {iur.status !== 'LUNAS' ? (
-                          <button
-                            onClick={() => {
-                              setPayIuranModal(iur);
-                              setPayNominal(iur.totalTagihan - iur.totalTerbayar);
-                            }}
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm transition-colors"
-                          >
-                            Catat Bayar
-                          </button>
+                          canManageFinance || iur.nrp === currentUser.nrp ? (
+                            <button
+                              onClick={() => {
+                                setPayIuranModal(iur);
+                                setPayNominal(iur.totalTagihan - iur.totalTerbayar);
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm transition-colors"
+                            >
+                              {canManageFinance ? 'Catat Bayar' : 'Bayar Iuran'}
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              Belum Lunas
+                            </span>
+                          )
                         ) : (
                           <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[11px]">
                             <CheckCircle2 className="w-3.5 h-3.5" />

@@ -80,9 +80,22 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     return `https://wa.me/${clean}?text=Halo%20Komandan%2C%20mohon%20izin%20menghubungi%20dari%20Direktori%20Alumni%20Akpol%201996%20Wira%20Satya`;
   };
 
-  // Find members needing health attention (from Modul 4)
+  // Find members needing health attention (from Modul 4) and prioritize urgent cases
   const healthAttentionMembers = useMemo(() => {
-    return members.filter((m) => m.adaPenyakitKronis === 'ADA' || (m.daftarPenyakit && m.daftarPenyakit.length > 0));
+    return members
+      .filter((m) => m.adaPenyakitKronis === 'ADA' || (m.daftarPenyakit && m.daftarPenyakit.length > 0) || m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT')
+      .sort((a, b) => {
+        const priorityOrder: Record<string, number> = {
+          'PERLU PERHATIAN KHUSUS': 1,
+          'SAKIT': 2,
+          'CUKUP': 3,
+          'BAIK': 4,
+          'SANGAT BAIK': 5,
+        };
+        const pA = priorityOrder[a.kondisiKesehatan] || 99;
+        const pB = priorityOrder[b.kondisiKesehatan] || 99;
+        return pA - pB;
+      });
   }, [members]);
 
   // Current logged in member profile if exists
@@ -415,42 +428,69 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 <Heart className="w-3.5 h-3.5 text-red-500" />
                 Atensi Kesehatan Leting
               </span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-100 text-red-700 font-bold">
-                {healthAttentionMembers.length} Perwira
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-extrabold border border-red-200">
+                {healthAttentionMembers.filter(m => m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT').length || healthAttentionMembers.length} Prioritas
               </span>
             </div>
 
-            <p className="text-[11px] text-slate-500">
-              Rekan satu leting yang membutuhkan dukungan moril & perhatian sosial:
+            <p className="text-[11px] text-slate-500 leading-snug">
+              Program kepedulian leting bagi rekan yang memerlukan doa, atensi medis khusus, dan bantuan:
             </p>
 
-            <div className="space-y-3">
-              {healthAttentionMembers.map((m) => (
-                <div key={m.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span 
-                      onClick={() => setSelectedMember(m)}
-                      className="text-xs font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer truncate max-w-[140px]"
-                    >
-                      {m.namaLengkap.split(',')[0]}
-                    </span>
-                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-red-100 text-red-800">
-                      {m.kondisiKesehatan}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-600 line-clamp-1">
-                    Diagnosa: <b>{(m.daftarPenyakit || []).join(', ') || 'Dalam Pemulihan'}</b>
-                  </div>
-                  <a
-                    href={formatWaUrl(m.noHp)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 pt-1"
+            <div className="space-y-2.5">
+              {healthAttentionMembers.map((m) => {
+                const isUrgent = m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT';
+                return (
+                  <div 
+                    key={m.id} 
+                    className={`p-3 rounded-xl border transition-all ${
+                      isUrgent 
+                        ? 'bg-red-50/70 border-red-200/90 shadow-sm' 
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
                   >
-                    <Phone className="w-3 h-3" /> Kirim Doa & Semangat
-                  </a>
-                </div>
-              ))}
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span 
+                        onClick={() => setSelectedMember(m)}
+                        className="text-xs font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer truncate max-w-[140px]"
+                        title={m.namaLengkap}
+                      >
+                        {m.namaLengkap.split(',')[0]}
+                      </span>
+                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 ${
+                        isUrgent 
+                          ? 'bg-red-600 text-white shadow-sm' 
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                        {isUrgent ? 'ATENSI KHUSUS' : 'TERPANTAU'}
+                      </span>
+                    </div>
+
+                    <div className="text-[10px] text-slate-600 line-clamp-2">
+                      <span className="text-slate-500 font-semibold">Diagnosa: </span>
+                      <b>{(m.daftarPenyakit || []).join(', ') || 'Dalam Pemulihan'}</b>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200/60">
+                      <a
+                        href={formatWaUrl(m.noHp)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                      >
+                        <Phone className="w-3 h-3" /> Kirim Doa & Semangat
+                      </a>
+                      <button
+                        onClick={() => setSelectedMember(m)}
+                        className="text-[10px] font-bold text-[#0a66c2] hover:underline"
+                      >
+                        Detail Medis →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
