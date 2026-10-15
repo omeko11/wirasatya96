@@ -244,17 +244,17 @@ export default function Home() {
       />
 
       {/* Role Banner Notification Bar - Bareskrim Red Theme */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/50 text-slate-300 text-xs py-2 px-4 relative z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/50 text-slate-300 text-xs py-1.5 px-3 sm:px-6 relative z-20">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <span className="inline-flex items-center gap-1 text-amber-400 font-bold flex-shrink-0 text-[11px]">
               <UserCheck className="w-3.5 h-3.5" />
               Sesi:
             </span>
-            <span className="text-slate-100 text-xs truncate font-semibold">
+            <span className="text-slate-100 text-xs truncate font-semibold max-w-[150px] sm:max-w-none">
               {currentUser.nama.replace(/\(.*?\)/g, '').split(',')[0].trim()} ({currentUser.pangkat})
             </span>
-            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-900/60 text-amber-300 border border-amber-500/40 flex-shrink-0">
+            <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-900/80 text-amber-300 border border-amber-500/40 flex-shrink-0">
               {currentUser.role}
             </span>
           </div>
@@ -262,7 +262,7 @@ export default function Home() {
           <div className="flex items-center gap-2 flex-shrink-0 text-xs">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="text-amber-300 hover:text-amber-200 text-[11px] font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
+              className="text-amber-300 hover:text-amber-200 text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
             >
               <KeyRound className="w-3 h-3" />
               <span>Ganti Role</span>
@@ -280,7 +280,7 @@ export default function Home() {
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 pb-24 md:pb-6">
         {/* VIEWING SPECIFIC PROFILE (VIA NAVBAR SAYA / CONNECTION CARDS) */}
         {viewingMember ? (
           <LinkedInProfileView

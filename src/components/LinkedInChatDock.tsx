@@ -92,7 +92,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
   };
 
   return (
-    <div className="fixed bottom-0 right-4 z-50 flex items-end gap-3 font-sans">
+    <div className="hidden md:flex fixed bottom-0 right-4 z-40 items-end gap-3 font-sans">
       
       {/* 1. ACTIVE POPUP CONVERSATION BOX (MATCHING SCREENSHOT 3) */}
       {activeChatMember && (

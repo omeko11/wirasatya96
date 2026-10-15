@@ -246,7 +246,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         {/* 1. LEFT RAIL (lg:col-span-3): PROFILE SNAPSHOT & FILTERS    */}
         {/* ============================================================ */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="order-2 lg:order-1 lg:col-span-3 space-y-4">
           
           {/* User Mini Profile Card (Exact User Screenshot media_1792053907699_1addcb0f.png) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
@@ -380,7 +380,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         {/* 2. CENTER FEED (lg:col-span-6): DIRECTORY STREAM & CARDS    */}
         {/* ============================================================ */}
-        <div className="lg:col-span-6 space-y-4">
+        <div className="order-1 lg:order-2 lg:col-span-6 space-y-4">
           
           {/* Post/Update Box (matching LinkedIn's "Mulai posting" Box from user screenshot) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
@@ -635,7 +635,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         {/* 3. RIGHT RAIL (lg:col-span-3): ATENSI KESEHATAN & TREASURY   */}
         {/* ============================================================ */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="order-3 lg:order-3 lg:col-span-3 space-y-4">
           
           {/* Widget 1: Atensi Rekan Sakit & Solidaritas Leting (Modul 4) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
