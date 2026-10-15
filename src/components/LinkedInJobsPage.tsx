@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { AuthUser, AnggotaWiraSatya, RiwayatJabatanLeting, FungsiPolri } from '@/types';
-import { INITIAL_RIWAYAT_JABATAN } from '@/data/mockJabatan';
 import {
   DAFTAR_38_POLDA,
   getSatkerUtamaByWilayah,
@@ -30,26 +29,27 @@ interface LinkedInJobsPageProps {
   onOpenFormWizard?: () => void;
   onSelectMember?: (member: AnggotaWiraSatya) => void;
   onOpenChat?: (member: AnggotaWiraSatya) => void;
+  onUpdateMemberJabatan?: (nrp: string, jabatan: string, satker: string, polda: string) => void;
 }
 
 function inferFungsiPolri(jabatan: string, satker: string, polda: string): FungsiPolri {
   const text = `${jabatan} ${satker} ${polda}`.toUpperCase();
-  if (text.includes('RESKRIM') || text.includes('BARESKRIM') || text.includes('NARKOBA') || text.includes('DITTIPID') || text.includes('SIBER')) {
+  if (text.includes('RESKRIM') || text.includes('BARESKRIM') || text.includes('NARKOBA') || text.includes('DITTIPID') || text.includes('SIBER') || text.includes('DENSUS')) {
     return 'RESERSE';
   }
-  if (text.includes('INTEL') || text.includes('BAINTELKAM') || text.includes('DENSUS')) {
+  if (text.includes('INTEL') || text.includes('BAINTELKAM')) {
     return 'INTELKAM';
   }
-  if (text.includes('LANTAS') || text.includes('KORLANTAS')) {
+  if (text.includes('LANTAS') || text.includes('KORLANTAS') || text.includes('PJR')) {
     return 'LANTAS';
   }
-  if (text.includes('BRIMOB') || text.includes('SAMAPTA') || text.includes('SABHARA') || text.includes('BAHARKAM') || text.includes('POLAIR')) {
+  if (text.includes('BRIMOB') || text.includes('SAMAPTA') || text.includes('SABHARA') || text.includes('BAHARKAM') || text.includes('POLAIR') || text.includes('GEGANA') || text.includes('PELOPOR')) {
     return 'BRIMOB_SABHARA';
   }
-  if (text.includes('LEMDIKLAT') || text.includes('SESPIM') || text.includes('AKPOL') || text.includes('STIK') || text.includes('WIDYAISWARA') || text.includes('SPN')) {
+  if (text.includes('LEMDIKLAT') || text.includes('SESPIM') || text.includes('AKPOL') || text.includes('STIK') || text.includes('WIDYAISWARA') || text.includes('SPN') || text.includes('PUSDIK')) {
     return 'LEMDIKLAT';
   }
-  if (text.includes('KEMENTERIAN') || text.includes('BNN') || text.includes('KPK') || text.includes('BNPT') || text.includes('DIVHUMAS') || text.includes('PURNA')) {
+  if (text.includes('KEMENTERIAN') || text.includes('BNN') || text.includes('KPK') || text.includes('BNPT') || text.includes('DIVHUMAS') || text.includes('HUBINTER') || text.includes('PURNA')) {
     return 'LUAR_STRUKTUR';
   }
   return 'KEWILAYAHAN';
@@ -61,13 +61,14 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   onOpenFormWizard,
   onSelectMember,
   onOpenChat,
+  onUpdateMemberJabatan,
 }) => {
   const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
   const [selectedPolda, setSelectedPolda] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
   const [customJabatanList, setCustomJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('wirasatya96_riwayat_jabatan_v3');
+      const saved = localStorage.getItem('wirasatya96_riwayat_jabatan_v4');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -82,25 +83,30 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
         }
       }
     }
-    return INITIAL_RIWAYAT_JABATAN;
+    return [];
   });
 
   const jabatanList = useMemo(() => {
-    const memberEntries: RiwayatJabatanLeting[] = members.map((m) => ({
-      id: `jab-member-${m.nrp}`,
-      perwiraNrp: m.nrp,
-      namaPerwira: m.namaLengkap,
-      pangkat: m.pangkat,
-      avatarUrl: getAvatarUrl(m.fotoUrl),
-      jabatan: m.jabatan || 'Perwira Polri',
-      satker: m.satker || 'Mabes Polri',
-      polda: m.polda || 'MABES POLRI',
-      fungsiPolri: inferFungsiPolri(m.jabatan || '', m.satker || '', m.polda || ''),
-      tahunMulai: 2024,
-      isCurrent: m.statusDinas !== 'PURNA_TUGAS',
-      uraianTugas: `Penugasan aktif pada ${m.satker || 'Polri'} (${m.polda || 'MABES POLRI'}).`,
-      dasarTR: 'Data Direktori Personel Wira Satya 96',
-    }));
+    const memberEntries: RiwayatJabatanLeting[] = members.map((m) => {
+      const jab = m.jabatanTerakhir || m.jabatan || 'Perwira Menengah Polri';
+      const stk = m.satuanKerja || m.satker || 'Mabes Polri';
+      const pld = m.polda || 'MABES POLRI';
+      return {
+        id: `jab-member-${m.nrp}`,
+        perwiraNrp: m.nrp,
+        namaPerwira: m.namaLengkap,
+        pangkat: m.pangkat,
+        avatarUrl: getAvatarUrl(m.fotoUrl),
+        jabatan: jab,
+        satker: stk,
+        polda: pld,
+        fungsiPolri: inferFungsiPolri(jab, stk, pld),
+        tahunMulai: 2024,
+        isCurrent: m.statusDinas !== 'PURNA_TUGAS',
+        uraianTugas: `Penugasan aktif Perwira Batalyon Wira Satya 96 pada ${stk} (${pld}).`,
+        dasarTR: 'Data Direktori & UKP Batalyon Wira Satya 96',
+      };
+    });
     return [...customJabatanList, ...memberEntries];
   }, [customJabatanList, members]);
 
@@ -111,7 +117,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
     satkerUtama: 'BARESKRIM POLRI',
     subSatker: 'Pimpinan / Staf Utama Satker',
     fungsiPolri: 'RESERSE' as FungsiPolri,
-    tahunMulai: 2025,
+    tahunMulai: 2026,
     uraianTugas: '',
     prestasiOperasional: '',
     dasarTR: '',
@@ -157,14 +163,20 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       isCurrent: true,
       uraianTugas: newJabatan.uraianTugas,
       prestasiOperasional: newJabatan.prestasiOperasional,
-      dasarTR: newJabatan.dasarTR || `ST/${Math.floor(1000 + Math.random() * 9000)}/X/KEP./2025`,
+      dasarTR: newJabatan.dasarTR || `ST/${Math.floor(1000 + Math.random() * 9000)}/X/KEP./2026`,
     };
 
     const updated = [entry, ...customJabatanList];
     setCustomJabatanList(updated);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_riwayat_jabatan_v3', JSON.stringify(updated));
+      localStorage.setItem('wirasatya96_riwayat_jabatan_v4', JSON.stringify(updated));
     }
+
+    // Sync active jabatan/satker/polda to members & users database
+    if (onUpdateMemberJabatan) {
+      onUpdateMemberJabatan(currentUser.nrp, newJabatan.jabatan, composedSatker, newJabatan.polda);
+    }
+
     setIsAddModalOpen(false);
     setNewJabatan({
       jabatan: '',
@@ -172,7 +184,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       satkerUtama: 'BARESKRIM POLRI',
       subSatker: 'Pimpinan / Staf Utama Satker',
       fungsiPolri: 'RESERSE',
-      tahunMulai: 2025,
+      tahunMulai: 2026,
       uraianTugas: '',
       prestasiOperasional: '',
       dasarTR: '',

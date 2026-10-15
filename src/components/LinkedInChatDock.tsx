@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   MessageSquare, 
   X, 
@@ -12,15 +12,8 @@ import {
   Search, 
   CheckCheck
 } from 'lucide-react';
-import { AnggotaWiraSatya } from '@/types';
+import { AnggotaWiraSatya, ChatMessage } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
-
-interface ChatMessage {
-  id: string;
-  sender: 'me' | 'other';
-  text: string;
-  timestamp: string;
-}
 
 interface LinkedInChatDockProps {
   members: AnggotaWiraSatya[];
@@ -37,29 +30,72 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
   const [activeChatMember, setActiveChatMember] = useState<AnggotaWiraSatya | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Real conversations state (empty until messages are exchanged)
-  const [conversations, setConversations] = useState<Record<string, ChatMessage[]>>({});
+  // Fetch real messages from shared backend /api/messages
+  const fetchMessages = React.useCallback(async () => {
+    try {
+      const res = await fetch(`/api/messages?userNrp=${encodeURIComponent(currentUserNrp)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.messages)) {
+        setMessages(data.messages);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('ws96_messages_cache', JSON.stringify(data.messages));
+        }
+      }
+    } catch {
+      // Fallback to cache
+    }
+  }, [currentUserNrp]);
 
-  const filteredMembers = members.filter((m) =>
-    m.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.satuanKerja.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 4000);
+    const handleSync = () => fetchMessages();
+    window.addEventListener('ws96_messages_updated', handleSync);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('ws96_messages_updated', handleSync);
+    };
+  }, [fetchMessages]);
+
+  const filteredMembers = members.filter(
+    (m) =>
+      m.nrp !== currentUserNrp &&
+      (m.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.satuanKerja || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (m.polda || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.nrp.includes(searchQuery))
   );
 
-  const handleOpenChat = (member: AnggotaWiraSatya) => {
+  // Active thread messages from real store
+  const activeThreadMessages = React.useMemo(() => {
+    if (!activeChatMember) return [];
+    return messages.filter(
+      (m) =>
+        (m.senderNrp === currentUserNrp && m.receiverNrp === activeChatMember.nrp) ||
+        (m.senderNrp === activeChatMember.nrp && m.receiverNrp === currentUserNrp)
+    );
+  }, [messages, activeChatMember, currentUserNrp]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeThreadMessages.length, activeChatMember]);
+
+  const handleOpenChat = async (member: AnggotaWiraSatya) => {
     setActiveChatMember(member);
-    if (!conversations[member.id]) {
-      setConversations((prev) => ({
-        ...prev,
-        [member.id]: [
-          {
-            id: 'init-1',
-            sender: 'other',
-            text: `Halo ${currentUserName.split(',')[0]}, salam hormat satu letting Akpol 1996 (#SelaluBahagia). Ada yang bisa dikoordinasikan?`,
-            timestamp: 'Baru saja',
-          },
-        ],
-      }));
+    // Mark incoming messages from this member as read
+    try {
+      await fetch('/api/messages', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderNrp: member.nrp, receiverNrp: currentUserNrp }),
+      });
+      window.dispatchEvent(new Event('ws96_messages_updated'));
+    } catch {
+      // ignore
     }
   };
 
@@ -68,30 +104,37 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
     const text = inputText.trim();
     setInputText('');
 
-    const newMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: 'me',
+    const optimisticMsg: ChatMessage = {
+      id: 'local-' + Date.now(),
+      senderNrp: currentUserNrp,
+      senderName: currentUserName.replace(/\(.*?\)/g, '').trim(),
+      receiverNrp: activeChatMember.nrp,
+      receiverName: activeChatMember.namaLengkap,
       text: text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      createdAt: new Date().toISOString(),
+      isRead: false,
     };
 
-    setConversations((prev) => ({
-      ...prev,
-      [activeChatMember.id]: [...(prev[activeChatMember.id] || []), newMsg],
-    }));
+    setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      await fetch('/api/messages', {
+      const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          senderNrp: currentUserNrp || '98010710',
-          senderName: currentUserName,
+          senderNrp: currentUserNrp,
+          senderName: currentUserName.replace(/\(.*?\)/g, '').trim(),
           receiverNrp: activeChatMember.nrp,
           receiverName: activeChatMember.namaLengkap,
           text: text,
         }),
       });
+      const data = await res.json();
+      if (data.success && data.message) {
+        setMessages((prev) => prev.map((m) => (m.id === optimisticMsg.id ? data.message : m)));
+        window.dispatchEvent(new Event('ws96_messages_updated'));
+      }
     } catch (err) {
       console.log('Dock message saved locally', err);
     }
@@ -104,10 +147,13 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
     return `https://wa.me/${clean}?text=Halo%20rekan%2C%20mohon%20izin%20menghubungi%20dari%20Portal%20Alumni%20Akpol%201996`;
   };
 
+  // Count unread incoming messages
+  const unreadCount = messages.filter((m) => m.receiverNrp === currentUserNrp && !m.isRead).length;
+
   return (
     <div className="hidden md:flex fixed bottom-0 right-4 z-40 items-end gap-3 font-sans">
       
-      {/* 1. ACTIVE POPUP CONVERSATION BOX (MATCHING SCREENSHOT 3) */}
+      {/* 1. ACTIVE POPUP CONVERSATION BOX */}
       {activeChatMember && (
         <div className="w-80 sm:w-88 bg-white rounded-t-xl shadow-2xl border border-slate-300 flex flex-col h-[420px] animate-in slide-in-from-bottom-5 duration-200">
           
@@ -117,7 +163,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
               <div className="relative flex-shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={activeChatMember.fotoUrl || '/default-avatar.png'}
+                  src={getAvatarUrl(activeChatMember.fotoUrl)}
                   alt={activeChatMember.namaLengkap}
                   className="w-8 h-8 rounded-full object-cover border border-amber-400"
                 />
@@ -134,15 +180,17 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
             </div>
 
             <div className="flex items-center gap-1 text-slate-300">
-              <a
-                href={getWaUrl(activeChatMember.noHp)}
-                target="_blank"
-                rel="noreferrer"
-                className="p-1 hover:text-emerald-400 hover:bg-white/10 rounded transition-colors"
-                title="Buka Chat via WhatsApp Resmi"
-              >
-                <Phone className="w-3.5 h-3.5" />
-              </a>
+              {activeChatMember.noHp && (
+                <a
+                  href={getWaUrl(activeChatMember.noHp)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-1 hover:text-emerald-400 hover:bg-white/10 rounded transition-colors"
+                  title="Buka Chat via WhatsApp Resmi"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                </a>
+              )}
               <button
                 onClick={() => setActiveChatMember(null)}
                 className="p-1 hover:text-white hover:bg-white/10 rounded transition-colors"
@@ -162,46 +210,59 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
             </span>
           </div>
 
-          {/* Chat Messages Body */}
+          {/* Chat Messages Body (Synced with /api/messages) */}
           <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-[#f8fafc] text-xs">
-            {(conversations[activeChatMember.id] || []).map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${msg.sender === 'me' ? 'items-end' : 'items-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
-                    msg.sender === 'me'
-                      ? 'bg-red-800 text-white rounded-br-none shadow-sm'
-                      : 'bg-white text-slate-800 rounded-bl-none border border-slate-200 shadow-sm'
-                  }`}
-                >
-                  <p>{msg.text}</p>
-                </div>
-                <div className="flex items-center gap-1 text-[9px] text-slate-400 mt-0.5 px-1">
-                  <span>{msg.timestamp}</span>
-                  {msg.sender === 'me' && <CheckCheck className="w-3 h-3 text-blue-500" />}
-                </div>
+            {activeThreadMessages.length === 0 ? (
+              <div className="py-10 text-center text-slate-400 text-[11px] space-y-1">
+                <p className="font-semibold text-slate-600">Belum ada riwayat obrolan</p>
+                <p>Pesan yang dikirim di sini tersinkron otomatis dengan menu Pesan utama.</p>
               </div>
-            ))}
+            ) : (
+              activeThreadMessages.map((msg) => {
+                const isMe = msg.senderNrp === currentUserNrp;
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
+                        isMe
+                          ? 'bg-red-800 text-white rounded-br-none shadow-sm'
+                          : 'bg-white text-slate-800 rounded-bl-none border border-slate-200 shadow-sm'
+                      }`}
+                    >
+                      <p>{msg.text}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-[9px] text-slate-400 mt-0.5 px-1">
+                      <span>{msg.timestamp}</span>
+                      {isMe && <CheckCheck className="w-3 h-3 text-blue-500" />}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* WhatsApp Direct Action Bar */}
-          <div className="px-3 py-1.5 bg-emerald-50 border-t border-emerald-200 flex items-center justify-between">
-            <span className="text-[10px] text-emerald-800 font-medium flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              Nomor WA: <b>{activeChatMember.noHp}</b>
-            </span>
-            <a
-              href={getWaUrl(activeChatMember.noHp)}
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-0.5"
-            >
-              <span>Chat WA Langsung</span>
-              <ExternalLink className="w-2.5 h-2.5" />
-            </a>
-          </div>
+          {activeChatMember.noHp && (
+            <div className="px-3 py-1.5 bg-emerald-50 border-t border-emerald-200 flex items-center justify-between">
+              <span className="text-[10px] text-emerald-800 font-medium flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Nomor WA: <b>{activeChatMember.noHp}</b>
+              </span>
+              <a
+                href={getWaUrl(activeChatMember.noHp)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-0.5"
+              >
+                <span>Chat WA Langsung</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            </div>
+          )}
 
           {/* Chat Input Box */}
           <div className="p-2 bg-white border-t border-slate-200">
@@ -234,7 +295,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
         </div>
       )}
 
-      {/* 2. DOCKED MESSENGER BAR (BOTTOM RIGHT, AS IN LINKEDIN) */}
+      {/* 2. DOCKED MESSENGER BAR (BOTTOM RIGHT) */}
       <div className="w-72 bg-white rounded-t-xl shadow-xl border border-slate-300 overflow-hidden flex flex-col">
         
         {/* Dock Header Bar */}
@@ -254,15 +315,17 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
                 Obrolan Leting 96
               </span>
               <span className="text-[10px] text-slate-500 font-medium">
-                {members.length} rekan terhubung
+                {Math.max(0, members.length - 1)} rekan terhubung
               </span>
             </div>
           </div>
 
           <div className="flex items-center gap-1 text-slate-400">
-            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-red-800 text-white text-[10px] font-bold">
-              {Object.keys(conversations).length}
-            </span>
+            {unreadCount > 0 && (
+              <span className="w-5 h-5 flex items-center justify-center rounded-full bg-red-800 text-white text-[10px] font-bold">
+                {unreadCount}
+              </span>
+            )}
             <button type="button" className="p-1 hover:text-slate-700">
               {isOpen ? <Minus className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
             </button>
@@ -289,37 +352,57 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
 
             {/* Contact list */}
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
-              {filteredMembers.map((member) => (
-                <div
-                  key={member.id}
-                  onClick={() => handleOpenChat(member)}
-                  className="p-2.5 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-colors"
-                >
-                  <div className="relative flex-shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={member.fotoUrl || '/default-avatar.png'}
-                      alt={member.namaLengkap}
-                      className="w-8 h-8 rounded-full object-cover border border-slate-200"
-                    />
-                    <span className="w-2 h-2 bg-emerald-500 rounded-full border-2 border-white absolute bottom-0 right-0" />
+              {filteredMembers.map((member) => {
+                const lastMsg = [...messages]
+                  .reverse()
+                  .find(
+                    (m) =>
+                      (m.senderNrp === currentUserNrp && m.receiverNrp === member.nrp) ||
+                      (m.senderNrp === member.nrp && m.receiverNrp === currentUserNrp)
+                  );
+                const unreadFromMember = messages.filter(
+                  (m) => m.senderNrp === member.nrp && m.receiverNrp === currentUserNrp && !m.isRead
+                ).length;
+
+                return (
+                  <div
+                    key={member.nrp}
+                    onClick={() => handleOpenChat(member)}
+                    className="p-2.5 hover:bg-slate-50 flex items-center gap-2.5 cursor-pointer transition-colors"
+                  >
+                    <div className="relative flex-shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getAvatarUrl(member.fotoUrl)}
+                        alt={member.namaLengkap}
+                        className="w-8 h-8 rounded-full object-cover border border-slate-200"
+                      />
+                      <span className="w-2 h-2 bg-emerald-500 rounded-full border-2 border-white absolute bottom-0 right-0" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-xs font-semibold text-slate-900 truncate leading-tight">
+                          {member.namaLengkap.split(',')[0]}
+                        </p>
+                        {unreadFromMember > 0 && (
+                          <span className="px-1.5 py-0.2 rounded-full bg-red-800 text-white text-[9px] font-bold">
+                            {unreadFromMember}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                        {lastMsg ? lastMsg.text : `${member.pangkat} • ${member.polda}`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-slate-900 truncate leading-tight">
-                      {member.namaLengkap.split(',')[0]}
-                    </p>
-                    <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                      {member.pangkat} • {member.polda}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Footer tip */}
             <div className="p-2 bg-slate-50 border-t border-slate-200 text-center">
               <span className="text-[10px] text-slate-500">
-                Pesan internal & WhatsApp terintegrasi
+                Tersinkron real-time dengan Menu Pesan
               </span>
             </div>
 

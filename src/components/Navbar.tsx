@@ -51,6 +51,8 @@ interface NavbarProps {
   onOpenAuthModal?: () => void;
   onOpenVerificationModal?: () => void;
   pendingVerificationCount?: number;
+  unreadMessagesCount?: number;
+  unreadNotificationsCount?: number;
   onOpenRegisterModal?: () => void;
   onLogout?: () => void;
   onSearchChange?: (query: string) => void;
@@ -68,6 +70,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAuthModal,
   onOpenVerificationModal,
   pendingVerificationCount = 0,
+  unreadMessagesCount = 0,
+  unreadNotificationsCount = 0,
   onOpenRegisterModal,
   onLogout,
   onSearchChange,
@@ -104,8 +108,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         (m) =>
           m.namaLengkap.toLowerCase().includes(q) ||
           m.nrp.toLowerCase().includes(q) ||
-          (m.jabatan || '').toLowerCase().includes(q) ||
-          (m.satker || '').toLowerCase().includes(q) ||
+          (m.jabatanTerakhir || m.jabatan || '').toLowerCase().includes(q) ||
+          (m.satuanKerja || m.satker || '').toLowerCase().includes(q) ||
           (m.polda || '').toLowerCase().includes(q)
       )
       .slice(0, 8);
@@ -209,7 +213,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                                   {m.pangkat} &bull; NRP {m.nrp}
                                 </div>
                                 <div className="text-[10px] font-semibold text-red-900 truncate">
-                                  {m.jabatan || m.satker} ({m.polda})
+                                  {m.jabatanTerakhir || m.jabatan || m.satuanKerja || m.satker} ({m.polda})
                                 </div>
                               </div>
                             </div>
@@ -303,9 +307,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <div className="relative">
                   <MessageSquare className="w-5 h-5" />
-                  <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-bold flex items-center justify-center absolute -top-1 -right-2">
-                    0
-                  </span>
+                  {unreadMessagesCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-bold flex items-center justify-center absolute -top-1 -right-2 ring-2 ring-white">
+                      {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Pesan</span>
               </button>
@@ -322,6 +328,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <div className="relative">
                   <Bell className="w-5 h-5" />
+                  {unreadNotificationsCount > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-bold flex items-center justify-center absolute -top-1 -right-2 ring-2 ring-white">
+                      {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Notifikasi</span>
               </button>

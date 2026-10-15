@@ -17,8 +17,9 @@ import { LinkedInSettingsPage } from '@/components/LinkedInSettingsPage';
 import { LinkedInProfileView } from '@/components/LinkedInProfileView';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
+import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_ASSETS } from '@/data/mockFinance';
-import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem } from '@/types';
+import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem, FeedPost, ChatMessage } from '@/types';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 
 const STORAGE_VERSION = 'ws96_akpol96_real_v9';
@@ -35,6 +36,10 @@ export default function Home() {
   const [viewingMember, setViewingMember] = useState<AnggotaWiraSatya | null>(null);
   const [editingMember, setEditingMember] = useState<AnggotaWiraSatya | null | 'NEW'>(null);
   const [messagingTargetMember, setMessagingTargetMember] = useState<AnggotaWiraSatya | null>(null);
+
+  // Social Feed & Messaging State
+  const [posts, setPosts] = useState<FeedPost[]>(INITIAL_FEED_POSTS);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   // Financial & Asset Portfolio State
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(INITIAL_FINANCE_SUMMARY);
@@ -57,10 +62,12 @@ export default function Home() {
 
     // Load User and sanitize any legacy Unsplash avatar URL
     const savedUser = localStorage.getItem('ws96_active_user') || localStorage.getItem('wirasatya96_current_user');
+    let activeNrp = PRESET_USERS[0].nrp;
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
         if (parsed && parsed.nrp) {
+          activeNrp = parsed.nrp;
           const sanitizedUser: AuthUser = {
             ...parsed,
             fotoUrl: getAvatarUrl(parsed.fotoUrl),
@@ -121,6 +128,17 @@ export default function Home() {
       })
       .catch(() => {});
 
+    // Refresh feed posts from API store
+    fetch('/api/posts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.posts) && data.posts.length > 0) {
+          setPosts(data.posts);
+          localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(data.posts));
+        }
+      })
+      .catch(() => {});
+
     // Refresh finance & assets from API store
     fetch('/api/finance')
       .then((res) => res.json())
@@ -146,6 +164,21 @@ export default function Home() {
         }
       })
       .catch(() => {});
+
+    // Refresh messages for active user
+    const refreshMessages = () => {
+      fetch(`/api/messages?userNrp=${encodeURIComponent(activeNrp)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.messages)) {
+            setMessages(data.messages);
+          }
+        })
+        .catch(() => {});
+    };
+    refreshMessages();
+    window.addEventListener('ws96_messages_updated', refreshMessages);
+    return () => window.removeEventListener('ws96_messages_updated', refreshMessages);
   }, []);
 
   // Start editing a specific member (Admin/Sekretariat or self)
@@ -426,6 +459,54 @@ export default function Home() {
     [currentUser, members]
   );
 
+  // Compute live unread messages & notifications count for Navbar
+  const unreadMessagesCount = React.useMemo(
+    () => messages.filter((m) => m.receiverNrp === currentUser.nrp && !m.isRead).length,
+    [messages, currentUser.nrp]
+  );
+
+  const unreadNotificationsCount = React.useMemo(() => {
+    const healthCount = members.filter(
+      (m) => m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT'
+    ).length;
+    const verifCount =
+      currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT'
+        ? pendingVerificationCount
+        : 0;
+    return healthCount + verifCount + unreadMessagesCount;
+  }, [members, currentUser.role, pendingVerificationCount, unreadMessagesCount]);
+
+  // Update active member's jabatan & satker when a new mutation is recorded in Menu Jabatan
+  const handleUpdateMemberJabatan = async (
+    nrp: string,
+    jabatanBaru: string,
+    satkerBaru: string,
+    poldaBaru: string
+  ) => {
+    const target = members.find((m) => m.nrp === nrp);
+    if (!target) return;
+    const updatedMember: AnggotaWiraSatya = {
+      ...target,
+      jabatanTerakhir: jabatanBaru,
+      satuanKerja: satkerBaru,
+      polda: poldaBaru,
+    };
+    const updatedList = members.map((m) => (m.nrp === nrp ? updatedMember : m));
+    setMembers(updatedList);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
+    }
+    try {
+      await fetch('/api/members', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedMember),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f2ee] selection:bg-red-800 selection:text-white">
       {/* Top Navbar */}
@@ -445,6 +526,8 @@ export default function Home() {
         onOpenChat={handleOpenChatWithMember}
         onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
         pendingVerificationCount={pendingVerificationCount}
+        unreadMessagesCount={unreadMessagesCount}
+        unreadNotificationsCount={unreadNotificationsCount}
         onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
         onLogout={handleLogout}
         onSearchChange={setNavbarSearchQuery}
@@ -508,7 +591,11 @@ export default function Home() {
                 onEditMember={handleStartEditMember}
                 onOpenChat={handleOpenChatWithMember}
                 onNavigateToJabatan={() => setActiveTab('purnaTugas')}
+                onNavigateToBendahara={() => setActiveTab('bendahara')}
                 financeSummary={financeSummary}
+                iuranList={iuranList}
+                externalPosts={posts}
+                onPostsChange={setPosts}
                 externalSearch={navbarSearchQuery}
               />
             )}
@@ -521,6 +608,7 @@ export default function Home() {
                 onOpenFormWizard={() => handleStartEditMember(currentMemberProfile)}
                 onSelectMember={(m) => setViewingMember(m)}
                 onOpenChat={handleOpenChatWithMember}
+                onUpdateMemberJabatan={handleUpdateMemberJabatan}
               />
             )}
 
@@ -538,6 +626,12 @@ export default function Home() {
             {activeTab === 'notifikasi' && (
               <LinkedInNotificationsPage
                 currentUser={currentUser}
+                members={members}
+                transactions={transactions}
+                assets={assets}
+                posts={posts}
+                messages={messages}
+                pendingVerificationCount={pendingVerificationCount}
                 onNavigateToTab={(t) => {
                   setViewingMember(null);
                   setActiveTab(t as AppTab);
@@ -545,6 +639,8 @@ export default function Home() {
                 onViewMyProfile={() => {
                   setViewingMember(getOrBuildUserProfile(currentUser, members));
                 }}
+                onSelectMember={(m) => setViewingMember(m)}
+                onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
               />
             )}
 

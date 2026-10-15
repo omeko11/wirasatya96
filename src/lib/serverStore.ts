@@ -10,11 +10,14 @@ import {
   PendingRegistration,
   UserAccountStatus,
   MfaMethod,
-  AssetPortfolioItem
+  AssetPortfolioItem,
+  FeedPost,
+  PostComment
 } from '@/types';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
+import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { AKPOL_1996_REGISTRATIONS } from '@/data/akpol1996Alumni';
 
 // Global server memory + local disk database (.data/local_db.json)
@@ -28,6 +31,7 @@ interface GlobalStore {
   activeSession: AuthUser | null;
   messages: ChatMessage[];
   registrations: PendingRegistration[];
+  posts: FeedPost[];
 }
 
 const INITIAL_MESSAGES: ChatMessage[] = [];
@@ -137,6 +141,7 @@ function loadInitialStore(): GlobalStore {
     activeSession: PRESET_USERS[0],
     messages: [...INITIAL_MESSAGES],
     registrations: [...INITIAL_REGISTRATIONS],
+    posts: [...INITIAL_FEED_POSTS],
   };
 
   try {
@@ -167,6 +172,7 @@ function loadInitialStore(): GlobalStore {
         activeSession: parsed.activeSession || defaultStore.activeSession,
         messages: Array.isArray(parsed.messages) ? parsed.messages : defaultStore.messages,
         registrations: loadedRegs,
+        posts: Array.isArray(parsed.posts) ? parsed.posts : defaultStore.posts,
       };
     }
   } catch {
@@ -268,7 +274,7 @@ export const serverStore = {
 
   getUsers: () => globalStore.users,
 
-  addUser: (user: AuthUser) => {
+  addUser: (user: AuthUser & { noHp?: string }) => {
     const existingIdx = globalStore.users.findIndex((u) => u.nrp === user.nrp);
     if (existingIdx >= 0) {
       globalStore.users[existingIdx] = { ...globalStore.users[existingIdx], ...user };
@@ -286,7 +292,7 @@ export const serverStore = {
         pangkat: user.pangkat,
         satker: user.satker || 'Mabes Polri',
         polda: user.polda || 'MABES POLRI',
-        noHp: '',
+        noHp: user.noHp || '',
         email: user.email,
         alasanDaftar: `Ditambahkan oleh Admin / Kesekretariatan (${user.role})`,
         status: user.status || (user.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD'),
@@ -295,6 +301,8 @@ export const serverStore = {
         verifiedAt: new Date().toISOString(),
         verifiedBy: 'Admin / Kesekretariatan',
       });
+    } else if (user.noHp) {
+      existingReg.noHp = user.noHp;
     }
 
     // Ensure directory member exists
@@ -314,7 +322,7 @@ export const serverStore = {
         tanggalLahir: '1974-01-01',
         usia: 52,
         jenisKelamin: 'LAKI-LAKI',
-        noHp: '',
+        noHp: user.noHp || '',
         email: user.email,
         fotoUrl: user.fotoUrl || '/default-avatar.png',
         alamatTempatTinggal: user.polda || 'Jakarta',
@@ -341,6 +349,8 @@ export const serverStore = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+    } else if (user.noHp) {
+      existingMember.noHp = user.noHp;
     }
 
     // Ensure iuran entry exists
@@ -364,13 +374,13 @@ export const serverStore = {
     return user;
   },
 
-  updateUser: (nrp: string, updates: Partial<AuthUser>) => {
+  updateUser: (nrp: string, updates: Partial<AuthUser> & { noHp?: string }) => {
     const idx = globalStore.users.findIndex((u) => u.nrp === nrp);
     if (idx < 0) return null;
     globalStore.users[idx] = { ...globalStore.users[idx], ...updates };
     const updatedUser = globalStore.users[idx];
 
-    // Sync member name/pangkat/satker if changed
+    // Sync member name/pangkat/satker/noHp if changed
     const mIdx = globalStore.members.findIndex((m) => m.nrp === nrp);
     if (mIdx >= 0) {
       if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
@@ -383,6 +393,17 @@ export const serverStore = {
       }
       if (updates.polda) globalStore.members[mIdx].polda = updates.polda;
       if (updates.email) globalStore.members[mIdx].email = updates.email;
+      if (updates.noHp !== undefined) globalStore.members[mIdx].noHp = updates.noHp;
+    }
+
+    const rIdx = globalStore.registrations.findIndex((r) => r.nrp === nrp);
+    if (rIdx >= 0) {
+      if (updates.nama) globalStore.registrations[rIdx].nama = updates.nama;
+      if (updates.pangkat) globalStore.registrations[rIdx].pangkat = updates.pangkat;
+      if (updates.satker) globalStore.registrations[rIdx].satker = updates.satker;
+      if (updates.polda) globalStore.registrations[rIdx].polda = updates.polda;
+      if (updates.email) globalStore.registrations[rIdx].email = updates.email;
+      if (updates.noHp !== undefined) globalStore.registrations[rIdx].noHp = updates.noHp;
     }
 
     persistLocalStore(globalStore);
@@ -971,5 +992,65 @@ export const serverStore = {
       }
     });
     persistLocalStore(globalStore);
+  },
+
+  // ==============================================================
+  // FEED POSTS METHODS
+  // ==============================================================
+  getPosts: () => globalStore.posts || [],
+
+  addPost: (postData: Omit<FeedPost, 'id' | 'createdAt' | 'likesCount' | 'repostsCount' | 'comments'>): FeedPost => {
+    if (!globalStore.posts) globalStore.posts = [];
+    const nowStr = new Date().toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const newPost: FeedPost = {
+      ...postData,
+      id: 'post-' + Date.now(),
+      createdAt: nowStr,
+      likesCount: 0,
+      isLiked: false,
+      repostsCount: 0,
+      isReposted: false,
+      impressionsCount: 1,
+      comments: [],
+    };
+    globalStore.posts.unshift(newPost);
+    persistLocalStore(globalStore);
+    return newPost;
+  },
+
+  toggleLikePost: (postId: string) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p) return null;
+    p.isLiked = !p.isLiked;
+    p.likesCount = p.isLiked ? (p.likesCount || 0) + 1 : Math.max(0, (p.likesCount || 0) - 1);
+    persistLocalStore(globalStore);
+    return p;
+  },
+
+  toggleRepost: (postId: string) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p) return null;
+    p.isReposted = !p.isReposted;
+    p.repostsCount = p.isReposted ? (p.repostsCount || 0) + 1 : Math.max(0, (p.repostsCount || 0) - 1);
+    persistLocalStore(globalStore);
+    return p;
+  },
+
+  addCommentToPost: (postId: string, comment: PostComment) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p) return null;
+    if (!Array.isArray(p.comments)) p.comments = [];
+    p.comments.push(comment);
+    persistLocalStore(globalStore);
+    return p;
   },
 };

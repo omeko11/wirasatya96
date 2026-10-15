@@ -72,7 +72,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     }
   }, [initialTargetMember, currentUser.nrp]);
 
-  // Fetch real messages from API on mount and periodically (polling)
+  // Fetch real messages from API on mount, polling, and custom event from ChatDock
   useEffect(() => {
     let isMounted = true;
 
@@ -82,17 +82,10 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
         if (!res.ok) return;
         const data = await res.json();
         if (data.success && Array.isArray(data.messages) && isMounted) {
-          setMessages((prev) => {
-            // Merge unique by id
-            const existingIds = new Set(prev.map((m) => m.id));
-            const newMsgs = data.messages.filter((m: ChatMessage) => !existingIds.has(m.id));
-            if (newMsgs.length === 0 && prev.length === data.messages.length) return prev;
-            const merged = [...prev, ...newMsgs];
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('ws96_messages_cache', JSON.stringify(merged));
-            }
-            return merged;
-          });
+          setMessages(data.messages);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ws96_messages_cache', JSON.stringify(data.messages));
+          }
         }
       } catch (err) {
         console.log('Error fetching messages from API, using local cache', err);
@@ -100,20 +93,59 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     };
 
     fetchMessages();
-    const interval = setInterval(fetchMessages, 4000); // Polling every 4 seconds
+    const interval = setInterval(fetchMessages, 4000);
+    const handleSync = () => fetchMessages();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ws96_messages_updated', handleSync);
+    }
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('ws96_messages_updated', handleSync);
+      }
     };
   }, [currentUser.nrp]);
+
+  // Mark unread messages from activePartnerNrp as read when conversation is opened
+  useEffect(() => {
+    if (!activePartnerNrp || !currentUser.nrp) return;
+    const hasUnread = messages.some(
+      (m) => m.senderNrp === activePartnerNrp && m.receiverNrp === currentUser.nrp && !m.isRead
+    );
+    if (!hasUnread) return;
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.senderNrp === activePartnerNrp && m.receiverNrp === currentUser.nrp
+          ? { ...m, isRead: true }
+          : m
+      )
+    );
+
+    fetch('/api/messages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderNrp: activePartnerNrp,
+        receiverNrp: currentUser.nrp,
+      }),
+    })
+      .then(() => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ws96_messages_updated'));
+        }
+      })
+      .catch(() => {});
+  }, [activePartnerNrp, currentUser.nrp, messages]);
 
   // Scroll to bottom when new message arrives in active chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, activePartnerNrp]);
+  }, [messages.length, activePartnerNrp]);
 
-  // Compute unique conversation partners from messages and members list
+  // Compute unique conversation partners from messages and ALL members list
   const conversationPartners = React.useMemo(() => {
     const partnerMap = new Map<string, { member: AnggotaWiraSatya; lastMessage?: ChatMessage; unread: number }>();
 
@@ -152,8 +184,8 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
       }
     });
 
-    // 2. Ensure registered members in directory are accessible
-    members.slice(0, 6).forEach((m) => {
+    // 2. Ensure ALL registered members in directory are accessible (not just slice(0, 6))
+    members.forEach((m) => {
       if (m.nrp !== currentUser.nrp && !partnerMap.has(m.nrp)) {
         partnerMap.set(m.nrp, {
           member: m,
@@ -165,7 +197,8 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     return Array.from(partnerMap.values()).sort((a, b) => {
       const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
       const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
-      return timeB - timeA;
+      if (timeB !== timeA) return timeB - timeA;
+      return a.member.namaLengkap.localeCompare(b.member.namaLengkap);
     });
   }, [messages, currentUser.nrp, members]);
 
@@ -248,6 +281,9 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
         setMessages((prev) =>
           prev.map((m) => (m.id === optimisticMsg.id ? data.message : m))
         );
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ws96_messages_updated'));
+        }
       }
     } catch (err) {
       console.log('Saved message to local cache, API sync queued', err);
@@ -263,16 +299,29 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     return `https://wa.me/${clean}?text=Halo%20Komandan%2C%20mohon%20izin%20menghubungi%20dari%20Obrolan%20Alumni%20Akpol%201996`;
   };
 
+  const activeThreadsCount = conversationPartners.filter((p) => Boolean(p.lastMessage)).length;
+
   // Filtered conversation partners in left rail
   const filteredPartners = conversationPartners.filter((p) => {
     const q = searchTerm.toLowerCase().trim();
-    if (!q) return true;
-    return (
+    const matchesSearch =
+      !q ||
       p.member.namaLengkap.toLowerCase().includes(q) ||
       p.member.pangkat.toLowerCase().includes(q) ||
-      p.member.satuanKerja.toLowerCase().includes(q) ||
-      p.member.nrp.includes(q)
-    );
+      (p.member.satuanKerja || '').toLowerCase().includes(q) ||
+      (p.member.jabatanTerakhir || '').toLowerCase().includes(q) ||
+      p.member.nrp.includes(q);
+
+    if (!matchesSearch) return false;
+
+    if (activeFilter === 'terfokus' && !q) {
+      if (activeThreadsCount > 0) {
+        return Boolean(p.lastMessage) || p.member.nrp === activePartnerNrp;
+      }
+      // Show initial top 12 colleagues when no active chat threads yet
+      return conversationPartners.indexOf(p) < 12;
+    }
+    return true;
   });
 
   // Filter for new chat modal

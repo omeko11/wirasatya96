@@ -17,13 +17,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body: Partial<AuthUser> & { satker?: string; polda?: string; password?: string } = await req.json();
+    const body: Partial<AuthUser> & { satker?: string; polda?: string; password?: string; noHp?: string } = await req.json();
     if (!body.nrp || !body.nama) {
       return NextResponse.json({ success: false, message: 'NRP dan Nama wajib diisi' }, { status: 400 });
     }
 
     const cleanNrp = body.nrp.trim();
-    const newUser: AuthUser & { satker?: string; polda?: string; password?: string } = {
+    const newUser: AuthUser & { satker?: string; polda?: string; password?: string; noHp?: string } = {
       id: 'u-' + cleanNrp,
       nrp: cleanNrp,
       nama: body.nama.trim(),
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       satker: body.satker || 'Mabes Polri',
       polda: body.polda || 'Mabes Polri',
       password: body.password || undefined,
+      noHp: body.noHp || '',
     };
 
     const created = serverStore.addUser(newUser);

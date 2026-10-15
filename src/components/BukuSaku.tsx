@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, FinanceSummary } from '@/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, FinanceSummary, IuranAnggota } from '@/types';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
@@ -27,7 +27,11 @@ interface BukuSakuProps {
   onEditMember?: (member: AnggotaWiraSatya) => void;
   onOpenChat?: (member: AnggotaWiraSatya) => void;
   onNavigateToJabatan?: () => void;
+  onNavigateToBendahara?: () => void;
   financeSummary?: FinanceSummary;
+  iuranList?: IuranAnggota[];
+  externalPosts?: FeedPost[];
+  onPostsChange?: (posts: FeedPost[]) => void;
   externalSearch?: string;
 }
 
@@ -37,13 +41,18 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   onEditMember,
   onOpenChat,
   onNavigateToJabatan,
+  onNavigateToBendahara,
   financeSummary,
+  iuranList = [],
+  externalPosts,
+  onPostsChange,
   externalSearch = '',
 }) => {
   const [selectedMember, setSelectedMember] = useState<AnggotaWiraSatya | null>(null);
 
   // Social Feed States
   const [posts, setPosts] = useState<FeedPost[]>(() => {
+    if (externalPosts && externalPosts.length > 0) return externalPosts;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('wirasatya96_feed_posts');
       if (saved) {
@@ -63,6 +72,12 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     return INITIAL_FEED_POSTS;
   });
 
+  useEffect(() => {
+    if (externalPosts && externalPosts.length > 0) {
+      setPosts(externalPosts);
+    }
+  }, [externalPosts]);
+
   const [feedCategoryFilter, setFeedCategoryFilter] = useState<string>('SEMUA');
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
 
@@ -72,8 +87,22 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     [currentUser, members]
   );
 
-  // Feed Actions
-  const handleCreatePost = (
+  // Current logged in member's Iuran 2026 status
+  const myIuran = useMemo(
+    () => iuranList.find((i) => i.nrp === currentUser.nrp),
+    [iuranList, currentUser.nrp]
+  );
+
+  const syncPosts = (updated: FeedPost[]) => {
+    setPosts(updated);
+    if (onPostsChange) onPostsChange(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    }
+  };
+
+  // Feed Actions (Persisted to /api/posts)
+  const handleCreatePost = async (
     newPostData: Omit<FeedPost, 'id' | 'createdAt' | 'likesCount' | 'repostsCount' | 'comments'>
   ) => {
     const newPost: FeedPost = {
@@ -88,13 +117,24 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       comments: [],
     };
     const updated = [newPost, ...posts];
-    setPosts(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    syncPosts(updated);
+
+    try {
+      const res = await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'CREATE', ...newPostData }),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.posts)) {
+        syncPosts(data.posts);
+      }
+    } catch {
+      // fallback to local state
     }
   };
 
-  const handleLikeToggle = (postId: string) => {
+  const handleLikeToggle = async (postId: string) => {
     const updated = posts.map((p) => {
       if (p.id === postId) {
         const nextIsLiked = !p.isLiked;
@@ -106,13 +146,20 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       }
       return p;
     });
-    setPosts(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'LIKE', postId }),
+      });
+    } catch {
+      // ignore
     }
   };
 
-  const handleRepost = (postId: string) => {
+  const handleRepost = async (postId: string) => {
     const updated = posts.map((p) => {
       if (p.id === postId) {
         const nextIsReposted = !p.isReposted;
@@ -124,13 +171,20 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       }
       return p;
     });
-    setPosts(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'REPOST', postId }),
+      });
+    } catch {
+      // ignore
     }
   };
 
-  const handleAddComment = (postId: string, commentText: string) => {
+  const handleAddComment = async (postId: string, commentText: string) => {
     const newComment: PostComment = {
       id: `c-${Date.now()}`,
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
@@ -150,9 +204,24 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       }
       return p;
     });
-    setPosts(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'COMMENT',
+          postId,
+          authorName: newComment.authorName,
+          authorPangkat: newComment.authorPangkat,
+          authorAvatar: newComment.authorAvatar,
+          authorNrp: newComment.authorNrp,
+          content: commentText,
+        }),
+      });
+    } catch {
+      // ignore
     }
   };
 
@@ -299,6 +368,26 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   <span>Hak Akses:</span>
                   <span className="font-bold text-slate-900">{currentUser.role}</span>
                 </div>
+                {myIuran && (
+                  <div
+                    onClick={() => onNavigateToBendahara && onNavigateToBendahara()}
+                    className="flex items-center justify-between text-slate-500 pt-1 border-t border-slate-100 cursor-pointer hover:text-slate-800"
+                    title="Klik untuk melihat rincian di menu Arus Kas"
+                  >
+                    <span>Iuran 2026 Saya:</span>
+                    <span
+                      className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                        myIuran.status === 'LUNAS'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : myIuran.status === 'SEBAGIAN'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {myIuran.status}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <button
@@ -605,7 +694,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 space-y-1.5">
+              {onNavigateToBendahara && (
+                <button
+                  onClick={onNavigateToBendahara}
+                  className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
+                >
+                  Buka Buku Kas &amp; Portofolio Aset &rarr;
+                </button>
+              )}
               <span className="text-[11px] text-slate-400 block text-center">
                 Dikelola oleh Bendahara
               </span>

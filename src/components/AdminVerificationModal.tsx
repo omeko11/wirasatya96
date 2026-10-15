@@ -77,6 +77,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [editSatkerUtama, setEditSatkerUtama] = useState('BARESKRIM POLRI');
   const [editSubSatker, setEditSubSatker] = useState('Pimpinan / Staf Utama Satker');
   const [editEmail, setEditEmail] = useState('');
+  const [editNoHp, setEditNoHp] = useState('');
 
   // Filters for Verification tab
   const [regSearch, setRegSearch] = useState('');
@@ -93,10 +94,49 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [newSatkerUtama, setNewSatkerUtama] = useState('BARESKRIM POLRI');
   const [newSubSatker, setNewSubSatker] = useState('Pimpinan / Staf Utama Satker');
   const [newEmail, setNewEmail] = useState('');
+  const [newNoHp, setNewNoHp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
 
+  // CAS-Style "Pilih Satker Berjenjang" Modal State
+  const [satkerPickerMode, setSatkerPickerMode] = useState<'ADD' | 'EDIT' | null>(null);
+  const [pickerPolda, setPickerPolda] = useState('MABES POLRI');
+  const [pickerSatker, setPickerSatker] = useState('BARESKRIM POLRI');
+  const [pickerSubSatker, setPickerSubSatker] = useState('Pimpinan / Staf Utama Satker');
+  const [pickerSearch1, setPickerSearch1] = useState('');
+  const [pickerSearch2, setPickerSearch2] = useState('');
+  const [pickerSearch3, setPickerSearch3] = useState('');
+
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const openSatkerPicker = (mode: 'ADD' | 'EDIT') => {
+    setSatkerPickerMode(mode);
+    setPickerSearch1('');
+    setPickerSearch2('');
+    setPickerSearch3('');
+    if (mode === 'EDIT') {
+      setPickerPolda(editPolda);
+      setPickerSatker(editSatkerUtama);
+      setPickerSubSatker(editSubSatker);
+    } else {
+      setPickerPolda(newPolda);
+      setPickerSatker(newSatkerUtama);
+      setPickerSubSatker(newSubSatker);
+    }
+  };
+
+  const applySatkerPicker = () => {
+    if (satkerPickerMode === 'EDIT') {
+      setEditPolda(pickerPolda);
+      setEditSatkerUtama(pickerSatker);
+      setEditSubSatker(pickerSubSatker);
+    } else if (satkerPickerMode === 'ADD') {
+      setNewPolda(pickerPolda);
+      setNewSatkerUtama(pickerSatker);
+      setNewSubSatker(pickerSubSatker);
+    }
+    setSatkerPickerMode(null);
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -163,6 +203,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     const satkerOpts = getSatkerUtamaByWilayah(poldaVal);
     const firstSatker = satkerOpts.find((s) => (u.satker || '').toUpperCase().includes(s.toUpperCase())) || satkerOpts[0] || poldaVal;
     const subOpts = getSubSatkerOptionsBySatker(poldaVal, firstSatker);
+    const regMatch = registrations.find((r) => r.nrp === u.nrp);
     setEditingUser(u);
     setEditNama(u.nama);
     setEditPangkat(u.pangkat || 'Kombes Pol');
@@ -171,6 +212,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     setEditSatkerUtama(firstSatker);
     setEditSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
     setEditEmail(u.email || `${u.nrp}@wirasatya96.id`);
+    setEditNoHp(u.noHp || regMatch?.noHp || '');
   };
 
   const handleSaveEditUser = async (e: React.FormEvent) => {
@@ -194,11 +236,12 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           polda: editPolda,
           satker: composedSatker,
           email: editEmail.trim(),
+          noHp: editNoHp.trim(),
         }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Data & Satker ${editNama} (NRP ${editingUser.nrp}) berhasil diperbarui.`, 'success');
+        showToast(`Data, WhatsApp & Satker ${editNama} (NRP ${editingUser.nrp}) berhasil diperbarui.`, 'success');
         setEditingUser(null);
         await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
@@ -297,6 +340,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           satker: composedSatker || 'Mabes Polri',
           polda: newPolda,
           email: newEmail.trim() || `${newNrp.trim()}@wirasatya96.id`,
+          noHp: newNoHp.trim(),
           password: newPassword.trim() || undefined,
         }),
       });
@@ -306,6 +350,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         setNewNrp('');
         setNewNama('');
         setNewEmail('');
+        setNewNoHp('');
         setNewPassword('');
         setNewRole('ANGGOTA');
         await fetchAllData();
@@ -644,6 +689,21 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                         </select>
                       </div>
 
+                      <div className="sm:col-span-2 flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                        <div>
+                          <span className="font-bold text-slate-800 block">Hierarki Satker Polri Berjenjang</span>
+                          <span className="text-[10px] text-slate-500">Pilih melalui dropdown di bawah atau buka Popup Pencarian Satker Berjenjang (ala CAS)</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openSatkerPicker('EDIT')}
+                          className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs whitespace-nowrap"
+                        >
+                          <Building2 className="w-3.5 h-3.5" />
+                          <span>Pilih Satker Berjenjang</span>
+                        </button>
+                      </div>
+
                       <div>
                         <label className="block font-bold text-slate-700 mb-1">1. Wilayah Induk (Mabes / 38 Polda)</label>
                         <select
@@ -694,6 +754,27 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                             <option key={sub} value={sub}>{sub}</option>
                           ))}
                         </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">No. HP / WhatsApp Aktif</label>
+                        <input
+                          type="tel"
+                          value={editNoHp}
+                          onChange={(e) => setEditNoHp(e.target.value)}
+                          placeholder="Contoh: 081234567890"
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                        />
                       </div>
                     </div>
 
@@ -1016,6 +1097,21 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     </select>
                   </div>
 
+                  <div className="sm:col-span-2 flex items-center justify-between bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="font-bold text-xs text-slate-800 block">Hierarki Satker Polri Berjenjang</span>
+                      <span className="text-[10px] text-slate-500">Pilih dari dropdown di bawah atau klik tombol untuk membuka Popup Pilih Satker Berjenjang (ala CAS)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openSatkerPicker('ADD')}
+                      className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs whitespace-nowrap"
+                    >
+                      <Building2 className="w-3.5 h-3.5" />
+                      <span>Pilih Satker Berjenjang</span>
+                    </button>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       1. Wilayah Induk (Mabes / 38 Polda / Luar Struktur)
@@ -1079,6 +1175,19 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
+                      No. HP / WhatsApp Aktif
+                    </label>
+                    <input
+                      type="tel"
+                      value={newNoHp}
+                      onChange={(e) => setNewNoHp(e.target.value)}
+                      placeholder="Contoh: 081234567890"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
                       Email
                     </label>
                     <input
@@ -1090,7 +1199,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     />
                   </div>
 
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-bold text-slate-700 mb-1">
                       Password Awal (Opsional)
                     </label>
@@ -1122,6 +1231,205 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* MODAL POPUP: PILIH SATKER BERJENJANG (ALA CAS / BDB)         */}
+        {/* ============================================================ */}
+        {satkerPickerMode && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div
+              className="bg-slate-900 text-slate-100 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-700 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-white">Pilih Satker Berjenjang</h4>
+                    <p className="text-[11px] text-slate-400">Pilih dari Tingkat 1 hingga unit terkecil</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSatkerPickerMode(null)}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
+                {/* TINGKAT 1 — MABES / POLDA */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span>Tingkat 1 — Mabes / Polda</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPickerPolda('MABES POLRI');
+                        setPickerSatker('BARESKRIM POLRI');
+                        setPickerSubSatker('Pimpinan / Staf Utama Satker');
+                      }}
+                      className="text-[10px] text-rose-400 hover:underline font-semibold"
+                    >
+                      ✕ Reset
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={pickerSearch1}
+                    onChange={(e) => setPickerSearch1(e.target.value)}
+                    placeholder="Ketik untuk mencari Mabes / Polda..."
+                    className="w-full px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                  />
+                  <select
+                    value={pickerPolda}
+                    onChange={(e) => {
+                      const w = e.target.value;
+                      setPickerPolda(w);
+                      const sOpts = getSatkerUtamaByWilayah(w);
+                      const firstS = sOpts[0] || w;
+                      setPickerSatker(firstS);
+                      const subOpts = getSubSatkerOptionsBySatker(w, firstS);
+                      setPickerSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
+                    }}
+                    className="w-full px-3 py-2 bg-slate-800 border border-amber-500/60 rounded-lg text-xs font-bold text-white focus:outline-none"
+                  >
+                    {POLDA_LIST.filter((p) =>
+                      !pickerSearch1.trim() || p.toLowerCase().includes(pickerSearch1.toLowerCase())
+                    ).map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* TINGKAT 2 — POLRES / SATKER */}
+                <div className="space-y-1.5 pl-3 border-l-2 border-slate-700">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span>Tingkat 2 — Polres / Satker ({getSatkerUtamaByWilayah(pickerPolda).length})</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={pickerSearch2}
+                    onChange={(e) => setPickerSearch2(e.target.value)}
+                    placeholder="Ketik untuk mencari Polres / Satker..."
+                    className="w-full px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                  />
+                  <select
+                    value={pickerSatker}
+                    onChange={(e) => {
+                      const s = e.target.value;
+                      setPickerSatker(s);
+                      const subOpts = getSubSatkerOptionsBySatker(pickerPolda, s);
+                      setPickerSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
+                    }}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                  >
+                    {getSatkerUtamaByWilayah(pickerPolda)
+                      .filter(
+                        (s) =>
+                          !pickerSearch2.trim() ||
+                          s.toLowerCase().includes(pickerSearch2.toLowerCase())
+                      )
+                      .map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* TINGKAT 3 — SUB-SATKER / DIREKTORAT / POLSEK / ADC */}
+                <div className="space-y-1.5 pl-6 border-l-2 border-slate-700">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span>
+                      Tingkat 3 — Sub-Satker / Direktorat / ADC (
+                      {getSubSatkerOptionsBySatker(pickerPolda, pickerSatker).length})
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={pickerSearch3}
+                    onChange={(e) => setPickerSearch3(e.target.value)}
+                    placeholder="Ketik untuk mencari Direktorat / Subdit / Polsek / ADC..."
+                    className="w-full px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+                  />
+                  <select
+                    value={pickerSubSatker}
+                    onChange={(e) => setPickerSubSatker(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                  >
+                    {getSubSatkerOptionsBySatker(pickerPolda, pickerSatker)
+                      .filter(
+                        (sub) =>
+                          !pickerSearch3.trim() ||
+                          sub.toLowerCase().includes(pickerSearch3.toLowerCase())
+                      )
+                      .map((sub) => (
+                        <option key={sub} value={sub}>
+                          {sub}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* SATKER TERPILIH SUMMARY BOX */}
+                <div className="p-3.5 rounded-xl bg-slate-800/90 border border-amber-500/40 flex items-center justify-between gap-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
+                      Satker Terpilih
+                    </span>
+                    <span className="text-xs font-extrabold text-white block mt-0.5">
+                      {pickerSubSatker && pickerSubSatker !== 'Pimpinan / Staf Utama Satker'
+                        ? `${pickerSubSatker} — ${pickerSatker}`
+                        : pickerSatker}
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">{pickerPolda}</span>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono text-xs font-bold">
+                    {String(
+                      Math.abs(
+                        (pickerPolda + pickerSatker)
+                          .split('')
+                          .reduce((acc, c) => acc + c.charCodeAt(0), 0)
+                      ) % 9000 + 1000
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSatkerPickerMode(null)}
+                  className="flex-1 py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={applySatkerPicker}
+                  className="flex-1 py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs transition-colors shadow-md"
+                >
+                  ✓ Terapkan Satker
+                </button>
+              </div>
             </div>
           </div>
         )}
