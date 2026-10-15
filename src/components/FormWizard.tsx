@@ -453,9 +453,13 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                         if (tipe === 'MABES') {
                           handleInputChange('polda', 'MABES POLRI');
                           if (!formData.satkerMabes) handleInputChange('satkerMabes', 'DIVHUMAS POLRI');
-                        } else if (tipe === 'POLDA') {
-                          if (!formData.polda || formData.polda === 'MABES POLRI') handleInputChange('polda', 'POLDA METRO JAYA');
-                          if (!formData.subSatker) handleInputChange('subSatker', 'DITRESKRIMUM');
+                        } else {
+                          if (!formData.polda || formData.polda === 'MABES POLRI' || formData.polda === 'LEMDIKLAT POLRI') {
+                            handleInputChange('polda', 'POLDA METRO JAYA');
+                          }
+                          if (tipe === 'POLDA' && !formData.subSatker) {
+                            handleInputChange('subSatker', 'DITRESKRIMUM');
+                          }
                         }
                       }}
                       className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center ${
@@ -537,7 +541,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                         Polda Penugasan (38 Wilayah) <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.polda || 'POLDA METRO JAYA'}
+                        value={
+                          formData.polda && (DAFTAR_38_POLDA as readonly string[]).includes(formData.polda)
+                            ? formData.polda
+                            : 'POLDA METRO JAYA'
+                        }
                         onChange={(e) => handleInputChange('polda', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
@@ -576,7 +584,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                         Polda Induk <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.polda || 'POLDA METRO JAYA'}
+                        value={
+                          formData.polda && (DAFTAR_38_POLDA as readonly string[]).includes(formData.polda)
+                            ? formData.polda
+                            : 'POLDA METRO JAYA'
+                        }
                         onChange={(e) => handleInputChange('polda', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
@@ -628,7 +640,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                         Polda Induk <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.polda || 'POLDA METRO JAYA'}
+                        value={
+                          formData.polda && (DAFTAR_38_POLDA as readonly string[]).includes(formData.polda)
+                            ? formData.polda
+                            : 'POLDA METRO JAYA'
+                        }
                         onChange={(e) => handleInputChange('polda', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >

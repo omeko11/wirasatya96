@@ -19,7 +19,8 @@ import {
   Share2, 
   Clock, 
   Home, 
-  Award
+  Award,
+  Plus
 } from 'lucide-react';
 
 interface LinkedInProfileViewProps {
@@ -287,6 +288,60 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-semibold">
                 📍 {member.polda}
               </span>
+            </div>
+          </div>
+
+          {/* SECTION: AKTIVITAS & POSTINGAN (ACTIVITY - MATCHING USER SCREENSHOT 2) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                  Aktivitas & Postingan Leting
+                </h2>
+                <p className="text-xs text-[#0a66c2] font-semibold mt-0.5">
+                  286 Rekan Leting Terhubung
+                </p>
+              </div>
+
+              {isOwner && (
+                <button
+                  onClick={() => {
+                    if (onClose) onClose();
+                  }}
+                  className="px-4 py-1.5 rounded-full border border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 font-bold text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Buat Postingan di Feed</span>
+                </button>
+              )}
+            </div>
+
+            {/* Post sample card matching LinkedIn Activity UI */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+              <div className="flex items-center gap-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                  alt={member.namaLengkap}
+                  className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-900">{member.namaLengkap}</span>
+                    {isOwner && <span className="text-[10px] text-slate-400 font-medium">&bull; Anda</span>}
+                  </div>
+                  <p className="text-[10px] text-slate-500">{member.jabatanTerakhir} &bull; 6 jam yang lalu</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-700 leading-relaxed">
+                Tetap menjaga soliditas Bhayangkara dan silaturahmi satu angkatan Batalyon Wira Satya Akpol 1996. Saling bahu membahu mendukung tugas kedinasan dan kepedulian keluarga leting. Salam hormat #SelaluBahagia!
+              </p>
+
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+                <span className="font-semibold text-slate-700">👍 94 leting menyukai &bull; 8 komentar</span>
+                <span className="text-[#0a66c2] font-semibold">149 tayangan leting</span>
+              </div>
             </div>
           </div>
 

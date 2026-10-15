@@ -12,6 +12,8 @@ export interface AuthUser {
   profileId: string;
   mfaEnabled: boolean;
   mfaMethod: MfaMethod;
+  fotoUrl?: string;
+  satker?: string;
 }
 
 export interface Anak {
@@ -173,3 +175,39 @@ export interface FinanceSummary {
   totalPengeluaranBulanIni: number;
   persentaseIuranTerkumpul: number;
 }
+
+// ==============================================================
+// MODUL FEED SILATURAHMI & POSTING LETING 96 (LINKEDIN STYLE)
+// ==============================================================
+export interface PostComment {
+  id: string;
+  authorName: string;
+  authorPangkat: string;
+  authorAvatar: string;
+  authorNrp?: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface FeedPost {
+  id: string;
+  authorName: string;
+  authorPangkat: string;
+  authorJabatan: string;
+  authorAvatar: string;
+  authorNrp?: string;
+  badgeLabel?: string;
+  content: string;
+  imageUrl?: string;
+  tags?: string[];
+  createdAt: string;
+  likesCount: number;
+  isLiked?: boolean;
+  repostsCount: number;
+  isReposted?: boolean;
+  comments: PostComment[];
+  impressionsCount?: number;
+  category?: 'MOTIVASI' | 'KENAIKAN_PANGKAT' | 'BAKSOS' | 'REUNI' | 'KABAR_LETING' | 'UMUM';
+  pinned?: boolean;
+}
+

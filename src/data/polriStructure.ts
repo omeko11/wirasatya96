@@ -113,8 +113,6 @@ export const SUB_SATKER_POLSEK_LIST = [
 ] as const;
 
 export const DAFTAR_38_POLDA = [
-  'MABES POLRI',
-  'LEMDIKLAT POLRI',
   'POLDA ACEH',
   'POLDA SUMATERA UTARA',
   'POLDA SUMATERA BARAT',

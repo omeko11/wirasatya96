@@ -1,19 +1,25 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { AnggotaWiraSatya, AuthUser, DAFTAR_PANGKAT_POLRI } from '@/types';
+import { AnggotaWiraSatya, AuthUser, DAFTAR_PANGKAT_POLRI, FeedPost, PostComment } from '@/types';
 import { DAFTAR_38_POLDA } from '@/data/polriStructure';
+import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { LinkedInProfileView } from './LinkedInProfileView';
+import { LinkedInPostCard } from './LinkedInPostCard';
+import { CreatePostModal } from './CreatePostModal';
 import { 
   Search, 
   Phone, 
   Shield, 
   Heart, 
-  Filter,
-  UserPlus,
-  Image as ImageIcon,
-  Sparkles,
-  Wallet
+  Filter, 
+  UserPlus, 
+  Image as ImageIcon, 
+  Wallet,
+  Newspaper,
+  Users,
+  Video,
+  PenSquare
 } from 'lucide-react';
 
 interface BukuSakuProps {
@@ -35,6 +41,120 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   const [selectedPolda, setSelectedPolda] = useState<string>('SEMUA');
   const [selectedPangkat, setSelectedPangkat] = useState<string>('SEMUA');
   const [selectedMember, setSelectedMember] = useState<AnggotaWiraSatya | null>(null);
+
+  // Social Feed States (LinkedIn Feed System)
+  const [posts, setPosts] = useState<FeedPost[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('wirasatya96_feed_posts');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return INITIAL_FEED_POSTS;
+  });
+
+  const [activeCenterTab, setActiveCenterTab] = useState<'feed' | 'direktori'>('feed');
+  const [feedCategoryFilter, setFeedCategoryFilter] = useState<string>('SEMUA');
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+
+  // Feed Actions
+  const handleCreatePost = (newPostData: Omit<FeedPost, 'id' | 'createdAt' | 'likesCount' | 'repostsCount' | 'comments'>) => {
+    const newPost: FeedPost = {
+      ...newPostData,
+      id: `post-${Date.now()}`,
+      createdAt: 'Baru saja',
+      likesCount: 0,
+      isLiked: false,
+      repostsCount: 0,
+      isReposted: false,
+      impressionsCount: 1,
+      comments: [],
+    };
+    const updated = [newPost, ...posts];
+    setPosts(updated);
+    setActiveCenterTab('feed');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    }
+  };
+
+  const handleLikeToggle = (postId: string) => {
+    const updated = posts.map((p) => {
+      if (p.id === postId) {
+        const nextIsLiked = !p.isLiked;
+        return {
+          ...p,
+          isLiked: nextIsLiked,
+          likesCount: nextIsLiked ? p.likesCount + 1 : Math.max(0, p.likesCount - 1),
+        };
+      }
+      return p;
+    });
+    setPosts(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    }
+  };
+
+  const handleRepost = (postId: string) => {
+    const updated = posts.map((p) => {
+      if (p.id === postId) {
+        const nextIsReposted = !p.isReposted;
+        return {
+          ...p,
+          isReposted: nextIsReposted,
+          repostsCount: nextIsReposted ? p.repostsCount + 1 : Math.max(0, p.repostsCount - 1),
+        };
+      }
+      return p;
+    });
+    setPosts(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    }
+  };
+
+  const handleAddComment = (postId: string, commentText: string) => {
+    const newComment: PostComment = {
+      id: `c-${Date.now()}`,
+      authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
+      authorPangkat: currentUser.pangkat,
+      authorAvatar: currentMemberObj?.fotoUrl || currentUser.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face',
+      authorNrp: currentUser.nrp,
+      content: commentText,
+      createdAt: 'Baru saja',
+    };
+
+    const updated = posts.map((p) => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          comments: [...p.comments, newComment],
+        };
+      }
+      return p;
+    });
+    setPosts(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+    }
+  };
+
+  const handleAuthorClick = (authorNrp?: string) => {
+    if (!authorNrp) return;
+    const found = members.find((m) => m.nrp === authorNrp);
+    if (found) setSelectedMember(found);
+  };
+
+  const filteredPosts = useMemo(() => {
+    if (feedCategoryFilter === 'SEMUA') return posts;
+    return posts.filter((p) => p.category === feedCategoryFilter);
+  }, [posts, feedCategoryFilter]);
 
   // Sync external search from navbar
   const activeSearch = externalSearch || searchTerm;
@@ -260,7 +380,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         <div className="lg:col-span-6 space-y-4">
           
-          {/* Post/Update Box (matching LinkedIn's "Mulai posting" Box) */}
+          {/* Post/Update Box (matching LinkedIn's "Mulai posting" Box from user screenshot) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -270,37 +390,129 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
               />
               <button
-                onClick={onAddNew}
-                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 rounded-full text-left text-xs text-slate-500 font-medium transition-colors border border-slate-200"
+                onClick={() => setIsCreatePostModalOpen(true)}
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 rounded-full text-left text-xs text-slate-500 font-medium transition-colors border border-slate-200 hover:text-slate-800"
               >
-                Bagikan mutasi, penempatan baru, atau kabar rekan leting...
+                Mulai buat posting atau bagikan kabar leting...
               </button>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-semibold text-slate-600 px-2">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-semibold text-slate-600 px-1 sm:px-2">
               <button 
-                onClick={onAddNew}
+                onClick={() => setIsCreatePostModalOpen(true)}
                 className="flex items-center gap-2 hover:text-[#0a66c2] transition-colors p-1"
               >
-                <UserPlus className="w-4 h-4 text-[#0a66c2]" />
-                <span>Pendataan Baru</span>
+                <ImageIcon className="w-4 h-4 text-[#0a66c2]" />
+                <span>Foto</span>
               </button>
               <button 
-                onClick={() => alert('Fitur unggah dokumentasi angkatan aktif.')}
+                onClick={() => setIsCreatePostModalOpen(true)}
                 className="flex items-center gap-2 hover:text-emerald-600 transition-colors p-1"
               >
-                <ImageIcon className="w-4 h-4 text-emerald-600" />
-                <span>Dokumentasi</span>
+                <Video className="w-4 h-4 text-emerald-600" />
+                <span>Video</span>
               </button>
               <button 
-                onClick={() => alert('Solidaritas leting: Hubungi Bendahara / Kesekretariatan untuk penyaluran bantuan sosial.')}
+                onClick={() => setIsCreatePostModalOpen(true)}
                 className="flex items-center gap-2 hover:text-amber-600 transition-colors p-1"
               >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Solidaritas Leting</span>
+                <PenSquare className="w-4 h-4 text-amber-600" />
+                <span>Tulis Artikel</span>
+              </button>
+              <button 
+                onClick={onAddNew}
+                className="flex items-center gap-2 hover:text-purple-600 transition-colors p-1 hidden sm:inline-flex"
+              >
+                <UserPlus className="w-4 h-4 text-purple-600" />
+                <span>Pendataan</span>
               </button>
             </div>
           </div>
+
+          {/* Feed Mode Switcher (Feed Silaturahmi vs Direktori Perwira) */}
+          <div className="flex items-center gap-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+            <button
+              onClick={() => setActiveCenterTab('feed')}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                activeCenterTab === 'feed'
+                  ? 'bg-[#0a66c2] text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Newspaper className="w-4 h-4" />
+              <span>Feed Silaturahmi ({posts.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveCenterTab('direktori')}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                activeCenterTab === 'direktori'
+                  ? 'bg-[#0a66c2] text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Direktori 38 Wilayah ({filteredMembers.length})</span>
+            </button>
+          </div>
+
+          {/* TAB 1: SOCIAL FEED STREAM (POSTINGAN LINKEDIN) */}
+          {activeCenterTab === 'feed' && (
+            <div className="space-y-4">
+              {/* Category Filter Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap pl-1">Filter:</span>
+                {[
+                  { key: 'SEMUA', label: 'Semua Feed' },
+                  { key: 'MOTIVASI', label: '⭐ Motivasi' },
+                  { key: 'KENAIKAN_PANGKAT', label: '🎖️ Kenaikan Pangkat' },
+                  { key: 'BAKSOS', label: '🤝 Baksos & Peduli' },
+                ].map((cat) => (
+                  <button
+                    key={cat.key}
+                    onClick={() => setFeedCategoryFilter(cat.key)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                      feedCategoryFilter === cat.key
+                        ? 'bg-[#0a66c2] text-white shadow-xs'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Feed Posts List */}
+              {filteredPosts.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredPosts.map((post) => (
+                    <LinkedInPostCard
+                      key={post.id}
+                      post={post}
+                      currentUser={currentUser}
+                      onLikeToggle={handleLikeToggle}
+                      onRepost={handleRepost}
+                      onAddComment={handleAddComment}
+                      onAuthorClick={handleAuthorClick}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl p-8 border border-slate-200 text-center space-y-2">
+                  <p className="text-slate-600 text-xs">Belum ada postingan pada kategori ini.</p>
+                  <button
+                    onClick={() => setIsCreatePostModalOpen(true)}
+                    className="text-xs font-bold text-[#0a66c2] hover:underline"
+                  >
+                    + Buat Postingan Baru
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: DIREKTORI 38 WILAYAH */}
+          {activeCenterTab === 'direktori' && (
+            <div className="space-y-4">
 
           {/* Search Box & Results Counter */}
           <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-3">
@@ -413,8 +625,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             ))}
           </div>
-
         </div>
+      )}
+
+    </div>
 
         {/* ============================================================ */}
         {/* 3. RIGHT RAIL (lg:col-span-3): ATENSI KESEHATAN & TREASURY   */}
@@ -536,6 +750,14 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         </div>
 
       </div>
+
+      {/* LinkedIn Create Post Modal */}
+      <CreatePostModal
+        isOpen={isCreatePostModalOpen}
+        onClose={() => setIsCreatePostModalOpen(false)}
+        currentUser={currentUser}
+        onSubmitPost={handleCreatePost}
+      />
 
     </div>
   );
