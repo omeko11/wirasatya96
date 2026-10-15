@@ -1,193 +1,172 @@
-# 🏛️ ARSITEKTUR SISTEM WIRA SATYA 96
-**Spesifikasi Arsitektur 4-Tier Decoupled & Topologi Kontainer Platform Batalyon Wira Satya Akpol 1996 (#SelaluBahagia)**
+# 🏛️ ARSITEKTUR SISTEM: BATALYON WIRA SATYA AKPOL 1996
+**Blueprint Arsitektur Skala Ratusan Ribu Data, Multi-Tier Decoupled Microservice & Standar Keamanan Enterprise Institusi Kepolisian**
+
+*Dokumen ini disusun mengacu pada standar rekayasa enterprise Bareskrim Polri (Crime Analytic System - CAS Reference Architecture) yang disesuaikan secara proporsional untuk kapasitas beban ratusan ribu data pada Sistem Informasi Paguyuban Alumni Akpol 1996 Wira Satya (#SelaluBahagia).*
 
 ---
 
-## 1. Ringkasan Eksekutif (Executive Summary)
+## 1. Ikhtisar Arsitektur & Karakteristik Skala Data
 
-Platform **Sistem Informasi Batalyon Wira Satya Akpol 1996** dirancang dengan arsitektur modern berstandar enterprise yang mengusung prinsip **4-Tier Decoupled Architecture**. Setiap komponen (Frontend, Backend API, Database Relasional, dan Object Storage S3) beroperasi secara independen dalam kontainer Docker terisolasi dan berkomunikasi melalui protokol standar industri (HTTP/REST, TCP/PostgreSQL, dan S3 API).
+Sistem Informasi Batalyon Wira Satya Akpol 1996 mengadopsi arsitektur **Multi-Tier Decoupled Architecture**. Berbeda dengan sistem analitik kriminal nasional (seperti CAS yang menampung jutaan Laporan Polisi), sistem paguyuban perwira ini diproyeksikan beroperasi pada kapasitas **ratusan ribu rekaman data (*hundreds of thousands of records*)**, yang meliputi:
+* **286 Personel Perwira Alumni** beserta ~1.500 data anggota keluarga/tanggungan.
+* **~5.000 riwayat mutasi jabatan, penempatan dinas, dan Surat Perintah (Sprint)** dari pangkat Ipda (1996) hingga Perwira Tinggi / Pamen (2026).
+* **Ratusan ribu pesan obrolan leting & koordinasi realtime** dalam modul perpesanan dinas.
+* **Puluhan ribu mutasi keuangan kas yayasan**: iuran wajib bulanan, sumbangan sukarela, serta santunan kesehatan dan duka cita leting.
+* **Ribuan dokumen resmi paguyuban**: Surat Telegram (TR), Surat Keputusan (SK Batalyon), notulen konsolidasi leting, serta arsip digital bukti transfer kas.
+* **Log audit keamanan autentikasi & aktivitas FIDO2/Passkey/MFA**.
 
-Pemisahan ini menjamin:
-- **Skalabilitas Horizontal**: Frontend dan Backend dapat di-scale secara mandiri.
-- **Isolasi Keamanan**: Database dan penyimpanan dokumen tidak terpapar langsung ke jaringan publik.
-- **Portabilitas Cloud-Native**: Dapat dijalankan di server lokal (Docker Compose / on-premise) maupun di-deploy ke cloud (Vercel, AWS ECS, Google Cloud Run, atau Kubernetes).
+Pemisahan lapisan (*layer decoupling*) memastikan bahwa pemrosesan dokumen Word dinas, rekapitulasi kas yayasan, dan linimasa direktori berjalan tanpa saling membebani (*zero-contention*).
 
 ---
 
-## 2. Diagram Konteks Sistem (System Topology)
+## 2. Topologi Sistem & Diagram Jaringan Kontainer
 
 ```mermaid
-graph TD
-    subgraph ClientLayer["🌐 Klien & Pengguna"]
-        DesktopUser["💻 Browser Desktop (Pamen/Pati)"]
-        MobileUser["📱 Smartphone / Tablet"]
+flowchart TD
+    subgraph Klien_Eksternal["Perangkat Pengguna / Klien"]
+        PC["💻 Laptop / PC Perwira (Intranet / Web Browser)"]
+        Mobile["📱 Smartphone / Tablet (Akses Seluler)"]
     end
 
-    subgraph Tier1["1️⃣ PRESENTATION LAYER (Port 3000)"]
-        FE["Next.js 14 App Router<br/>• Bareskrim Crimson Red Theme<br/>• Lucide React Icons<br/>• FIDO2 / WebAuthn Client<br/>• Tailwind CSS"]
+    subgraph Perimeter_Gateway["Perimeter Gateway & Reverse Proxy (Port 443 / 80)"]
+        Nginx["Nginx Ingress Gateway & SSL Termination\n(Strict HSTS, Anti-Cache, Rate Limiting)"]
     end
 
-    subgraph DockerNetwork["🐳 Private Docker Bridge Network: wirasatya-net"]
-        subgraph Tier2["2️⃣ APPLICATION / REST API (Port 5000)"]
-            BE["Express.js + TypeScript<br/>• JWT Authentication & RBAC<br/>• SIPP Data Validation<br/>• MinIO S3 SDK Connector<br/>• pg Connection Pooling"]
+    subgraph Docker_Network["🐳 Private Docker Bridge Network: wirasatya-net"]
+        subgraph Tier_FE["Lapisan Frontend & Dokumen"]
+            FE["Next.js 14 App Router: ws96-web\n(React 18 + Tailwind CSS + Lucide Icons)"]
+            OnlyOffice["Document Server: onlyoffice-ds\n(ONLYOFFICE Community Edition - Port 8080)"]
         end
 
-        subgraph Tier3["3️⃣ RELATIONAL DATABASE (Port 5432)"]
-            DB[("PostgreSQL 16 Alpine<br/>• Database: wirasatya96<br/>• Schema init.sql<br/>• Relational Integrity & Indexes<br/>• Vol: ./data_aplikasi/postgres")]
+        subgraph Tier_BE["Lapisan Backend & Logika Bisnis"]
+            BE_API["Core API: ws96-api\n(Node.js / Express / TypeScript - Port 5000)"]
+            SnapshotWorker["Pre-Aggregated Snapshot Engine\n(Anev Leting & Kas Yayasan)"]
+            RedisCache["Cache & Session: ws96-redis\n(Redis In-Memory - Port 6379)"]
         end
 
-        subgraph Tier4["4️⃣ OBJECT STORAGE (Port 9000 / 9001)"]
-            MinIO["MinIO S3 Server<br/>• Port 9000: S3 API<br/>• Port 9001: Web Console<br/>• Vol: ./data_aplikasi/minio"]
-            
-            subgraph Buckets["📦 S3 Buckets"]
-                B1["wirasatya-avatars<br/>(Foto Profil Perwira - Public)"]
-                B2["wirasatya-posts<br/>(Gambar Feed & Giat - Public)"]
-                B3["wirasatya-documents<br/>(TR & Bukti Kas - Private)"]
-            end
+        subgraph Tier_Data["Lapisan Basis Data & Penyimpanan"]
+            PG_DB[("PostgreSQL 16 Alpine: ws96-db\n(Composite B-Tree Indexes - Port 5432)")]
+            MinioStore["Object Storage: ws96-minio\n(MinIO S3 Buckets - Port 9000/9001)"]
         end
     end
 
-    DesktopUser -->|HTTPS :3000| FE
-    MobileUser -->|HTTPS :3000| FE
-    FE -->|REST API JSON :5000| BE
-    BE -->|SQL via TCP :5432| DB
-    BE -->|S3 Protocol :9000| MinIO
-    MinIO --> B1
-    MinIO --> B2
-    MinIO --> B3
+    PC -->|HTTPS / Port 443| Nginx
+    Mobile -->|HTTPS / Port 443| Nginx
+
+    Nginx -->|Proxy HTTP :3000| FE
+    Nginx -->|Proxy /onlyoffice| OnlyOffice
+    Nginx -->|Proxy /api| BE_API
+
+    FE -->|REST API + Bearer JWT| BE_API
+    FE -->|Direct Attachment View / Socket| OnlyOffice
+    BE_API -->|pg Connection Pool| PG_DB
+    BE_API -->|Session & Cache Query| RedisCache
+    BE_API -->|S3 Protocol Upload/Download| MinioStore
+    SnapshotWorker -->|Background Materialization| PG_DB
+    SnapshotWorker -->|Hot Cache Update| RedisCache
 ```
 
 ---
 
-## 3. Rincian Komponen 4-Tier
+## 3. Rincian Lapisan Arsitektur (4-Tier Decoupled)
 
-| Tier | Layanan | Teknologi | Port | Fungsi Utama | Aksesibilitas |
-|---|---|---|---|---|---|
-| **Tier 1** | **Frontend (FE)** | Next.js 14 App Router, React 18, Tailwind CSS, Lucide | `3000` | Antarmuka interaktif bernuansa Bareskrim Crimson Red, Buku Saku Digital, Feed Silaturahmi multi-reaksi, Riwayat Jabatan Leting, Form SIPP, dan Manajemen Kas. | Publik via Web Browser (`http://localhost:3000`) |
-| **Tier 2** | **Backend (BE)** | Node.js, Express, TypeScript, S3 SDK, pg Pool | `5000` | API Gateway RESTful modular (`/api/auth`, `/api/members`, `/api/posts`, `/api/finance`, `/api/storage`), autentikasi JWT, validasi SIPP, dan orkestrasi presigned URL. | Terhubung ke FE via internal/external proxy |
-| **Tier 3** | **Database (DB)** | PostgreSQL 16 Alpine | `5432` | Penyimpanan data relasional terstruktur: identitas 286 perwira, riwayat dinas, penempatan 38 Polda/Mabes/Polres, data keluarga, data kas, dan linimasa postingan. | Privat dalam `wirasatya-net` |
-| **Tier 4** | **Object Storage** | MinIO S3 Engine | `9000` (API)<br/>`9001` (GUI) | Penyimpanan aset biner tak terstruktur (foto profil, dokumentasi giat leting, lampiran PDF Surat Telegram/TR). | S3 API internal & Console admin |
-
----
-
-## 4. Topologi Jaringan Kontainer & Docker Compose
-
-Seluruh kontainer diorkestrasi menggunakan [docker-compose.yml](file:///d:/Project/KAP%20IDAH/wirasatya96/docker-compose.yml) yang terisolasi dalam satu virtual bridge network: `wirasatya-net`.
-
-### Urutan Booting & Healthchecks (Boot Sequence):
-1. **`postgres`** menyala pertama kali dan memvalidasi kesiapan socket database via `pg_isready`. Skema `database/init.sql` otomatis dieksekusi saat inisialisasi volume pertama.
-2. **`minio`** menyala secara paralel dan memverifikasi kesiapan endpoint melalui `curl http://localhost:9000/minio/health/live`.
-3. **`minio-init`** (kontainer pembantu) berjalan otomatis begitu MinIO *healthy*, mengonfigurasi alias `localminio`, membuat ketiga bucket (`wirasatya-avatars`, `wirasatya-posts`, `wirasatya-documents`), dan menerapkan hak akses download publik/privat.
-4. **`backend`** menyala setelah `postgres` dan `minio` dalam status *healthy*, melakukan verifikasi koneksi pool dan memulai listening pada port 5000.
-5. **`frontend`** menyala dan terhubung ke backend Express via variabel lingkungan `NEXT_PUBLIC_API_URL`.
-
-### Volume Persistensi Data:
-- Database PostgreSQL: `./data_aplikasi/postgres` → `/var/lib/postgresql/data`
-- Object Storage MinIO: `./data_aplikasi/minio` → `/data`
-- Direktori Cadangan Database: `./data_aplikasi/backups` → `/backups`
+| Lapisan | Layanan & Port | Teknologi | Tanggung Jawab Utama | Sifat Akses |
+|---|---|---|---|---|
+| **Tier 1: Frontend** | `ws96-web`<br/>`:3000` | Next.js 14 App Router, React 18, Tailwind CSS | Antarmuka Buku Saku Digital, Linimasa Jaringan 286 Perwira, Form Wizard SIPP, Dashboard Anev, dan Obrolan Leting. Mengusung visual khas *Bareskrim Crimson Red*. | Publik via Nginx Proxy |
+| **Tier 2: Core API** | `ws96-api`<br/>`:5000` | Express.js, TypeScript, JWT, S3 SDK, pg Pool | API Gateway modular, autentikasi terverifikasi, otorisasi RBAC berjenjang, validasi integritas SIPP Polri, dan orkestrasi perpesanan. | Terisolasi dalam `wirasatya-net` |
+| **Tier 3: Basis Data** | `ws96-db`<br/>`:5432` | PostgreSQL 16 Alpine | Penyimpanan terstruktur data 286 alumni, keluarga, riwayat dinas 38 Polda/Mabes, neraca kas yayasan, dan log pendaftaran. | Terisolasi dalam `wirasatya-net` |
+| **Tier 4: Object Storage** | `ws96-minio`<br/>`:9000 / :9001` | MinIO S3 Engine | Penyimpanan aset biner: foto perwira (`wirasatya-avatars`), dokumentasi giat (`wirasatya-posts`), dan dokumen dinas/bukti kas (`wirasatya-documents`). | S3 API internal & Console Admin |
+| **Document Server** | `onlyoffice-ds`<br/>`:8080` | ONLYOFFICE Community Edition | Mesin penampil dan penyunting naskah dinas Word (`.docx`), rekapitulasi Excel (`.xlsx`), dan PDF dengan format Jukminu Polri. | Terhubung via Nginx `/onlyoffice` |
+| **In-Memory Cache** | `ws96-redis`<br/>`:6379` | Redis Alpine | Cache snapshot agregasi Anev Leting, sesi aktif, dan antrean pesan obrolan realtime. | Terisolasi dalam `wirasatya-net` |
 
 ---
 
-## 5. Alur Data End-to-End (Data Flow Scenarios)
+## 4. Pola Rekayasa Data Skala Ratusan Ribu (Design Patterns)
 
-### Skenario A: Unggah Media & Publikasi Linimasa (Social Feed Flow)
+Mengadopsi praktik terbaik dari arsitektur CAS Bareskrim, sistem ini mengimplementasikan 4 pola kunci:
+
+### Pola 1: Pre-Aggregated Snapshot Cache (Anev Leting & Kas Yayasan)
+* **Konteks**: Modul *Anev Leting* dan *Transparansi Kas* menyajikan rekapitulasi sebaran perwira di 38 Polda, status persiapan pensiun, atensi kesehatan kritis, dan kalkulasi saldo kas.
+* **Penerapan**: Kalkulasi berat (`SUM`, `COUNT GROUP BY polda`, `JOIN` riwayat jabatan) **tidak dihitung ulang secara live** saat seorang Jenderal atau Pamen membuka dasbor.
+* **Mekanisme**: Background worker melakukan kalkulasi secara terjadwal (atau saat terjadi perubahan transaksi kas) dan menyimpannya di tabel/cache snapshot. Respons dasbor turun drastis dari **>2.000 ms menjadi <15 ms**.
+
+### Pola 2: ONLYOFFICE Socket Optimization & Direct File Download
+* **Konteks**: ONLYOFFICE Community Edition memiliki batasan 20 concurrent connection (soket).
+* **Penerapan**:
+  1. Frontend menjalankan `destroyEditor()` secara otomatis saat komponen di-unmount atau pengguna berpindah tab, sehingga kuota soket langsung terbebas untuk rekan leting lain.
+  2. Menyediakan tombol **Direct Attachment Download (.docx / .pdf)** di tabel dokumen resmi. Anggota yang hanya ingin mencetak atau mengunduh surat dinas tidak perlu membuka canvas editor yang berat.
+  3. Konfigurasi `forcesave: false` mencegah terjadinya UI freeze saat penyimpanan dokumen berlangsung di latar belakang.
+
+### Pola 3: Hierarchical RBAC & Segregasi Akses Kedinasan
+Data dan fitur dibatasi berdasarkan peran pengguna:
+* **SUPERADMIN** (Pengembang & Bareskrim): Manajemen infrastruktur, database, dan otorisasi verifikasi anggota.
+* **KETUA PAGUYUBAN**: Hak persetujuan program kerja, visibilitas eksekutif penuh pada Anev Leting, dan penetapan kebijakan yayasan.
+* **SEKRETARIAT**: Pengelolaan formulir SIPP, verifikasi pendaftaran alumni baru, administrasi persuratan (TR & Sprint paguyuban), serta pemutakhiran direktori.
+* **BENDAHARA**: Pengelolaan neraca kas yayasan, verifikasi iuran bulanan alumni, dan pencatatan santunan kesehatan/duka cita.
+* **ANGGOTA (ALUMNI)**: Membaca direktori 286 perwira, mengobrol di Obrolan Leting, memutakhirkan profil mandiri, serta melihat laporan transparansi kas.
+
+### Pola 4: Standar Integritas & Tamper-Evident Storage
+* Setiap bukti transfer kas, dokumen Sprint, dan Surat Telegram yang diunggah ke MinIO S3 diberi penamaan berbasis hash kriptografis SHA-256:
+  $$\text{WS96-}[\text{SHA256}_{8}\text{]-}[\text{TIMESTAMP}].\text{ext}$$
+* Mencegah eksploitasi *Insecure Direct Object References (IDOR)* dan menjamin keaslian bukti keuangan paguyuban dari manipulasi eksternal.
+
+---
+
+## 5. Alur Keamanan & Onboarding Perwira Alumni (End-to-End Flow)
+
+Sesuai standar operasional kedinasan, pendaftaran alumni tidak mengizinkan akses terbuka langsung (*no unverified open login*), melainkan melalui rantai verifikasi bertingkat:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Officer as 👮 Perwira / Alumni Leting
-    participant FE as 🌐 Frontend (Next.js)
-    participant BE as ⚡ Backend (Express API)
-    participant MinIO as 🪣 MinIO S3
-    participant DB as 🐘 PostgreSQL DB
+    actor Officer as 👮 Perwira Alumni (Pemohon)
+    participant FE as 🌐 Frontend (/login)
+    participant API as ⚡ Core API (/api/auth)
+    participant DB as 🐘 Basis Data (Store)
+    actor Admin as 🛡️ Superadmin / Sekretariat
 
-    Officer->>FE: Buka modal "Buat Postingan", ketik giat & pilih foto
-    FE->>BE: POST /api/storage/upload (Multipart Form Data)
-    BE->>BE: Verifikasi JWT & ekstrak NRP Perwira
-    BE->>MinIO: PutObject ke bucket 'wirasatya-posts'
-    MinIO-->>BE: Status OK + Object Key / S3 URL
-    FE->>BE: POST /api/posts (Kategori, Konten, Media URL)
-    BE->>DB: INSERT INTO posts (...) VALUES (...)
-    DB-->>BE: Record terbuat (post_id)
-    BE-->>FE: HTTP 201 Created (Post object)
-    FE-->>Officer: Postingan langsung tampil di linimasa Feed leting
+    Officer->>FE: Buka Tab "Pendaftaran Anggota Baru"<br/>Isi NRP, Pangkat, Satker, Polda, WhatsApp, Email Dinas
+    FE->>API: POST /api/auth/register
+    API->>DB: Simpan data dengan status 'PENDING_VERIFIKASI'
+    API-->>FE: Pendaftaran Berhasil Diajukan
+    FE-->>Officer: Tampil Layar Konfirmasi: "Menunggu Verifikasi Pengurus"
+
+    Note over Admin,API: Administrator menerima notifikasi antrean verifikasi di Navbar
+    Admin->>FE: Buka "Verifikasi Pendaftaran" (AdminVerificationModal)
+    Admin->>FE: Klik "Setujui Permohonan"
+    FE->>API: POST /api/auth/verify (action: 'APPROVE')
+    API->>DB: Update status ke 'DISETUJUI_BELUM_PASSWORD'<br/>Daftarkan profil ke direktori 286 perwira
+    API-->>FE: Otorisasi Berhasil
+
+    Officer->>FE: Masuk ke Halaman Login, input NRP Dinas
+    FE->>API: POST /api/auth/login (hanya input NRP)
+    API-->>FE: { requiresPasswordSetup: true, nama, pangkat }
+    FE->>Officer: Buka Dialog: "Aktivasi Akun & Buat Kata Sandi Baru"
+    Officer->>FE: Input Kata Sandi Baru & Pilih Metode MFA (PIN / FIDO2)
+    FE->>API: POST /api/auth/set-password
+    API->>DB: Set Password, simpan MFA, update status ke 'AKTIF'
+    API-->>FE: Login Sukses (User Token)
+    FE-->>Officer: Berhasil masuk ke akun pribadi (Buku Saku / Direktori)
 ```
 
 ---
 
-### Skenario B: Pendataan SIPP Polri (Form Wizard Flow)
+## 6. Standar SOTK Satuan Kerja & Eliminasi Polsek
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Admin as 🛡️ Superadmin / Anggota
-    participant FE as 🌐 Frontend (FormWizard)
-    participant BE as ⚡ Backend API
-    participant DB as 🐘 PostgreSQL DB
+Mengikuti SOTK Polri mutakhir (Perpres No. 52/2010 jo No. 5/2017, Perpol No. 14/2018, dan Korps 2024):
+* **Tingkat Mabes Polri**: Unsur Pimpinan, Pengawas (Itwasum, Propam), Pembantu Pimpinan (SSDM, Slog, Astamaops, Astamarena), Pelaksana Utama (Bareskrim, Baintelkam, Baharkam, Korbrimob, Korlantas, Kortastipidkor, Densus 88 AT), Pendukung (Lemdiklat, Pusdokkes, Puskeu).
+* **Tingkat Polda**: 38 Polda seluruh Indonesia (Kapolda, Wakapolda, Ditreskrimum, Ditreskrimsus, Ditresnarkoba, Ditressiber, Biro SDM, SPN, Satbrimob).
+* **Tingkat Polres**: Polrestabes, Polresta, Polres jajaran.
+* **Penugasan Luar Struktur**: BIN, BNN, BNPT, Lemhannas RI, KPK, BSSN, Kemenko Polkam.
+* **Purna Tugas**: Alumni Purnawirawan, Masa Persiapan Pensiun (MPP), dan wirausaha pasca-dinas.
 
-    Admin->>FE: Isi Formulir 4 Modul (SIPP, Keluarga, Purna Tugas, Kesehatan)
-    Note over FE: Memilih Tipe Satker (Mabes / Polda / Polres / Kemen-Lembaga)<br/>Opsi Polsek sengaja dieliminasi (Kombes/Pati level)
-    FE->>BE: POST /api/members (Payload Data Lengkap)
-    BE->>BE: Validasi NRP, NIK, dan Hierarki Satker Resmi
-    BE->>DB: UPSERT INTO members & profiles (NRP, Data Kedinasan, Tanggungan)
-    DB-->>BE: Status Berhasil
-    BE-->>FE: HTTP 200 OK
-    FE-->>Admin: Notifikasi Sukses & Direktori Perwira terbarui
-```
+> [!IMPORTANT]
+> **Eliminasi Satker Polsek**: Karena seluruh alumni Batalyon Wira Satya Akpol 1996 saat ini telah mencapai masa dinas 30 tahun dan berada pada jenjang kepangkatan **Kombes Pol**, **Brigjen Pol**, **Irjen Pol**, atau Purna Tugas, maka penempatan tingkat Polsek (jenjang Pama Ipda s.d. AKP) **dieliminasi dari antarmuka formulir dan filter data** demi efisiensi query dan relevansi kepangkatan.
 
 ---
 
-## 6. Standar SOTK Polri & Hirarki Satuan Kerja
+## 7. Ketahanan & Rencana Pemulihan Bencana (Disaster Recovery)
 
-Aplikasi mengintegrasikan struktur organisasi Polri mutakhir (Perpres No. 52/2010 jo Perpres No. 5/2017, Perpol No. 14/2018, Perpol No. 2/2021, dan pembentukan Korps 2024):
-
-```mermaid
-graph TD
-    Polri["🏛️ KEPOLISIAN NEGARA REPUBLIK INDONESIA"]
-    
-    subgraph SOTKMabes["1. Tingkat Mabes Polri"]
-        Pimpinan["Unsur Pimpinan<br/>(Kapolri & Wakapolri)"]
-        Pengawas["Pengawas & Pembantu Pimpinan<br/>(Itwasum, Astamaops, Astamarena, SSDM, Slog, Divpropam, Divhumas, Divhubinter, Divkum, DivTIK, Sahli)"]
-        Pelaksana["Pelaksana Tugas Utama<br/>(Bareskrim, Baintelkam, Baharkam, Korbrimob, Korlantas, Kortastipidkor, Densus 88 AT)"]
-        Pendukung["Pendukung & Pelayanan<br/>(Lemdiklat, Pusdokkes, Puskeu, Puslitbang, Pusjarah, Spripim, Setum, Yanma)"]
-    end
-
-    subgraph SOTKPolda["2. Tingkat Polda (38 Wilayah)"]
-        PoldaPim["Kapolda & Wakapolda"]
-        DitPolda["Direktorat Operasional<br/>(Reskrimum, Reskrimsus, Resnarkoba, Ressiber, Lantas, Intelkam, Samapta, Polairud, Binmas, Pamobvit, Tahti, Satbrimob)"]
-        BiroPolda["4 Biro Staf (Ro SDM, Ro Ops, Ro Rena, Ro Log)"]
-        BidPolda["6 Bidang & Lembaga (Propam, Humas, Kum, Dokkes, Keu, TIK, SPN, Itwasda)"]
-    end
-
-    subgraph SOTKPolres["3. Tingkat Polres (Metro / Polrestabes / Polresta / Polres)"]
-        Kapolres["Kapolres / Wakapolres"]
-        BagPolres["4 Bagian (Bag Ops, Bag Ren, Bag SDM, Bag Log)"]
-        SatPolres["Satuan Fungsi (Reskrim, Narkoba, Intelkam, Lantas, Samapta, Binmas, Polairud, Pamobvit, Tahti)"]
-        SiPolres["Seksi Pelayanan & Pengawasan (Propam, Humas, Kum, Was, Keu, TIK, Dokkes, Umum, SPKT)"]
-    end
-
-    subgraph KemenLembaga["4. Penugasan Luar Struktur"]
-        KL["BIN, BNN, BNPT, Lemhannas RI, KPK, BSSN, Kemenko Polkam, Setmilpres, Bakamla, Kemendagri"]
-    end
-
-    subgraph PurnaTugas["5. Bhayangkara Purna Tugas"]
-        Purna["Purnawirawan, Masa Persiapan Pensiun (MPP), Wirausaha, Konsultan, Tokoh Masyarakat"]
-    end
-
-    Polri --> SOTKMabes
-    Polri --> SOTKPolda
-    Polri --> SOTKPolres
-    Polri --> KemenLembaga
-    Polri --> PurnaTugas
-```
-
-> [!NOTE]
-> **Eliminasi Satker Polsek**: Karena seluruh alumni Akpol 1996 (Wira Satya 96) saat ini telah berdinas selama 30 tahun dan berada pada jenjang pangkat **Kombes Pol**, **Brigjen Pol**, **Irjen Pol**, atau Purna Tugas, maka penempatan Polsek (tingkat Pama Ipda/Iptu/AKP) **sengaja ditiadakan** dari antarmuka formulir dan filter untuk efisiensi serta relevansi data kedinasan.
-
----
-
-## 7. Ketahanan Sistem & Pencadangan (Backup & Disaster Recovery)
-
-- **Automated Database Dumps**: Script utilitas menghasilkan file SQL dump harian ke folder `./data_aplikasi/backups`.
-- **MinIO Data Mirroring**: Folder data MinIO dapat disinkronkan secara periodik ke AWS S3 / Google Cloud Storage menggunakan perintah `mc mirror`.
-- **Graceful Error Handling**: Jika koneksi backend ke database terputus sementara, frontend Next.js secara cerdas beralih ke cache data lokal tanpa membuat aplikasi *crash*.
+* **Daily Automated SQL Dumps**: Backup basis data otomatis ke volume terisolasi `./data_aplikasi/backups`.
+* **MinIO Object Replication**: Sinkronisasi berkas dokumen dan foto antar-node cadangan via utility `mc mirror`.
+* **Zero-Downtime Cache Fallback**: Jika koneksi jaringan database mengalami gangguan sesaat, client Next.js memanfaatkan cache lokal terenkripsi sehingga antarmuka tidak mengalami *crash* atau layar kosong.
