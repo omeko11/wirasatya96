@@ -174,7 +174,7 @@ export default function LoginPage() {
               </div>
               <p className="text-[13px] font-medium text-slate-200 text-center mt-3 leading-snug">
                 Gunakan kunci sandi tersimpan untuk <br />
-                <span className="font-bold text-white">cas.bareskrim.polri.go.id</span>
+                <span className="font-bold text-white">portal.wirasatya96.id</span>
               </p>
             </div>
 
@@ -227,7 +227,7 @@ export default function LoginPage() {
       )}
 
       {/* ============================================================== */}
-      {/* LEFT PANEL: DARK POLRI EXECUTIVE THEME (BIG DATA BINOPS)       */}
+      {/* LEFT PANEL: DARK POLRI EXECUTIVE THEME (YAYASAN WIRA SATYA 96) */}
       {/* ============================================================== */}
       <div className="w-full lg:w-1/2 bg-[#080d16] p-6 sm:p-10 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800 relative overflow-hidden">
         
@@ -238,14 +238,14 @@ export default function LoginPage() {
         {/* Top Header */}
         <div className="relative z-10">
           <p className="text-[11px] sm:text-xs font-bold tracking-widest text-slate-400 uppercase">
-            BIRO PEMBINAAN OPERASIONAL
+            YAYASAN BATALYON WIRA SATYA
           </p>
           <p className="text-xs sm:text-sm font-extrabold tracking-wider text-slate-200 uppercase mt-0.5">
-            BARESKRIM POLRI • BATALYON WIRA SATYA 1996
+            ALUMNI AKPOL 1996 • #SELALUBAHAGIA
           </p>
         </div>
 
-        {/* Center Section: Big Data Binops Branding */}
+        {/* Center Section: Yayasan Wira Satya Branding */}
         <div className="my-10 sm:my-14 lg:my-auto max-w-lg relative z-10 space-y-6">
           
           {/* Emblem squircle icon with red/orange accent border */}
@@ -260,10 +260,10 @@ export default function LoginPage() {
 
           <div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight uppercase">
-              BIG DATA BINOPS
+              PORTAL WIRA SATYA 96
             </h1>
             <p className="text-xs sm:text-sm font-bold tracking-widest text-red-500 mt-1 uppercase">
-              PORTAL ALUMNI AKPOL 1996 (#SELALUBAHAGIA)
+              YAYASAN KELUARGA BESAR BATALYON AKPOL 1996
             </p>
           </div>
 
@@ -272,19 +272,19 @@ export default function LoginPage() {
 
           {/* Tagline */}
           <p className="text-sm sm:text-base text-slate-300 font-normal leading-relaxed">
-            Console analitik & manajemen Laporan — satu pintu untuk data, rekap, dan Integrasi.
+            Sistem informasi terpadu leting — satu pintu untuk direktori penempatan, pemetaan kesejahteraan keluarga, dan tata kelola kebendaharaan paguyuban.
           </p>
 
-          {/* 3 Bullet Features matching screenshot */}
+          {/* 3 Bullet Features matching layout */}
           <div className="space-y-4 pt-2">
             <div className="flex items-start gap-3.5 group">
               <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <FileText className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-200">Manajemen Laporan terpadu</p>
+                <p className="text-sm font-semibold text-slate-200">Direktori & Sebaran Leting</p>
                 <p className="text-xs text-slate-400">
-                  Direktori penempatan dinas 38 Polda, Satker Mabes Polri, Polres & Polsek terintegrasi.
+                  Pemetaan persebaran dinas alumni Akpol 1996 di 38 Polda, Mabes Polri, Polres, hingga penugasan kementerian/lembaga.
                 </p>
               </div>
             </div>
@@ -294,9 +294,9 @@ export default function LoginPage() {
                 <BarChart3 className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-200">Rekap & Anev</p>
+                <p className="text-sm font-semibold text-slate-200">Rekap Kesejahteraan & Purna Tugas</p>
                 <p className="text-xs text-slate-400">
-                  Pemetaan kesiapan purna tugas, atensi riwayat kesehatan leting, & analisis tanggungan.
+                  Pemetaan kesiapan masa pensiun, atensi riwayat kesehatan leting, & kepedulian keluarga rekan seangkatan.
                 </p>
               </div>
             </div>
@@ -306,9 +306,9 @@ export default function LoginPage() {
                 <Database className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-200">Data Terintegrasi</p>
+                <p className="text-sm font-semibold text-slate-200">Tata Kelola Kas & Solidaritas</p>
                 <p className="text-xs text-slate-400">
-                  Buku kas kebendaharaan paguyuban, iuran wajib bulanan, & penyaluran santunan sosial.
+                  Transparansi buku kas yayasan, iuran bulanan leting, santunan duka cita, dan bantuan sosial leting.
                 </p>
               </div>
             </div>
@@ -318,7 +318,7 @@ export default function LoginPage() {
         {/* Bottom Left Footer */}
         <div className="relative z-10 pt-4 border-t border-slate-800/80">
           <p className="text-[11px] text-slate-500">
-            Sistem resmi — aktivitas dapat dicatat dan diaudit.
+            Sistem resmi Yayasan Batalyon Wira Satya 96 — Selalu Bahagia & Saling Menjaga.
           </p>
         </div>
       </div>
@@ -332,7 +332,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md flex items-center justify-between pb-2">
           <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            SSO Polri Bareskrim Gateway
+            Portal Resmi Yayasan Wira Satya 96
           </span>
           <button
             type="button"
@@ -382,10 +382,10 @@ export default function LoginPage() {
           
           <div className="text-center mb-6">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Masuk ke Akun
+              Masuk ke Portal Yayasan
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Gunakan akun yang sudah aktif atau sudah disetujui.
+              Gunakan akun anggota Paguyuban / Yayasan Wira Satya 96.
             </p>
           </div>
 
@@ -398,14 +398,14 @@ export default function LoginPage() {
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             
-            {/* Input 1: Username / Email */}
+            {/* Input 1: NRP / Email */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Username atau Email Dinas Polri
+                NRP atau Email Anggota Leting
               </label>
               <input
                 type="text"
-                placeholder="username atau nama@polri.go.id"
+                placeholder="Contoh: 74080123 atau nama@wirasatya96.id"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-red-600 focus:border-red-600 focus:outline-none placeholder-slate-400 transition-all shadow-sm"
@@ -416,13 +416,13 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Password
+                  Password / PIN Akun
                 </label>
                 <a 
                   href="#forgot" 
                   onClick={(e) => {
                     e.preventDefault();
-                    alert('Silakan hubungi Sekretariat Paguyuban atau Admin SIPP Bareskrim untuk reset kata sandi dinas.');
+                    alert('Silakan hubungi Kesekretariatan atau Bendahara Yayasan Wira Satya 96 untuk reset kata sandi akun.');
                   }}
                   className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline"
                 >
@@ -531,10 +531,10 @@ export default function LoginPage() {
         {/* Bottom Right Footer */}
         <div className="w-full max-w-md text-center pt-4 border-t border-slate-300/80">
           <p className="text-[11px] text-slate-500">
-            Sistem ini hanya untuk penggunaan resmi. Aktivitas dapat dicatat dan diaudit.
+            Sistem internal Yayasan Batalyon Wira Satya 96 • Hak Cipta Alumni Akpol 1996.
           </p>
           <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-            BDB v1.0.0
+            WS96 v1.0.0
           </p>
         </div>
 
