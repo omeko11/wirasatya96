@@ -72,8 +72,9 @@ services:
       - POSTGRES_PASSWORD=postgres_ws96_secure
       - POSTGRES_DB=wirasatya96
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./data_aplikasi/postgres:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./data_aplikasi/backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d wirasatya96"]
       interval: 5s
@@ -97,7 +98,7 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin_ws96_secure
     volumes:
-      - miniodata:/data
+      - ./data_aplikasi/minio:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -131,14 +132,8 @@ services:
       - wirasatya-net
 
 # ==============================================================================
-# VOLUMES & NETWORKS
+# NETWORKS
 # ==============================================================================
-volumes:
-  pgdata:
-    driver: local
-  miniodata:
-    driver: local
-
 networks:
   wirasatya-net:
     driver: bridge

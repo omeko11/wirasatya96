@@ -34,3 +34,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# application local data
+/data_aplikasi/postgres/*
+!/data_aplikasi/postgres/.gitkeep
+/data_aplikasi/minio/*
+!/data_aplikasi/minio/.gitkeep

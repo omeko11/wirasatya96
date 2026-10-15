@@ -1,0 +1,28 @@
+================================================================================
+PETUNJUK PINDAH DATA (MIGRASI) WIRA SATYA 96 DARI PC INI KE PC/SERVER LAIN
+================================================================================
+
+Folder ini ("data_aplikasi") adalah pusat seluruh data aplikasi Wira Satya 96:
+1. "data_aplikasi/backups/" : Berisi file database SQL (data perwira, kas, jabatan, linimasa)
+2. "data_aplikasi/minio/"   : Berisi seluruh file foto avatar, lampiran postingan, bukti kas
+3. "data_aplikasi/postgres/": Berisi cluster file mentah database PostgreSQL
+
+--------------------------------------------------------------------------------
+CARA PALING GAMPANG KALAU MAU PINDAHAN PC / SERVER:
+--------------------------------------------------------------------------------
+
+LANGKAH 1 (Di PC Lama):
+1. Buka folder ini ("data_aplikasi")
+2. Klik 2x file: "backup_sekarang.bat"
+   -> Script otomatis membuat file "wirasatya96_terbaru.sql" di dalam folder "backups/".
+
+LANGKAH 2 (Pindahkan):
+1. Copy seluruh folder project "wirasatya96" (atau cukup folder "data_aplikasi" ini) 
+   ke Flashdisk / kirim ke PC baru.
+
+LANGKAH 3 (Di PC Baru):
+1. Pastikan Docker Desktop aktif di PC baru.
+2. Jalankan perintah: docker-compose up -d
+3. Buka folder "data_aplikasi" di PC baru, lalu klik 2x file: "restore_data.bat"
+   -> SELESAI! Seluruh data leting, akun perwira, kas, dan foto langsung aktif 100%!
+================================================================================
