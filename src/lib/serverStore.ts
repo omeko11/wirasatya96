@@ -375,8 +375,14 @@ export const serverStore = {
     if (mIdx >= 0) {
       if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
       if (updates.pangkat) globalStore.members[mIdx].pangkat = updates.pangkat;
-      if (updates.satker) globalStore.members[mIdx].satuanKerja = updates.satker;
+      if (updates.satker) {
+        globalStore.members[mIdx].satuanKerja = updates.satker;
+        globalStore.members[mIdx].satker = updates.satker;
+        globalStore.members[mIdx].jabatan = updates.satker;
+        globalStore.members[mIdx].jabatanTerakhir = updates.satker;
+      }
       if (updates.polda) globalStore.members[mIdx].polda = updates.polda;
+      if (updates.email) globalStore.members[mIdx].email = updates.email;
     }
 
     persistLocalStore(globalStore);
@@ -384,13 +390,15 @@ export const serverStore = {
   },
 
   deleteUser: (nrp: string) => {
-    if (nrp === '98010710') return false; // Protect primary superadmin
+    if (nrp === '98010710') {
+      return { success: false, message: 'Akun Superadmin utama tidak dapat dihapus.' };
+    }
     globalStore.users = globalStore.users.filter((u) => u.nrp !== nrp);
     globalStore.registrations = globalStore.registrations.filter((r) => r.nrp !== nrp);
     globalStore.members = globalStore.members.filter((m) => m.nrp !== nrp);
     globalStore.iuranList = globalStore.iuranList.filter((i) => i.nrp !== nrp);
     persistLocalStore(globalStore);
-    return true;
+    return { success: true, message: `Pengguna NRP ${nrp} berhasil dihapus.` };
   },
 
   getSession: () => globalStore.activeSession,

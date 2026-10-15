@@ -22,9 +22,11 @@ import {
   Heart,
   Scale,
   Building2,
-  Lock
+  Lock,
+  Phone,
+  ExternalLink
 } from 'lucide-react';
-import { AuthUser, UserRole } from '@/types';
+import { AuthUser, UserRole, AnggotaWiraSatya } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 
@@ -43,6 +45,9 @@ interface NavbarProps {
   setActiveTab: (tab: AppTab) => void;
   totalMembers: number;
   currentUser: AuthUser;
+  members?: AnggotaWiraSatya[];
+  onSelectMember?: (member: AnggotaWiraSatya) => void;
+  onOpenChat?: (member: AnggotaWiraSatya) => void;
   onOpenAuthModal?: () => void;
   onOpenVerificationModal?: () => void;
   pendingVerificationCount?: number;
@@ -57,6 +62,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   totalMembers,
   currentUser,
+  members = [],
+  onSelectMember,
+  onOpenChat,
   onOpenAuthModal,
   onOpenVerificationModal,
   pendingVerificationCount = 0,
@@ -67,8 +75,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isAppsMenuOpen, setIsAppsMenuOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const appsMenuRef = useRef<HTMLDivElement>(null);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
   const isLeadership = currentUser.role !== 'ANGGOTA';
 
   // Sanitize name for compact single-line display
@@ -85,6 +96,21 @@ export const Navbar: React.FC<NavbarProps> = ({
     ANGGOTA: 'bg-slate-100 text-slate-800 border-slate-300',
   };
 
+  const quickSearchResults = React.useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return [];
+    return members
+      .filter(
+        (m) =>
+          m.namaLengkap.toLowerCase().includes(q) ||
+          m.nrp.toLowerCase().includes(q) ||
+          (m.jabatan || '').toLowerCase().includes(q) ||
+          (m.satker || '').toLowerCase().includes(q) ||
+          (m.polda || '').toLowerCase().includes(q)
+      )
+      .slice(0, 8);
+  }, [members, searchText]);
+
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -93,6 +119,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       }
       if (appsMenuRef.current && !appsMenuRef.current.contains(e.target as Node)) {
         setIsAppsMenuOpen(false);
+      }
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -113,15 +142,112 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setActiveTab('direktori')}
               />
 
-              {/* Search Bar */}
-              <div className="relative flex-1 hidden sm:block max-w-xs">
+              {/* Search Bar with Live Quick-Action Results */}
+              <div className="relative flex-1 hidden sm:block max-w-xs" ref={searchBoxRef}>
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Cari leting, polda, satker..."
-                  onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
+                  value={searchText}
+                  onFocus={() => setIsSearchOpen(true)}
+                  placeholder="Cari perwira, NRP, polda, satker..."
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    setIsSearchOpen(true);
+                    if (onSearchChange) onSearchChange(e.target.value);
+                  }}
                   className="w-full pl-9 pr-3 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-transparent rounded-lg text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-red-900 transition-all"
                 />
+
+                {/* Live Search Dropdown with WA & Obrolan Cepat */}
+                {isSearchOpen && searchText.trim().length > 0 && (
+                  <div className="absolute left-0 top-10 z-50 w-[370px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
+                    <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-700">
+                        Hasil Pencarian Perwira ({quickSearchResults.length})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSearchOpen(false);
+                          setActiveTab('purnaTugas');
+                        }}
+                        className="text-red-800 font-bold hover:underline"
+                      >
+                        Lihat di Menu Jabatan &rarr;
+                      </button>
+                    </div>
+
+                    {quickSearchResults.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-500">
+                        Tidak ditemukan perwira dengan kata kunci &quot;{searchText}&quot;
+                      </div>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                        {quickSearchResults.map((m) => (
+                          <div
+                            key={m.nrp}
+                            className="p-2.5 hover:bg-slate-50 flex items-center justify-between gap-2 transition-colors"
+                          >
+                            <div
+                              onClick={() => {
+                                setIsSearchOpen(false);
+                                if (onSelectMember) onSelectMember(m);
+                              }}
+                              className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={getAvatarUrl(m.fotoUrl)}
+                                alt={m.namaLengkap}
+                                className="w-9 h-9 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-xs text-slate-900 truncate hover:text-red-800">
+                                  {m.namaLengkap}
+                                </div>
+                                <div className="text-[10px] text-slate-500 truncate">
+                                  {m.pangkat} &bull; NRP {m.nrp}
+                                </div>
+                                <div className="text-[10px] font-semibold text-red-900 truncate">
+                                  {m.jabatan || m.satker} ({m.polda})
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {onOpenChat && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsSearchOpen(false);
+                                    onOpenChat(m);
+                                  }}
+                                  className="px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-900 font-bold text-[10px] flex items-center gap-1 border border-red-200"
+                                  title="Obrolan Cepat"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  <span>Chat</span>
+                                </button>
+                              )}
+                              {m.noHp && (
+                                <a
+                                  href={`https://wa.me/${m.noHp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20Komandan%20${encodeURIComponent(m.namaLengkap)}%2C%20salam%20Wira%20Satya%2096`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1"
+                                  title="Hubungi via WhatsApp"
+                                >
+                                  <Phone className="w-3 h-3" />
+                                  <span>WA</span>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Mobile text title */}
@@ -344,7 +470,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         >
                           <span className="flex items-center gap-2">
                             <UserPlus className="w-3.5 h-3.5 text-red-800" />
-                            <span className="font-semibold text-red-950">Manajemen Pengguna & Verifikasi</span>
+                            <span className="font-semibold text-red-950">Manajemen User (Tambah/Edit/Verifikasi)</span>
                           </span>
                           {pendingVerificationCount > 0 ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-700 text-white animate-pulse">
@@ -353,20 +479,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                           ) : (
                             <span className="text-[10px] font-semibold text-red-800">Kelola</span>
                           )}
-                        </button>
-                      )}
-
-                      {/* Formulir Pendataan Anggota (Hanya Admin & Kesekretariatan) */}
-                      {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
-                        <button
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                            setActiveTab('form');
-                          }}
-                          className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-                        >
-                          <FileText className="w-3.5 h-3.5 text-slate-500" />
-                          <span>Tambah / Pendataan Anggota</span>
                         </button>
                       )}
                     </div>
@@ -384,7 +496,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                       >
                         <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Arus Kas</span>
+                        <span>Arus Kas &amp; Portofolio Aset</span>
                       </button>
                       <button
                         onClick={() => {
@@ -394,7 +506,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                       >
                         <Briefcase className="w-3.5 h-3.5 text-red-800" />
-                        <span>Riwayat Jabatan Leting</span>
+                        <span>Jabatan &amp; Sebaran 164 Perwira</span>
                       </button>
                     </div>
 
@@ -418,7 +530,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* 8. 9-Dots Launcher: Layanan & Aplikasi Leting (Matching Screenshot media_1792052265738_38a565d7.png) */}
+              {/* 8. 9-Dots Launcher: Layanan & Aplikasi Leting */}
               <div className="relative hidden sm:block" ref={appsMenuRef}>
                 <button
                   onClick={() => setIsAppsMenuOpen(!isAppsMenuOpen)}
@@ -444,9 +556,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }}
                           className="p-2.5 rounded-xl border border-slate-100 hover:border-red-800/40 hover:bg-red-50/50 text-left transition-all"
                         >
-                          <Building2 className="w-4 h-4 text-red-800 mb-1" />
-                          <div className="font-bold text-slate-800 text-[11px]">Buku Saku 38 Polda</div>
-                          <div className="text-[10px] text-slate-500">Direktori sebaran perwira</div>
+                          <Home className="w-4 h-4 text-red-800 mb-1" />
+                          <div className="font-bold text-slate-800 text-[11px]">Feed Beranda</div>
+                          <div className="text-[10px] text-slate-500">Kabar &amp; silaturahmi leting</div>
                         </button>
 
                         <button

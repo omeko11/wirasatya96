@@ -19,6 +19,8 @@ import {
   ChevronRight,
   CheckCircle2,
   ExternalLink,
+  MessageSquare,
+  Phone,
   X
 } from 'lucide-react';
 
@@ -27,6 +29,7 @@ interface LinkedInJobsPageProps {
   members: AnggotaWiraSatya[];
   onOpenFormWizard?: () => void;
   onSelectMember?: (member: AnggotaWiraSatya) => void;
+  onOpenChat?: (member: AnggotaWiraSatya) => void;
 }
 
 function inferFungsiPolri(jabatan: string, satker: string, polda: string): FungsiPolri {
@@ -57,8 +60,10 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   members,
   onOpenFormWizard,
   onSelectMember,
+  onOpenChat,
 }) => {
   const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
+  const [selectedPolda, setSelectedPolda] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
   const [customJabatanList, setCustomJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
     if (typeof window !== 'undefined') {
@@ -124,9 +129,10 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
         (item.dasarTR && item.dasarTR.toLowerCase().includes(q));
 
       const matchesFungsi = selectedFungsi === 'SEMUA' || item.fungsiPolri === selectedFungsi;
-      return matchesSearch && matchesFungsi;
+      const matchesPolda = selectedPolda === 'SEMUA' || item.polda.toUpperCase() === selectedPolda.toUpperCase();
+      return matchesSearch && matchesFungsi && matchesPolda;
     });
-  }, [jabatanList, searchQuery, selectedFungsi]);
+  }, [jabatanList, searchQuery, selectedFungsi, selectedPolda]);
 
   const handleAddJabatanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -310,22 +316,35 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
               <div>
                 <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Briefcase className="w-5 h-5 text-red-800" />
-                  Riwayat Jabatan & Penugasan Alumni Wira Satya 96
+                  Jabatan &amp; Sebaran Penugasan Perwira Wira Satya 96 ({filteredJabatan.length})
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Arsip tour of duty, jabatan strategis kewilayahan, dan promosi perwira leting Akpol 1996
+                  Sebaran jabatan aktif 164 Perwira di Mabes Polri &amp; 38 Polda beserta tombol WA &amp; Obrolan cepat
                 </p>
               </div>
 
-              <div className="relative min-w-[240px]">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Cari jabatan, satker, nama, TR..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800/30 focus:border-red-800"
-                />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <select
+                  value={selectedPolda}
+                  onChange={(e) => setSelectedPolda(e.target.value)}
+                  className="px-3 py-2 text-xs font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800/30"
+                >
+                  <option value="SEMUA">Semua Wilayah (Mabes &amp; 38 Polda)</option>
+                  {DAFTAR_38_POLDA.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+
+                <div className="relative min-w-[220px]">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama, NRP, jabatan, satker..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800/30 focus:border-red-800"
+                  />
+                </div>
               </div>
             </div>
 
@@ -454,20 +473,29 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                       </div>
                     )}
 
-                    {/* Footer / TR & Actions */}
+                    {/* Footer / TR & Quick Actions (Profil, Obrolan Cepat, WhatsApp) */}
                     <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:ml-[62px] flex-wrap gap-2">
                       <span className="text-[11px] text-slate-400 font-mono">
                         Dasar: <span className="text-slate-600 font-semibold">{item.dasarTR || '-'}</span>
                       </span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {matchedMember && (
                           <button
                             onClick={() => onSelectMember && onSelectMember(matchedMember)}
-                            className="px-3 py-1.5 rounded-lg border border-red-800/40 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs transition-colors flex items-center gap-1"
                           >
-                            <span>Lihat Profil Perwira</span>
+                            <span>Lihat Profil</span>
                             <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {matchedMember && onOpenChat && (
+                          <button
+                            onClick={() => onOpenChat(matchedMember)}
+                            className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>Obrolan Cepat</span>
                           </button>
                         )}
                         {matchedMember?.noHp && (
@@ -475,9 +503,10 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                             href={`https://wa.me/${matchedMember.noHp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20Komandan%20${encodeURIComponent(item.namaPerwira)}%2C%20salam%20Wira%20Satya%2096`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
                           >
-                            <span>Hubungi Rekan</span>
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         )}

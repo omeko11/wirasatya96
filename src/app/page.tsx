@@ -21,7 +21,7 @@ import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INIT
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem } from '@/types';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v8';
+const STORAGE_VERSION = 'ws96_akpol96_real_v9';
 
 export default function Home() {
   const router = useRouter();
@@ -440,6 +440,9 @@ export default function Home() {
         }}
         totalMembers={members.length}
         currentUser={currentUser}
+        members={members}
+        onSelectMember={(m) => setViewingMember(m)}
+        onOpenChat={handleOpenChatWithMember}
         onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
         pendingVerificationCount={pendingVerificationCount}
         onOpenRegisterModal={() => setIsRegisterModalOpen(true)}
@@ -471,7 +474,7 @@ export default function Home() {
                   onClick={() => setIsVerificationModalOpen(true)}
                   className="text-amber-300 hover:text-white font-bold transition-colors hidden sm:inline-flex items-center gap-1"
                 >
-                  + Manajemen Pengguna
+                  + Manajemen User
                 </button>
               </>
             )}
@@ -517,6 +520,7 @@ export default function Home() {
                 members={members}
                 onOpenFormWizard={() => handleStartEditMember(currentMemberProfile)}
                 onSelectMember={(m) => setViewingMember(m)}
+                onOpenChat={handleOpenChatWithMember}
               />
             )}
 
@@ -608,6 +612,12 @@ export default function Home() {
         onClose={() => setIsVerificationModalOpen(false)}
         adminName={currentUser.nama}
         onOpenFullWizard={handleAddNewMember}
+        onEditMemberByNrp={(nrp) => {
+          const found = members.find((m) => m.nrp === nrp);
+          if (found) {
+            handleStartEditMember(found);
+          }
+        }}
         onVerificationUpdate={() => {
           fetch('/api/auth/register')
             .then((res) => res.json())
