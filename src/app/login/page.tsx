@@ -210,7 +210,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: '00000001', mfaMethod: 'BIOMETRIC' }),
+        body: JSON.stringify({ identifier: '98010710', mfaMethod: 'BIOMETRIC' }),
       });
       const data = await res.json();
       if (data.success && data.user) {

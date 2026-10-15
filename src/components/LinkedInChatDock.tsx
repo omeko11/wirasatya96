@@ -24,9 +24,14 @@ interface ChatMessage {
 interface LinkedInChatDockProps {
   members: AnggotaWiraSatya[];
   currentUserName: string;
+  currentUserNrp?: string;
 }
 
-export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, currentUserName }) => {
+export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ 
+  members, 
+  currentUserName,
+  currentUserNrp = '98010710'
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeChatMember, setActiveChatMember] = useState<AnggotaWiraSatya | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,7 +94,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          senderNrp: '96081299',
+          senderNrp: currentUserNrp || '98010710',
           senderName: currentUserName,
           receiverNrp: activeChatMember.nrp,
           receiverName: activeChatMember.namaLengkap,

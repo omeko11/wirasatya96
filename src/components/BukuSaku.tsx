@@ -280,7 +280,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                {currentUser.nrp === '00000001' ? 'Briptu • Developer' : `${currentUser.pangkat} • Alumni Akpol 1996`}
+                {currentUser.nrp === '98010710' ? 'Briptu • Lead Developer' : `${currentUser.pangkat} • Alumni Akpol 1996`}
               </p>
 
               {/* Metrics (Exact screenshot match) */}

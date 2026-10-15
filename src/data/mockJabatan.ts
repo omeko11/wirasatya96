@@ -148,7 +148,7 @@ export const INITIAL_RIWAYAT_JABATAN: RiwayatJabatanLeting[] = [
   },
   {
     id: 'jab-010',
-    perwiraNrp: '00000001',
+    perwiraNrp: '98010710',
     namaPerwira: 'Eko Agung',
     pangkat: 'Briptu',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',

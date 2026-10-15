@@ -507,7 +507,11 @@ export default function Home() {
       />
 
       {/* LinkedIn Floating Messenger Dock at Bottom Right */}
-      <LinkedInChatDock members={members} currentUserName={currentUser.nama} />
+      <LinkedInChatDock 
+        members={members} 
+        currentUserName={currentUser.nama} 
+        currentUserNrp={currentUser.nrp} 
+      />
     </div>
   );
 }
