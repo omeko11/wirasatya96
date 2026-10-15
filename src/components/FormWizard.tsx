@@ -13,8 +13,19 @@ import {
   Plus, 
   Trash2, 
   Save, 
-  Lock 
+  Lock,
+  Building2
 } from 'lucide-react';
+import { 
+  TIPE_SATKER_LIST, 
+  SATKER_MABES_LIST, 
+  SUB_SATKER_BARESKRIM, 
+  SUB_SATKER_POLDA_LIST, 
+  SUB_SATKER_POLRES_LIST, 
+  SUB_SATKER_POLSEK_LIST, 
+  DAFTAR_38_POLDA, 
+  JENIS_ANGGOTA_LIST
+} from '@/data/polriStructure';
 
 interface FormWizardProps {
   onSave: (newMember: AnggotaWiraSatya) => void;
@@ -22,44 +33,6 @@ interface FormWizardProps {
   currentUser: AuthUser;
   existingMember?: AnggotaWiraSatya;
 }
-
-const DAFTAR_POLDA = [
-  'Mabes Polri',
-  'Lemdiklat Polri',
-  'Polda Metro Jaya',
-  'Polda Jawa Barat',
-  'Polda Jawa Tengah',
-  'Polda Jawa Timur',
-  'Polda Banten',
-  'Polda DIY',
-  'Polda Sumatera Utara',
-  'Polda Sumatera Barat',
-  'Polda Sumatera Selatan',
-  'Polda Riau',
-  'Polda Kepulauan Riau',
-  'Polda Jambi',
-  'Polda Bengkulu',
-  'Polda Lampung',
-  'Polda Kep. Bangka Belitung',
-  'Polda Kalimantan Barat',
-  'Polda Kalimantan Tengah',
-  'Polda Kalimantan Selatan',
-  'Polda Kalimantan Timur',
-  'Polda Kalimantan Utara',
-  'Polda Bali',
-  'Polda Nusa Tenggara Barat',
-  'Polda Nusa Tenggara Timur',
-  'Polda Sulawesi Utara',
-  'Polda Sulawesi Tengah',
-  'Polda Sulawesi Selatan',
-  'Polda Sulawesi Tenggara',
-  'Polda Gorontalo',
-  'Polda Sulawesi Barat',
-  'Polda Maluku',
-  'Polda Maluku Utara',
-  'Polda Papua',
-  'Polda Papua Barat',
-];
 
 const DAFTAR_PENYAKIT = [
   'HIPERTENSI (TEKANAN DARAH TINGGI)',
@@ -87,8 +60,14 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
   // Form State initialized from existing member or defaults
   const [formData, setFormData] = useState<Partial<AnggotaWiraSatya>>({
+    jenisAnggota: 'ANGGOTA POLRI',
+    tipeSatker: 'POLDA',
+    satkerMabes: 'DIVHUMAS POLRI',
+    subSatker: 'DITLANTAS',
+    namaPolres: '',
+    namaPolsek: '',
     pangkat: 'Kombes Pol',
-    polda: 'Polda Metro Jaya',
+    polda: 'POLDA METRO JAYA',
     jenisKelamin: 'LAKI-LAKI',
     statusTempatTinggal: 'MILIK PRIBADI',
     statusPerkawinan: 'MENIKAH',
@@ -126,7 +105,15 @@ export const FormWizard: React.FC<FormWizardProps> = ({
   // Prepopulate if existingMember is provided
   useEffect(() => {
     if (existingMember) {
-      setFormData(existingMember);
+      setFormData({
+        ...existingMember,
+        jenisAnggota: existingMember.jenisAnggota || 'ANGGOTA POLRI',
+        tipeSatker: existingMember.tipeSatker || (
+          existingMember.polda?.toUpperCase().includes('MABES')
+            ? 'MABES'
+            : 'POLDA'
+        ),
+      });
     } else if (currentUser.role === 'ANGGOTA') {
       // Pre-fill user NRP and name
       setFormData((prev) => ({
@@ -196,14 +183,36 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       return;
     }
 
+    const derivedPolda = 
+      formData.tipeSatker === 'MABES' 
+        ? (formData.satkerMabes === 'LEMDIKLAT POLRI' ? 'LEMDIKLAT POLRI' : 'MABES POLRI')
+        : (formData.polda || 'POLDA METRO JAYA');
+
+    const derivedSatker = 
+      formData.satuanKerja || (
+        formData.tipeSatker === 'MABES' 
+          ? `${formData.satkerMabes || 'MABES POLRI'}${formData.subSatker ? ' - ' + formData.subSatker : ''}`
+          : formData.tipeSatker === 'POLDA'
+          ? `${derivedPolda} - ${formData.subSatker || ''}`
+          : formData.tipeSatker === 'POLRES/TA/BES'
+          ? `${formData.namaPolres || 'Polres'} - ${formData.subSatker || ''}`
+          : `${formData.namaPolsek || 'Polsek'} - ${formData.subSatker || ''}`
+      );
+
     const memberToSave: AnggotaWiraSatya = {
       id: existingMember?.id || 'ws-' + (formData.nrp || Date.now()),
       nrp: formData.nrp || '',
       namaLengkap: formData.namaLengkap || '',
       pangkat: formData.pangkat || 'Kombes Pol',
       jabatanTerakhir: formData.jabatanTerakhir || '',
-      satuanKerja: formData.satuanKerja || '',
-      polda: formData.polda || 'Mabes Polri',
+      satuanKerja: derivedSatker,
+      tipeSatker: formData.tipeSatker || 'POLDA',
+      satkerMabes: formData.satkerMabes || '',
+      subSatker: formData.subSatker || '',
+      namaPolres: formData.namaPolres || '',
+      namaPolsek: formData.namaPolsek || '',
+      jenisAnggota: formData.jenisAnggota || 'ANGGOTA POLRI',
+      polda: derivedPolda,
       pendidikanTerakhir: formData.pendidikanTerakhir || '',
       nomorKtp: formData.nomorKtp || '',
       tempatLahir: formData.tempatLahir || 'Jakarta',
@@ -355,167 +364,458 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
         {/* STEP 1: IDENTITAS & KEDINASAN */}
         {currentStep === 1 && (
-          <div className="space-y-5">
-            <div className="border-b pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Shield className="w-5 h-5 text-polri-navy" />
-                Modul 1: Identitas Pribadi & Kedinasan
-              </h3>
-              <p className="text-xs text-slate-500">
-                Pembaruan satker mutasi, Polda penugasan, dan alamat domisili saat ini.
-              </p>
+          <div className="space-y-6">
+            <div className="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-polri-navy" />
+                  Modul 1: Identitas Pribadi & Struktur Kedinasan Polri
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Standardisasi data penempatan SIPP Polri (Mabes, Polda, Polres, Polsek) & identitas perwira.
+                </p>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded bg-polri-navy/10 text-polri-navy flex items-center gap-1 self-start sm:self-auto">
+                <Building2 className="w-3.5 h-3.5" /> Standar SIPP Polri
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* SEKSI 1: STRUKTUR KEDINASAN & SATKER */}
+            <div className="bg-slate-50/70 border border-slate-200 p-4 sm:p-5 rounded-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-polri-navy flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-polri-gold" />
+                  1. Satuan Kerja & Wilayah Penugasan
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">Dropdown Bertingkat</span>
+              </div>
+
+              {/* Jenis Anggota & Pangkat */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Jenis Personel <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {JENIS_ANGGOTA_LIST.map((ja) => (
+                      <button
+                        key={ja}
+                        type="button"
+                        onClick={() => handleInputChange('jenisAnggota', ja)}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold border text-center transition-all ${
+                          formData.jenisAnggota === ja
+                            ? 'bg-polri-navy text-polri-gold border-polri-navy shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {ja}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Pangkat Terakhir <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.pangkat || 'Kombes Pol'}
+                    onChange={(e) => handleInputChange('pangkat', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-semibold bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  >
+                    {DAFTAR_PANGKAT_POLRI.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Tipe Satker Tabs */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nama Lengkap (dengan Gelar) <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Tingkat / Tipe Satuan Kerja (Satker) <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Kombes Pol. Hadi Wicaksono, S.I.K., M.H."
-                  value={formData.namaLengkap || ''}
-                  onChange={(e) => handleInputChange('namaLengkap', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  NRP <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  readOnly={currentUser.role === 'ANGGOTA' && !!existingMember}
-                  placeholder="Contoh: 74080123"
-                  value={formData.nrp || ''}
-                  onChange={(e) => handleInputChange('nrp', e.target.value)}
-                  className={`w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none ${
-                    currentUser.role === 'ANGGOTA' && existingMember ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
-                  }`}
-                />
-                {currentUser.role === 'ANGGOTA' && existingMember && (
-                  <span className="text-[10px] text-slate-400 mt-1 block">
-                    NRP terkunci sebagai Primary Key akun Anda.
-                  </span>
-                )}
-                {currentUser.role === 'SUPERADMIN' && (
-                  <span className="text-[10px] text-amber-600 font-bold mt-1 block">
-                    ⚡ Hak Superadmin / Dev: Anda memiliki hak penuh mengubah nomor NRP.
-                  </span>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pangkat</label>
-                <select
-                  value={formData.pangkat || 'Kombes Pol'}
-                  onChange={(e) => handleInputChange('pangkat', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                >
-                  {DAFTAR_PANGKAT_POLRI.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {TIPE_SATKER_LIST.map((tipe) => (
+                    <button
+                      key={tipe}
+                      type="button"
+                      onClick={() => {
+                        handleInputChange('tipeSatker', tipe);
+                        if (tipe === 'MABES') {
+                          handleInputChange('polda', 'MABES POLRI');
+                          if (!formData.satkerMabes) handleInputChange('satkerMabes', 'DIVHUMAS POLRI');
+                        } else if (tipe === 'POLDA') {
+                          if (!formData.polda || formData.polda === 'MABES POLRI') handleInputChange('polda', 'POLDA METRO JAYA');
+                          if (!formData.subSatker) handleInputChange('subSatker', 'DITRESKRIMUM');
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center ${
+                        formData.tipeSatker === tipe
+                          ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {tipe}
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Wilayah Penempatan (Polda / Mabes)</label>
-                <select
-                  value={formData.polda || 'Mabes Polri'}
-                  onChange={(e) => handleInputChange('polda', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                >
-                  {DAFTAR_POLDA.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* CASCADING DROPDOWNS BASED ON TIPE SATKER */}
+              <div className="p-3.5 bg-white rounded-lg border border-slate-200/90 space-y-3.5">
+                {/* 1. KONDISI MABES */}
+                {formData.tipeSatker === 'MABES' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Satuan Kerja Mabes Polri <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.satkerMabes || 'DIVHUMAS POLRI'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleInputChange('satkerMabes', val);
+                          if (val === 'BARESKRIM POLRI') {
+                            handleInputChange('subSatker', 'DITTIPIDSIBER');
+                          } else {
+                            handleInputChange('subSatker', '');
+                          }
+                        }}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {SATKER_MABES_LIST.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Jabatan Terakhir</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Kabaganev / Dirreskrimsus / Dirlantas"
-                  value={formData.jabatanTerakhir || ''}
-                  onChange={(e) => handleInputChange('jabatanTerakhir', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Sub Satker / Biro / Bagian / Dit
+                      </label>
+                      {formData.satkerMabes === 'BARESKRIM POLRI' ? (
+                        <select
+                          value={formData.subSatker || 'DITTIPIDSIBER'}
+                          onChange={(e) => handleInputChange('subSatker', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                        >
+                          {SUB_SATKER_BARESKRIM.map((sub) => (
+                            <option key={sub} value={sub}>
+                              {sub}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Contoh: Ro PID / Biro Penmas / Bag Opsnal"
+                          value={formData.subSatker || ''}
+                          onChange={(e) => handleInputChange('subSatker', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Satuan / Unit Kerja</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Divhumas Polri / Ditlantas Polda Metro Jaya"
-                  value={formData.satuanKerja || ''}
-                  onChange={(e) => handleInputChange('satuanKerja', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
+                {/* 2. KONDISI POLDA */}
+                {formData.tipeSatker === 'POLDA' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Polda Penugasan (38 Wilayah) <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.polda || 'POLDA METRO JAYA'}
+                        onChange={(e) => handleInputChange('polda', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {DAFTAR_38_POLDA.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Nomor WhatsApp Aktif</label>
-                <input
-                  type="text"
-                  placeholder="0812-xxxx-xxxx"
-                  value={formData.noHp || ''}
-                  onChange={(e) => handleInputChange('noHp', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Sub Satker Polda <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.subSatker || 'DITRESKRIMUM'}
+                        onChange={(e) => handleInputChange('subSatker', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {SUB_SATKER_POLDA_LIST.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Kontak ADC / Ajudan (Opsional)</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Bripka Aryo - 08123456789"
-                  value={formData.kontakAdc || ''}
-                  onChange={(e) => handleInputChange('kontakAdc', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
+                {/* 3. KONDISI POLRES/TA/BES */}
+                {formData.tipeSatker === 'POLRES/TA/BES' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Polda Induk <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.polda || 'POLDA METRO JAYA'}
+                        onChange={(e) => handleInputChange('polda', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {DAFTAR_38_POLDA.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">Alamat Tempat Tinggal Saat Ini</label>
-                <textarea
-                  rows={2}
-                  placeholder="Alamat domisili saat ini..."
-                  value={formData.alamatTempatTinggal || ''}
-                  onChange={(e) => handleInputChange('alamatTempatTinggal', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Polres / Polresta <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Polrestabes Bandung / Polres Metro Jaksel"
+                        value={formData.namaPolres || ''}
+                        onChange={(e) => handleInputChange('namaPolres', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
+                      />
+                    </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Status Tempat Tinggal Saat Ini</label>
-                <select
-                  value={formData.statusTempatTinggal || 'MILIK PRIBADI'}
-                  onChange={(e) => handleInputChange('statusTempatTinggal', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                >
-                  <option value="MILIK PRIBADI">MILIK PRIBADI</option>
-                  <option value="RUMAH KELUARGA">RUMAH KELUARGA</option>
-                  <option value="DINAS">DINAS</option>
-                  <option value="SEWA/KONTRAK">SEWA/KONTRAK</option>
-                </select>
-              </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Sub Satker Polres <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.subSatker || 'SATRESKRIM'}
+                        onChange={(e) => handleInputChange('subSatker', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {SUB_SATKER_POLRES_LIST.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Pendidikan Terakhir</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: S2 Magister Hukum / Lemhannas"
-                  value={formData.pendidikanTerakhir || ''}
-                  onChange={(e) => handleInputChange('pendidikanTerakhir', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
+                {/* 4. KONDISI POLSEK */}
+                {formData.tipeSatker === 'POLSEK' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Polda Induk <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.polda || 'POLDA METRO JAYA'}
+                        onChange={(e) => handleInputChange('polda', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {DAFTAR_38_POLDA.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Polres Induk
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Polres Metro Jakpus"
+                        value={formData.namaPolres || ''}
+                        onChange={(e) => handleInputChange('namaPolres', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Polsek <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Polsek Metro Menteng"
+                        value={formData.namaPolsek || ''}
+                        onChange={(e) => handleInputChange('namaPolsek', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Unit Satker
+                      </label>
+                      <select
+                        value={formData.subSatker || 'UNIT RESKRIM'}
+                        onChange={(e) => handleInputChange('subSatker', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
+                      >
+                        {SUB_SATKER_POLSEK_LIST.map((sub) => (
+                          <option key={sub} value={sub}>
+                            {sub}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Jabatan Terakhir & Satuan Kerja Lengkap */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Jabatan Terakhir / Saat Ini <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Kabaganev / Dirreskrimsus / Dirlantas / Kapolres"
+                      value={formData.jabatanTerakhir || ''}
+                      onChange={(e) => handleInputChange('jabatanTerakhir', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Keterangan Satker SIPP Lengkap
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: Divhumas Polri / Ditlantas Polda Metro Jaya"
+                      value={formData.satuanKerja || ''}
+                      onChange={(e) => handleInputChange('satuanKerja', e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* SEKSI 2: IDENTITAS PRIBADI PERSONEL */}
+            <div className="bg-slate-50/70 border border-slate-200 p-4 sm:p-5 rounded-xl space-y-4">
+              <span className="text-xs font-black uppercase tracking-wider text-polri-navy flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-polri-gold" />
+                2. Identitas Pribadi & Kontak
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Lengkap (dengan Gelar) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Kombes Pol. Hadi Wicaksono, S.I.K., M.H."
+                    value={formData.namaLengkap || ''}
+                    onChange={(e) => handleInputChange('namaLengkap', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    NRP <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    readOnly={currentUser.role === 'ANGGOTA' && !!existingMember}
+                    placeholder="Contoh: 74080123"
+                    value={formData.nrp || ''}
+                    onChange={(e) => handleInputChange('nrp', e.target.value)}
+                    className={`w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none ${
+                      currentUser.role === 'ANGGOTA' && existingMember ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : ''
+                    }`}
+                  />
+                  {currentUser.role === 'ANGGOTA' && existingMember && (
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      NRP terkunci sebagai Primary Key akun Anda.
+                    </span>
+                  )}
+                  {currentUser.role === 'SUPERADMIN' && (
+                    <span className="text-[10px] text-amber-600 font-bold mt-1 block">
+                      ⚡ Hak Superadmin / Dev: Anda memiliki hak penuh mengubah nomor NRP.
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Nomor WhatsApp Aktif</label>
+                  <input
+                    type="text"
+                    placeholder="0812-xxxx-xxxx"
+                    value={formData.noHp || ''}
+                    onChange={(e) => handleInputChange('noHp', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Kontak ADC / Ajudan (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Bripka Aryo - 08123456789"
+                    value={formData.kontakAdc || ''}
+                    onChange={(e) => handleInputChange('kontakAdc', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Status Tempat Tinggal Saat Ini</label>
+                  <select
+                    value={formData.statusTempatTinggal || 'MILIK PRIBADI'}
+                    onChange={(e) => handleInputChange('statusTempatTinggal', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  >
+                    <option value="MILIK PRIBADI">MILIK PRIBADI</option>
+                    <option value="RUMAH KELUARGA">RUMAH KELUARGA</option>
+                    <option value="DINAS">DINAS</option>
+                    <option value="SEWA/KONTRAK">SEWA/KONTRAK</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Pendidikan Terakhir</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: S2 Magister Hukum / Lemhannas"
+                    value={formData.pendidikanTerakhir || ''}
+                    onChange={(e) => handleInputChange('pendidikanTerakhir', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Alamat Tempat Tinggal Saat Ini</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Alamat domisili saat ini..."
+                    value={formData.alamatTempatTinggal || ''}
+                    onChange={(e) => handleInputChange('alamatTempatTinggal', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>

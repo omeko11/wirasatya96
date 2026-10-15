@@ -39,6 +39,12 @@ export interface AnggotaWiraSatya {
   pangkat: string;
   jabatanTerakhir: string;
   satuanKerja: string;
+  tipeSatker?: 'MABES' | 'POLDA' | 'POLRES/TA/BES' | 'POLSEK';
+  satkerMabes?: string;
+  subSatker?: string;
+  namaPolres?: string;
+  namaPolsek?: string;
+  jenisAnggota?: 'ANGGOTA POLRI' | 'ASN POLRI';
   polda: string;
   pendidikanTerakhir: string;
   nomorKtp?: string;

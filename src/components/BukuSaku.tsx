@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AnggotaWiraSatya, DAFTAR_PANGKAT_POLRI } from '@/types';
+import { DAFTAR_38_POLDA } from '@/data/polriStructure';
 import { 
   Search, 
   MapPin, 
@@ -29,22 +30,33 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({ members, onAddNew }) => {
   const [selectedPangkat, setSelectedPangkat] = useState<string>('SEMUA');
   const [selectedMember, setSelectedMember] = useState<AnggotaWiraSatya | null>(null);
 
-  // Extract unique Poldas for filter
+  // Extract unique Poldas for filter including all 38 Polda
   const poldaList = useMemo(() => {
-    const list = Array.from(new Set(members.map((m) => m.polda))).filter(Boolean);
-    return ['SEMUA', ...list];
+    // Show SEMUA first, then existing Poldas, then other Poldas
+    const existingPoldas = Array.from(new Set(members.map((m) => m.polda))).filter(Boolean);
+    const remainingPoldas = DAFTAR_38_POLDA.filter((p) => !existingPoldas.some((ep) => ep.toUpperCase() === p.toUpperCase()));
+    return ['SEMUA', ...existingPoldas, ...remainingPoldas];
   }, [members]);
 
   // Filter members
   const filteredMembers = useMemo(() => {
     return members.filter((m) => {
+      const search = searchTerm.toLowerCase();
       const matchSearch =
-        m.namaLengkap.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.namaLengkap.toLowerCase().includes(search) ||
         m.nrp.includes(searchTerm) ||
-        m.jabatanTerakhir.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.satuanKerja.toLowerCase().includes(searchTerm.toLowerCase());
+        m.jabatanTerakhir.toLowerCase().includes(search) ||
+        m.satuanKerja.toLowerCase().includes(search) ||
+        (m.subSatker && m.subSatker.toLowerCase().includes(search)) ||
+        (m.satkerMabes && m.satkerMabes.toLowerCase().includes(search)) ||
+        (m.namaPolres && m.namaPolres.toLowerCase().includes(search)) ||
+        (m.namaPolsek && m.namaPolsek.toLowerCase().includes(search));
 
-      const matchPolda = selectedPolda === 'SEMUA' || m.polda === selectedPolda;
+      const matchPolda = 
+        selectedPolda === 'SEMUA' || 
+        m.polda.toUpperCase() === selectedPolda.toUpperCase() ||
+        (selectedPolda.toUpperCase().includes('MABES') && m.polda.toUpperCase().includes('MABES'));
+
       const matchPangkat = selectedPangkat === 'SEMUA' || m.pangkat === selectedPangkat;
 
       return matchSearch && matchPolda && matchPangkat;
@@ -205,6 +217,16 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({ members, onAddNew }) => {
                   <Briefcase className="w-3 h-3 text-blue-600" />
                   {member.satuanKerja}
                 </span>
+                {member.subSatker && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold">
+                    {member.subSatker}
+                  </span>
+                )}
+                {member.tipeSatker && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold">
+                    {member.tipeSatker}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -291,8 +313,42 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({ members, onAddNew }) => {
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <span className="text-slate-500 block">Wilayah Polda:</span>
-                    <span className="font-semibold text-slate-900">{selectedMember.polda}</span>
+                    <span className="text-slate-500 block">Jenis Personel & Pangkat:</span>
+                    <span className="font-semibold text-slate-900">{selectedMember.jenisAnggota || 'ANGGOTA POLRI'} — {selectedMember.pangkat}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Tingkat Satuan Kerja:</span>
+                    <span className="font-semibold text-slate-900">{selectedMember.tipeSatker || 'POLDA'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Wilayah / Satker Induk:</span>
+                    <span className="font-semibold text-slate-900">
+                      {selectedMember.tipeSatker === 'MABES' ? (selectedMember.satkerMabes || selectedMember.polda) : selectedMember.polda}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Sub Satker / Direktorat / Bagian:</span>
+                    <span className="font-semibold text-blue-700">{selectedMember.subSatker || '-'}</span>
+                  </div>
+                  {selectedMember.namaPolres && (
+                    <div>
+                      <span className="text-slate-500 block">Polres / Polrestabes:</span>
+                      <span className="font-semibold text-slate-900">{selectedMember.namaPolres}</span>
+                    </div>
+                  )}
+                  {selectedMember.namaPolsek && (
+                    <div>
+                      <span className="text-slate-500 block">Polsek:</span>
+                      <span className="font-semibold text-slate-900">{selectedMember.namaPolsek}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-slate-500 block">Jabatan Terakhir / Saat Ini:</span>
+                    <span className="font-semibold text-slate-900">{selectedMember.jabatanTerakhir}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Satuan Kerja SIPP:</span>
+                    <span className="font-semibold text-slate-900">{selectedMember.satuanKerja}</span>
                   </div>
                   <div>
                     <span className="text-slate-500 block">Pendidikan Terakhir:</span>
@@ -305,8 +361,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({ members, onAddNew }) => {
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-500 block">Nomor Kontak Personel:</span>
-                    <span className="font-semibold text-slate-900">{selectedMember.noHp}</span>
+                    <span className="text-slate-500 block">Nomor Kontak WhatsApp:</span>
+                    <span className="font-semibold text-emerald-700">{selectedMember.noHp}</span>
                   </div>
                   <div className="sm:col-span-2">
                     <span className="text-slate-500 block">Alamat Domisili Saat Ini:</span>

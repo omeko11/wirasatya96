@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AnggotaWiraSatya, AuthUser } from '@/types';
+import { DAFTAR_38_POLDA } from '@/data/polriStructure';
 import { 
   BarChart3, 
   Heart, 
@@ -13,7 +14,8 @@ import {
   ShieldAlert,
   MapPin,
   GraduationCap,
-  Wallet
+  Wallet,
+  AlertCircle
 } from 'lucide-react';
 
 interface ExecutiveDashboardProps {
@@ -47,10 +49,16 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
   const regionalStats = React.useMemo(() => {
     const counts: Record<string, number> = {};
     members.forEach((m) => {
-      const p = m.polda || 'Lainnya';
+      const p = m.polda || 'MABES POLRI';
       counts[p] = (counts[p] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [members]);
+
+  // Unreached Poldas for active mapping (Kesekretariatan)
+  const unreachedPoldas = React.useMemo(() => {
+    const coveredSet = new Set(members.map((m) => (m.polda || '').toUpperCase()));
+    return DAFTAR_38_POLDA.filter((p) => !coveredSet.has(p.toUpperCase()));
   }, [members]);
 
   // Financial & Education stats (for Bendahara)
@@ -439,14 +447,41 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
           <div className="p-5 sm:p-6 space-y-5">
             <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs">
               <span className="font-bold block mb-1">🗺️ Pemetaan Keanggotaan Wilayah (Kesekretariatan):</span>
-              Memudahkan pengurus mendeteksi keberadaan rekan perwira di wilayah yang selama ini sulit dijangkau (seperti Papua, Maluku, Kaltara, NTT) serta jajaran Mabes dan Lemdiklat.
+              Memudahkan pengurus mendeteksi keberadaan rekan perwira di wilayah yang selama ini sulit dijangkau (seperti DOB Papua, Maluku, Kaltara, NTT) serta jajaran Mabes dan Lemdiklat.
+            </div>
+
+            {/* Coverage Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                <span className="text-[11px] font-semibold text-slate-500 block">Cakupan Wilayah Terdata</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-blue-900">{regionalStats.length}</span>
+                  <span className="text-xs text-slate-500 font-semibold">/ {DAFTAR_38_POLDA.length} Wilayah Polri</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+                <span className="text-[11px] font-semibold text-emerald-700 block">Total Perwira Terpetakan</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-emerald-900">{members.length}</span>
+                  <span className="text-xs text-emerald-700 font-semibold">Perwira Leting 96</span>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl">
+                <span className="text-[11px] font-semibold text-amber-800 block">Wilayah Perlu Penjangkauan</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-amber-900">{unreachedPoldas.length}</span>
+                  <span className="text-xs text-amber-700 font-semibold">Polda Belum Ada Data</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Regional Summary Table */}
               <div className="rounded-xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-100 px-4 py-2.5 border-b font-bold text-xs text-slate-800 flex justify-between">
-                  <span>Wilayah Penugasan</span>
+                  <span>Wilayah Penugasan Terdata</span>
                   <span>Jumlah Personel</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
@@ -473,6 +508,9 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                       <div>
                         <span className="font-bold text-slate-900 block">{m.namaLengkap}</span>
                         <span className="text-slate-500 text-[11px]">{m.polda} • {m.satuanKerja}</span>
+                        {m.subSatker && (
+                          <span className="text-[10px] text-amber-800 font-semibold block">{m.subSatker}</span>
+                        )}
                       </div>
                       <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                         Aktif
@@ -482,6 +520,26 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                 </div>
               </div>
             </div>
+
+            {/* Unreached Regions Notice for Secretariat */}
+            {unreachedPoldas.length > 0 && (
+              <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2">
+                <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                  <AlertCircle className="w-4 h-4 text-amber-700" />
+                  <span>Target Penjangkauan & Pendataan Wilayah Belum Terisi ({unreachedPoldas.length} Polda):</span>
+                </div>
+                <p className="text-[11px] text-slate-600">
+                  Rekan perwira di wilayah berikut belum melakukan registrasi mandiri. Kesekretariatan dapat berkoordinasi dengan perwakilan leting setempat:
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {unreachedPoldas.map((p) => (
+                    <span key={p} className="px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 text-[10px] font-medium">
+                      {p}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
