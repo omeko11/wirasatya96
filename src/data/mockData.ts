@@ -1,4 +1,5 @@
 import { AnggotaWiraSatya } from '@/types';
+import { AKPOL_1996_MEMBERS } from './akpol1996Alumni';
 
 export const INITIAL_MEMBERS: AnggotaWiraSatya[] = [
   {
@@ -230,4 +231,5 @@ export const INITIAL_MEMBERS: AnggotaWiraSatya[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
+  ...AKPOL_1996_MEMBERS,
 ];

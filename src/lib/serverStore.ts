@@ -12,6 +12,7 @@ import {
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY } from '@/data/mockFinance';
+import { AKPOL_1996_REGISTRATIONS } from '@/data/akpol1996Alumni';
 
 // Global server memory to simulate persistent database across API calls
 interface GlobalStore {
@@ -116,6 +117,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     status: 'PENDING_VERIFIKASI',
     createdAt: new Date().toISOString(),
   },
+  ...AKPOL_1996_REGISTRATIONS,
 ];
 
 const globalStore: GlobalStore = {

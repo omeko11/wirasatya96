@@ -1,4 +1,5 @@
 import { AuthUser, UserRole } from '@/types';
+import { AKPOL_1996_USERS } from './akpol1996Alumni';
 
 export const PRESET_USERS: AuthUser[] = [
   {
@@ -76,6 +77,7 @@ export const PRESET_USERS: AuthUser[] = [
     polda: 'POLDA METRO JAYA',
     status: 'DISETUJUI_BELUM_PASSWORD',
   },
+  ...AKPOL_1996_USERS,
 ];
 
 export const ROLE_PERMISSIONS: Record<

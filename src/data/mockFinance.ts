@@ -1,4 +1,5 @@
 import { KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
+import { AKPOL_1996_IURAN } from './akpol1996Alumni';
 
 export const INITIAL_FINANCE_SUMMARY: FinanceSummary = {
   saldoUtama: 0,
@@ -73,4 +74,5 @@ export const INITIAL_IURAN_LIST: IuranAnggota[] = [
     totalTerbayar: 0,
     status: 'BELUM_BAYAR',
   },
+  ...AKPOL_1996_IURAN,
 ];

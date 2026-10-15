@@ -21,7 +21,7 @@ import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } fro
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_role_test_v6';
+const STORAGE_VERSION = 'ws96_akpol96_real_v7';
 
 export default function Home() {
   const router = useRouter();
