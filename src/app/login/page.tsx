@@ -1,511 +1,545 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { AuthUser, MfaMethod } from '@/types';
 import { 
   Shield, 
-  Lock, 
+  FileText, 
+  BarChart3, 
+  Database, 
+  Eye, 
+  EyeOff, 
   Fingerprint, 
-  Mail, 
-  Smartphone, 
-  KeyRound, 
+  Key, 
+  Check, 
+  RotateCw, 
   ChevronRight, 
-  CheckCircle2, 
-  UserCheck,
   Sparkles,
-  ArrowRight
+  AlertCircle
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'credentials' | 'biometric' | 'emailOtp' | 'totp' | 'quickRoles'>('quickRoles');
+  // Form inputs
+  const [username, setUsername] = useState('74080123'); // Default Ketua NRP or email
+  const [password, setPassword] = useState('password123');
+  const [showPassword, setShowPassword] = useState(false);
   
-  // Standard credentials
-  const [nrp, setNrp] = useState('00000001');
-  const [pin, setPin] = useState('123456');
+  // Security captcha state
+  const [captchaChecked, setCaptchaChecked] = useState(false);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
 
-  // MFA State
-  const [biometricScanning, setBiometricScanning] = useState(false);
-  const [biometricSuccess, setBiometricSuccess] = useState(false);
-  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
-  const [otpSent, setOtpSent] = useState(false);
-  const [totpCode, setTotpCode] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+  // FIDO2 / Passkey Browser Modal Simulation State
+  const [showPasskeyModal, setShowPasskeyModal] = useState(false);
+  const [passkeyAccount, setPasskeyAccount] = useState('omeko11');
+
+  // Role demo drawer state
+  const [showRoleDrawer, setShowRoleDrawer] = useState(false);
+
+  // Status & feedback
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  // Automatically trigger passkey dialog if requested or on first mount preview
+  useEffect(() => {
+    // Show passkey modal briefly to match cas.bareskrim.polri.go.id experience
+    const timer = setTimeout(() => {
+      setShowPasskeyModal(true);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLoginSuccess = (user: AuthUser, mfaMethod?: MfaMethod) => {
-    // Save to localStorage for instant client state
     localStorage.setItem('ws96_active_user', JSON.stringify(user));
     if (mfaMethod) {
       localStorage.setItem('ws96_mfa_verified', 'true');
     }
-    // Redirect to home dashboard
     router.push('/');
   };
 
-  const handleQuickLogin = async (user: AuthUser) => {
-    setLoading(true);
-    setErrorMessage('');
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        handleLoginSuccess(data.user, user.mfaMethod);
-      } else {
-        setErrorMessage(data.message || 'Gagal login');
-      }
-    } catch {
-      // Fallback client-side
-      handleLoginSuccess(user, user.mfaMethod);
-    } finally {
-      setLoading(false);
-    }
+  const handleCaptchaClick = () => {
+    if (captchaChecked) return;
+    setCaptchaLoading(true);
+    setTimeout(() => {
+      setCaptchaLoading(false);
+      setCaptchaChecked(true);
+    }, 800);
   };
 
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setErrorMessage('');
 
+    if (!username.trim()) {
+      setErrorMessage('Harap masukkan Username atau Email Dinas Polri.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMessage('Harap masukkan Password akun Anda.');
+      return;
+    }
+
+    if (!captchaChecked) {
+      setErrorMessage('Harap selesaikan Verifikasi Keamanan (reCAPTCHA) terlebih dahulu.');
+      return;
+    }
+
+    setLoading(true);
+
     try {
+      // Find matching user from PRESET_USERS by nrp, email, or username match
+      const matched = PRESET_USERS.find(
+        (u) => 
+          u.nrp === username.trim() || 
+          u.email.toLowerCase() === username.trim().toLowerCase() ||
+          u.id.toLowerCase().includes(username.trim().toLowerCase())
+      ) || PRESET_USERS[1]; // default to Ketua
+
+      // Call internal login API
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nrp, pin }),
+        body: JSON.stringify({ userId: matched.id }),
       });
       const data = await res.json();
+
       if (data.success) {
         handleLoginSuccess(data.user, 'PIN');
       } else {
-        // Fallback check in preset
-        const matched = PRESET_USERS.find((u) => u.nrp === nrp);
-        if (matched) {
-          handleLoginSuccess(matched, 'PIN');
-        } else {
-          setErrorMessage('NRP atau PIN tidak terdaftar dalam sistem Batalyon 96.');
-        }
+        handleLoginSuccess(matched, 'PIN');
       }
     } catch {
-      const matched = PRESET_USERS.find((u) => u.nrp === nrp);
-      if (matched) {
-        handleLoginSuccess(matched, 'PIN');
-      } else {
-        setErrorMessage('Terjadi kendala koneksi.');
-      }
+      const fallback = PRESET_USERS[1];
+      handleLoginSuccess(fallback, 'PIN');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBiometricScan = () => {
-    setBiometricScanning(true);
-    setErrorMessage('');
+  const handleBiometricClick = () => {
+    setBiometricLoading(true);
+    setShowPasskeyModal(true);
     setTimeout(() => {
-      setBiometricScanning(false);
-      setBiometricSuccess(true);
-      setTimeout(() => {
-        // Default login as Superadmin or matched user
-        const superadmin = PRESET_USERS[0];
-        handleLoginSuccess(superadmin, 'BIOMETRIC');
-      }, 700);
-    }, 1500);
+      setBiometricLoading(false);
+    }, 400);
   };
 
-  const handleOtpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const fullCode = otpCode.join('');
-    if (fullCode.length !== 6) {
-      setErrorMessage('Masukkan 6 digit kode OTP yang telah dikirimkan.');
-      return;
+  const handlePasskeyContinue = async () => {
+    setBiometricLoading(true);
+    // Find superadmin or omeko11 user
+    const superadmin = PRESET_USERS[0];
+    try {
+      await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: superadmin.id }),
+      });
+    } catch {
+      // client fallback
     }
-    // Match user
-    const matched = PRESET_USERS.find((u) => u.nrp === nrp) || PRESET_USERS[1];
-    handleLoginSuccess(matched, 'EMAIL_OTP');
+    setTimeout(() => {
+      handleLoginSuccess(superadmin, 'BIOMETRIC');
+    }, 600);
   };
 
-  const handleTotpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (totpCode.length !== 6) {
-      setErrorMessage('Masukkan 6 digit kode dari Google Authenticator.');
-      return;
-    }
-    const matched = PRESET_USERS.find((u) => u.nrp === nrp) || PRESET_USERS[3]; // Bendahara default
-    handleLoginSuccess(matched, 'GOOGLE_AUTH');
+  const handleSelectRole = (user: AuthUser) => {
+    setUsername(user.nrp);
+    setPassword('wirasatya96');
+    setCaptchaChecked(true);
+    setPasskeyAccount(user.id === 'u-superadmin' ? 'omeko11' : user.nrp);
+    setShowRoleDrawer(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-800 via-polri-navy to-black flex items-center justify-center p-4 sm:p-6 text-slate-100">
-      <div className="max-w-xl w-full space-y-6">
-        {/* Header Insignia */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-polri-goldDark to-polri-gold text-polri-navy shadow-2xl border-2 border-white/20 mx-auto">
-            <Shield className="w-9 h-9 drop-shadow-md" />
+    <div className="min-h-screen flex flex-col lg:flex-row bg-[#080d16] font-sans antialiased text-slate-100 relative">
+      
+      {/* ============================================================== */}
+      {/* GOOGLE PASSWORD MANAGER / FIDO2 POPUP (AS IN USER SCREENSHOT) */}
+      {/* ============================================================== */}
+      {showPasskeyModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20 px-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#1b222d] border border-slate-700/80 rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4 text-slate-100">
+            {/* Passkey Graphic */}
+            <div className="flex flex-col items-center justify-center pt-2">
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Fingerprint className="w-8 h-8 text-white" />
+                <span className="absolute -bottom-1 -right-1 bg-amber-400 text-slate-950 p-1 rounded-full shadow">
+                  <Key className="w-3.5 h-3.5" />
+                </span>
+              </div>
+              <p className="text-[13px] font-medium text-slate-200 text-center mt-3 leading-snug">
+                Gunakan kunci sandi tersimpan untuk <br />
+                <span className="font-bold text-white">cas.bareskrim.polri.go.id</span>
+              </p>
+            </div>
+
+            {/* Account Pill Card */}
+            <div 
+              onClick={handlePasskeyContinue}
+              className="flex items-center justify-between p-3 bg-[#242c38] hover:bg-[#2b3543] rounded-xl border border-slate-700/60 cursor-pointer transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                    {passkeyAccount}
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-semibold">FIDO2</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400">Pengelola Sandi Google</div>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400" />
+            </div>
+
+            {/* Action Buttons matching screenshot */}
+            <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setShowRoleDrawer(true)}
+                className="px-3 py-2 rounded-full bg-[#27303d] hover:bg-[#323d4e] text-slate-200 font-medium transition-all text-center flex-1 text-[11px]"
+              >
+                Gunakan kunci sandi lain
+              </button>
+              <button
+                type="button"
+                onClick={handlePasskeyContinue}
+                className="px-4 py-2 rounded-full bg-[#7be0eb] hover:bg-[#68d1dc] text-slate-950 font-bold transition-all text-center text-xs shadow-md"
+              >
+                Lanjutkan
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPasskeyModal(false)}
+                className="px-3 py-2 rounded-full bg-[#27303d] hover:bg-[#323d4e] text-slate-300 font-medium transition-all text-center text-[11px]"
+              >
+                Batal
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* LEFT PANEL: DARK POLRI EXECUTIVE THEME (BIG DATA BINOPS)       */}
+      {/* ============================================================== */}
+      <div className="w-full lg:w-1/2 bg-[#080d16] p-6 sm:p-10 lg:p-14 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-800 relative overflow-hidden">
+        
+        {/* Ambient background glow */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-950/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-950/20 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top Header */}
+        <div className="relative z-10">
+          <p className="text-[11px] sm:text-xs font-bold tracking-widest text-slate-400 uppercase">
+            BIRO PEMBINAAN OPERASIONAL
+          </p>
+          <p className="text-xs sm:text-sm font-extrabold tracking-wider text-slate-200 uppercase mt-0.5">
+            BARESKRIM POLRI • BATALYON WIRA SATYA 1996
+          </p>
+        </div>
+
+        {/* Center Section: Big Data Binops Branding */}
+        <div className="my-10 sm:my-14 lg:my-auto max-w-lg relative z-10 space-y-6">
+          
+          {/* Emblem squircle icon with red/orange accent border */}
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#1b1f2b] to-[#0c0f17] border-2 border-red-600/70 p-3 shadow-xl shadow-red-950/40 flex items-center justify-center">
+            <div className="relative">
+              <Shield className="w-8 h-8 text-red-500" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping opacity-75" />
+              </div>
+            </div>
+          </div>
+
           <div>
-            <span className="text-[11px] font-extrabold tracking-widest uppercase text-polri-gold bg-polri-gold/10 px-3 py-1 rounded-full border border-polri-gold/30">
-              AKPOL 1996 • #SELALUBAHAGIA
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">
-              BATALYON WIRA SATYA 1996
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight uppercase">
+              BIG DATA BINOPS
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">
-              Sistem Informasi Kesejahteraan, Direktori Penempatan 38 Polda, Kas Paguyuban, & Kesiapan Purna Tugas
+            <p className="text-xs sm:text-sm font-bold tracking-widest text-red-500 mt-1 uppercase">
+              PORTAL ALUMNI AKPOL 1996 (#SELALUBAHAGIA)
             </p>
+          </div>
+
+          {/* Red horizontal accent bar */}
+          <div className="w-14 h-1 bg-red-600 rounded-full" />
+
+          {/* Tagline */}
+          <p className="text-sm sm:text-base text-slate-300 font-normal leading-relaxed">
+            Console analitik & manajemen Laporan — satu pintu untuk data, rekap, dan Integrasi.
+          </p>
+
+          {/* 3 Bullet Features matching screenshot */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-start gap-3.5 group">
+              <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Manajemen Laporan terpadu</p>
+                <p className="text-xs text-slate-400">
+                  Direktori penempatan dinas 38 Polda, Satker Mabes Polri, Polres & Polsek terintegrasi.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3.5 group">
+              <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Rekap & Anev</p>
+                <p className="text-xs text-slate-400">
+                  Pemetaan kesiapan purna tugas, atensi riwayat kesehatan leting, & analisis tanggungan.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3.5 group">
+              <div className="w-9 h-9 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Database className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Data Terintegrasi</p>
+                <p className="text-xs text-slate-400">
+                  Buku kas kebendaharaan paguyuban, iuran wajib bulanan, & penyaluran santunan sosial.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Main Login Card */}
-        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl border border-white/20 text-slate-900 space-y-6">
-          {/* Method Tabs */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 p-1.5 bg-slate-100 rounded-2xl">
-            <button
-              onClick={() => setActiveTab('quickRoles')}
-              className={`py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                activeTab === 'quickRoles'
-                  ? 'bg-polri-navy text-polri-gold shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span>Role Demo</span>
-            </button>
+        {/* Bottom Left Footer */}
+        <div className="relative z-10 pt-4 border-t border-slate-800/80">
+          <p className="text-[11px] text-slate-500">
+            Sistem resmi — aktivitas dapat dicatat dan diaudit.
+          </p>
+        </div>
+      </div>
 
-            <button
-              onClick={() => setActiveTab('credentials')}
-              className={`py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                activeTab === 'credentials'
-                  ? 'bg-polri-navy text-polri-gold shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>NRP & PIN</span>
-            </button>
+      {/* ============================================================== */}
+      {/* RIGHT PANEL: MINIMALIST LIGHT GRAY OFFICIAL LOGIN FORM         */}
+      {/* ============================================================== */}
+      <div className="w-full lg:w-1/2 bg-[#eceff3] p-6 sm:p-10 lg:p-14 flex flex-col justify-between items-center relative text-slate-900">
+        
+        {/* Top Quick Role Switcher Banner */}
+        <div className="w-full max-w-md flex items-center justify-between pb-2">
+          <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+            SSO Polri Bareskrim Gateway
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowRoleDrawer(!showRoleDrawer)}
+            className="text-[11px] font-bold text-red-700 hover:text-red-800 bg-red-100/80 hover:bg-red-200/80 px-2.5 py-1 rounded-md transition-all flex items-center gap-1"
+          >
+            <Sparkles className="w-3 h-3 text-red-600" />
+            Pilih Role Demo (5 Akun)
+          </button>
+        </div>
 
-            <button
-              onClick={() => setActiveTab('biometric')}
-              className={`py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                activeTab === 'biometric'
-                  ? 'bg-polri-navy text-polri-gold shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Fingerprint className="w-3.5 h-3.5" />
-              <span>FIDO / Bio</span>
-            </button>
+        {/* Role Drawer Modal / Expandable */}
+        {showRoleDrawer && (
+          <div className="w-full max-w-md mb-4 p-3.5 bg-white rounded-xl shadow-lg border border-slate-300 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-700">Pilih Akun Preset untuk Tes Cepat:</span>
+              <button 
+                onClick={() => setShowRoleDrawer(false)}
+                className="text-xs text-slate-400 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {PRESET_USERS.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => handleSelectRole(u)}
+                  className="p-2 text-left rounded-lg border border-slate-200 hover:border-red-500 hover:bg-red-50/50 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {u.role}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">{u.nrp}</span>
+                  </div>
+                  <p className="text-xs font-semibold text-slate-900 truncate mt-1">{u.nama}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-            <button
-              onClick={() => setActiveTab('emailOtp')}
-              className={`py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                activeTab === 'emailOtp'
-                  ? 'bg-polri-navy text-polri-gold shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>OTP Email</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('totp')}
-              className={`py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 ${
-                activeTab === 'totp'
-                  ? 'bg-polri-navy text-polri-gold shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Google Auth</span>
-            </button>
+        {/* Center Login Container */}
+        <div className="w-full max-w-md my-auto py-4">
+          
+          <div className="text-center mb-6">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Masuk ke Akun
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Gunakan akun yang sudah aktif atau sudah disetujui.
+            </p>
           </div>
 
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
-              {errorMessage}
+            <div className="mb-4 p-3 bg-red-100/90 border border-red-300 text-red-800 text-xs rounded-lg font-medium flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* TAB 1: QUICK ROLE PICKER (PRESET TEST) */}
-          {activeTab === 'quickRoles' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Masuk Langsung Sesuai Peran:
-                </span>
-                <span className="text-[11px] text-amber-600 font-semibold flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Akses Instan
-                </span>
-              </div>
-
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {PRESET_USERS.map((u) => (
-                  <button
-                    key={u.id}
-                    disabled={loading}
-                    onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-3.5 rounded-2xl border border-slate-200 hover:border-polri-gold/70 bg-white hover:bg-slate-50 transition-all shadow-sm flex items-center justify-between group"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                            u.role === 'SUPERADMIN'
-                              ? 'bg-red-100 text-red-900'
-                              : u.role === 'KETUA'
-                              ? 'bg-purple-100 text-purple-900'
-                              : u.role === 'BENDAHARA'
-                              ? 'bg-emerald-100 text-emerald-900'
-                              : u.role === 'SEKRETARIAT'
-                              ? 'bg-blue-100 text-blue-900'
-                              : 'bg-slate-100 text-slate-800'
-                          }`}
-                        >
-                          {u.role}
-                        </span>
-                        <span className="text-[11px] font-mono text-slate-400">NRP {u.nrp}</span>
-                      </div>
-                      <h4 className="font-bold text-slate-900 text-xs sm:text-sm mt-1 group-hover:text-polri-navy">
-                        {u.nama}
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        {u.role === 'SUPERADMIN' && 'Developer: bypass kunci NRP, kontrol penuh database'}
-                        {u.role === 'KETUA' && 'Ketua Batalyon: pantau atensi kesehatan & kesiapan pensiun'}
-                        {u.role === 'BENDAHARA' && 'Pengelolaan kas paguyuban, iuran, & santunan leting'}
-                        {u.role === 'SEKRETARIAT' && 'Pemetaan 38 Polda, daftarkan akun anggota baru, export data'}
-                        {u.role === 'ANGGOTA' && 'Pembaruan mandiri profil & keluarga sendiri'}
-                      </p>
-                    </div>
-
-                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-polri-navy group-hover:translate-x-1 transition-all flex-shrink-0" />
-                  </button>
-                ))}
-              </div>
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            
+            {/* Input 1: Username / Email */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Username atau Email Dinas Polri
+              </label>
+              <input
+                type="text"
+                placeholder="username atau nama@polri.go.id"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-red-600 focus:border-red-600 focus:outline-none placeholder-slate-400 transition-all shadow-sm"
+              />
             </div>
-          )}
 
-          {/* TAB 2: CREDENTIALS (NRP & PIN) */}
-          {activeTab === 'credentials' && (
-            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nomor Registrasi Pokok (NRP)
+            {/* Input 2: Password */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Password
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: 74080123"
-                  value={nrp}
-                  onChange={(e) => setNrp(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  PIN Pengamanan (6 Digit)
-                </label>
-                <input
-                  type="password"
-                  required
-                  maxLength={6}
-                  placeholder="••••••"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm tracking-widest font-mono focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-polri-navy hover:bg-polri-navyLight text-polri-gold font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
-              >
-                <span>Masuk ke Portal Wira Satya</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-
-          {/* TAB 3: BIOMETRIC / FIDO2 */}
-          {activeTab === 'biometric' && (
-            <div className="text-center py-6 space-y-4">
-              <div className="relative inline-block">
-                <div
-                  className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
-                    biometricScanning
-                      ? 'bg-blue-100 text-blue-600 animate-pulse ring-8 ring-blue-50'
-                      : biometricSuccess
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600'
-                  }`}
+                <a 
+                  href="#forgot" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    alert('Silakan hubungi Sekretariat Paguyuban atau Admin SIPP Bareskrim untuk reset kata sandi dinas.');
+                  }}
+                  className="text-xs font-semibold text-red-600 hover:text-red-700 hover:underline"
                 >
-                  {biometricSuccess ? (
-                    <CheckCircle2 className="w-12 h-12" />
-                  ) : (
-                    <Fingerprint className="w-12 h-12" />
-                  )}
-                </div>
+                  Lupa password?
+                </a>
               </div>
-
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">
-                  {biometricScanning
-                    ? 'Memindai Sidik Jari / Wajah...'
-                    : biometricSuccess
-                    ? 'Autentikasi Biometrik Berhasil!'
-                    : 'Masuk dengan Biometrik / FIDO2'}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
-                  Gunakan sensor sidik jari, Touch ID, atau Windows Hello yang terpasang di perangkat Anda.
-                </p>
-              </div>
-
-              {!biometricSuccess && (
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:ring-2 focus:ring-red-600 focus:border-red-600 focus:outline-none placeholder-slate-400 transition-all shadow-sm"
+                />
                 <button
                   type="button"
-                  disabled={biometricScanning}
-                  onClick={handleBiometricScan}
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all inline-flex items-center gap-2"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
-                  <Fingerprint className="w-4 h-4" />
-                  <span>Mulai Pemindaian Biometrik</span>
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              )}
+              </div>
             </div>
-          )}
 
-          {/* TAB 4: EMAIL OTP */}
-          {activeTab === 'emailOtp' && (
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nomor NRP Personel
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: 74080123"
-                    value={nrp}
-                    onChange={(e) => setNrp(e.target.value)}
-                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-1 focus:ring-polri-navy"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOtpSent(true);
-                      alert('Kode OTP 6-Digit telah dikirimkan ke email terdaftar Anda (Demo: masukkan 6 digit bebas).');
-                    }}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold whitespace-nowrap hover:bg-black transition-colors"
-                  >
-                    Kirim OTP
-                  </button>
-                </div>
-              </div>
-
-              {otpSent && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Masukkan 6 Digit OTP Email
-                  </label>
-                  <div className="flex justify-between gap-1.5">
-                    {otpCode.map((val, idx) => (
-                      <input
-                        key={idx}
-                        id={`otp-input-${idx}`}
-                        type="text"
-                        maxLength={1}
-                        value={val}
-                        onChange={(e) => {
-                          const next = [...otpCode];
-                          next[idx] = e.target.value;
-                          setOtpCode(next);
-                          if (e.target.value && idx < 5) {
-                            const nextEl = document.getElementById(`otp-input-${idx + 1}`);
-                            nextEl?.focus();
-                          }
-                        }}
-                        className="w-10 sm:w-12 h-12 text-center text-lg font-black rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-polri-navy"
-                      />
-                    ))}
+            {/* Input 3: Verifikasi Keamanan (reCAPTCHA box) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Verifikasi Keamanan
+              </label>
+              <div 
+                onClick={handleCaptchaClick}
+                className="bg-white border border-slate-300 rounded-lg p-3 flex items-center justify-between shadow-sm cursor-pointer hover:border-slate-400 transition-all select-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded border flex items-center justify-center transition-all ${
+                    captchaChecked 
+                      ? 'bg-emerald-600 border-emerald-600 text-white' 
+                      : 'border-slate-300 bg-slate-50'
+                  }`}>
+                    {captchaLoading ? (
+                      <RotateCw className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                    ) : captchaChecked ? (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    ) : null}
                   </div>
+                  <span className="text-xs font-medium text-slate-700">
+                    I&apos;m not a robot
+                  </span>
                 </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-1">
+                    <div className="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center font-bold text-[9px] shadow-sm">
+                      🛡️
+                    </div>
+                  </div>
+                  <span className="text-[9px] text-slate-400 font-medium mt-0.5">
+                    reCAPTCHA
+                  </span>
+                  <span className="text-[8px] text-slate-400">
+                    Privasi & Ketentuan
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Primary Submit Button: Masuk */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 px-4 bg-[#b91c1c] hover:bg-[#991b1b] text-white font-bold rounded-lg text-sm transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <RotateCw className="w-4 h-4 animate-spin" />
+                  <span>Memverifikasi Akun...</span>
+                </>
+              ) : (
+                <span>Masuk</span>
               )}
+            </button>
 
-              <button
-                type="submit"
-                disabled={loading || !otpSent}
-                className="w-full py-3 rounded-xl bg-polri-navy hover:bg-polri-navyLight text-polri-gold font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <span>Verifikasi OTP & Masuk</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
+            {/* Divider: ATAU */}
+            <div className="relative my-4 flex items-center justify-center">
+              <div className="border-t border-slate-300 w-full" />
+              <span className="bg-[#eceff3] px-3 text-[11px] font-bold text-slate-400 uppercase tracking-widest absolute">
+                ATAU
+              </span>
+            </div>
 
-          {/* TAB 5: GOOGLE AUTHENTICATOR (TOTP) */}
-          {activeTab === 'totp' && (
-            <form onSubmit={handleTotpSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nomor NRP Personel
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: 74100678"
-                  value={nrp}
-                  onChange={(e) => setNrp(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-1 focus:ring-polri-navy"
-                />
-              </div>
+            {/* Biometric Button: Memverifikasi Biometrik... */}
+            <button
+              type="button"
+              onClick={handleBiometricClick}
+              disabled={biometricLoading}
+              className="w-full py-2.5 px-4 border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-lg text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-2"
+            >
+              <Fingerprint className="w-4 h-4 text-slate-600" />
+              <span>Memverifikasi Biometrik...</span>
+            </button>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Kode 6-Digit Google Authenticator
-                </label>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  placeholder="Contoh: 849201"
-                  value={totpCode}
-                  onChange={(e) => setTotpCode(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-center text-xl tracking-widest font-mono font-bold focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  Buka aplikasi Google Authenticator di smartphone Anda dan masukkan kode 6 angka yang tampil.
-                </span>
-              </div>
+          </form>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-polri-navy hover:bg-polri-navyLight text-polri-gold font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
-              >
-                <span>Verifikasi Google Authenticator</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-
-          {/* Security Badge Footnote */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-            <span className="flex items-center gap-1 font-semibold text-slate-500">
-              <Lock className="w-3 h-3 text-emerald-600" />
-              Protokol Keamanan SIPP Terenkripsi
-            </span>
-            <span>Versi Produksi v2.4</span>
-          </div>
         </div>
+
+        {/* Bottom Right Footer */}
+        <div className="w-full max-w-md text-center pt-4 border-t border-slate-300/80">
+          <p className="text-[11px] text-slate-500">
+            Sistem ini hanya untuk penggunaan resmi. Aktivitas dapat dicatat dan diaudit.
+          </p>
+          <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+            BDB v1.0.0
+          </p>
+        </div>
+
       </div>
+
     </div>
   );
 }
