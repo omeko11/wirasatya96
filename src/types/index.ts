@@ -137,3 +137,53 @@ export const DAFTAR_PANGKAT_POLRI = [
   'Bharatu',
   'Bharada',
 ] as const;
+
+// Modul Kebendaharaan Paguyuban Wira Satya 1996
+export type TransactionType = 'MASUK' | 'KELUAR';
+
+export type TransactionCategory = 
+  | 'IURAN_WAJIB_BULANAN' 
+  | 'SUMBANGAN_SUKARELA' 
+  | 'SANTUNAN_KESEHATAN' 
+  | 'SANTUNAN_DUKA_CITA' 
+  | 'BANTUAN_PENDIDIKAN_ANAK' 
+  | 'OPERASIONAL_PAGUYUBAN' 
+  | 'KEGIATAN_REUNI_LETING';
+
+export interface KasTransaction {
+  id: string;
+  tanggal: string;
+  jenis: TransactionType;
+  kategori: TransactionCategory;
+  nominal: number;
+  keterangan: string;
+  pihakTerkait?: string;
+  nrpTerkait?: string;
+  dicatatOleh: string;
+  nomorReferensi: string;
+  createdAt: string;
+}
+
+export interface IuranAnggota {
+  id: string;
+  nrp: string;
+  namaLengkap: string;
+  pangkat: string;
+  polda: string;
+  tahun: number;
+  totalTagihan: number; // misal Rp 3.000.000 / tahun (250.000/bln)
+  totalTerbayar: number;
+  status: 'LUNAS' | 'SEBAGIAN' | 'BELUM_BAYAR';
+  bulanTerbayar: number[]; // Array bulan 1-12
+  terakhirBayar?: string;
+}
+
+export interface FinanceSummary {
+  saldoUtama: number;
+  kasSosialKesehatan: number;
+  kasDukaCita: number;
+  danaAbadiInvestasi: number;
+  totalPemasukanBulanIni: number;
+  totalPengeluaranBulanIni: number;
+  persentaseIuranTerkumpul: number;
+}

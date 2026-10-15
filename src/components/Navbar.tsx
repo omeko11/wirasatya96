@@ -1,15 +1,18 @@
 'use client';
 
 import React from 'react';
-import { BookOpen, UserPlus, BarChart3, ShieldCheck, KeyRound, UserCheck } from 'lucide-react';
+import { BookOpen, UserPlus, BarChart3, ShieldCheck, KeyRound, UserCheck, Wallet, LogOut } from 'lucide-react';
 import { AuthUser, UserRole } from '@/types';
 
+export type AppTab = 'direktori' | 'form' | 'bendahara' | 'dashboard';
+
 interface NavbarProps {
-  activeTab: 'direktori' | 'form' | 'dashboard';
-  setActiveTab: (tab: 'direktori' | 'form' | 'dashboard') => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
   totalMembers: number;
   currentUser: AuthUser;
   onOpenAuthModal: () => void;
+  onLogout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -18,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   totalMembers,
   currentUser,
   onOpenAuthModal,
+  onLogout,
 }) => {
   const isLeadership = currentUser.role !== 'ANGGOTA';
 
@@ -59,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <nav className="hidden md:flex items-center gap-1">
               <button
                 onClick={() => setActiveTab('direktori')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
                   activeTab === 'direktori'
                     ? 'bg-polri-gold text-polri-navy shadow-sm'
                     : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
@@ -74,7 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => setActiveTab('form')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-colors ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
                   activeTab === 'form'
                     ? 'bg-polri-gold text-polri-navy shadow-sm'
                     : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
@@ -84,17 +88,29 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {currentUser.role === 'ANGGOTA' ? 'Perbarui Data Saya' : 'Pendataan Anggota'}
               </button>
 
+              <button
+                onClick={() => setActiveTab('bendahara')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                  activeTab === 'bendahara'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
+                }`}
+              >
+                <Wallet className="w-4 h-4 text-emerald-400" />
+                <span>Portal Kebendaharaan</span>
+              </button>
+
               {isLeadership && (
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
                     activeTab === 'dashboard'
                       ? 'bg-polri-gold text-polri-navy shadow-sm'
                       : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
                   }`}
                 >
                   <BarChart3 className="w-4 h-4" />
-                  Dashboard {currentUser.role === 'KETUA' ? 'Ketua' : currentUser.role === 'BENDAHARA' ? 'Bendahara' : 'Kesekretariatan'}
+                  <span>{currentUser.role === 'KETUA' ? 'Executive Ketua' : currentUser.role === 'BENDAHARA' ? 'Executive Summary' : 'Kesekretariatan'}</span>
                 </button>
               )}
             </nav>
@@ -104,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <button
                 onClick={onOpenAuthModal}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white transition-all text-xs"
-                title="Ganti Akun / Simulasi Hak Akses Role"
+                title="Pusat Keamanan & Manajemen Akun"
               >
                 <div className="text-right hidden sm:block">
                   <span className="font-bold text-xs block text-slate-100 line-clamp-1 max-w-[140px]">
@@ -122,6 +138,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <UserCheck className="w-4 h-4" />
                 </div>
               </button>
+
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30 transition-all text-xs flex items-center gap-1"
+                  title="Keluar dari Portal (Logout)"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden lg:inline text-[11px] font-bold">Logout</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -129,10 +156,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Bottom Mobile Tab Bar (App-like feel on mobile phones) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-polri-navy border-t border-slate-700/80 px-2 py-1 shadow-2xl">
-        <div className={`grid ${isLeadership ? 'grid-cols-4' : 'grid-cols-3'} gap-1`}>
+        <div className="grid grid-cols-5 gap-1">
           <button
             onClick={() => setActiveTab('direktori')}
-            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[11px] font-medium transition-all ${
+            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[10px] font-medium transition-all ${
               activeTab === 'direktori'
                 ? 'text-polri-gold font-bold bg-white/10'
                 : 'text-slate-400 hover:text-white'
@@ -144,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <button
             onClick={() => setActiveTab('form')}
-            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[11px] font-medium transition-all ${
+            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[10px] font-medium transition-all ${
               activeTab === 'form'
                 ? 'text-polri-gold font-bold bg-white/10'
                 : 'text-slate-400 hover:text-white'
@@ -154,23 +181,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>{currentUser.role === 'ANGGOTA' ? 'Data Saya' : 'Pendataan'}</span>
           </button>
 
-          {isLeadership && (
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[11px] font-medium transition-all ${
-                activeTab === 'dashboard'
-                  ? 'text-polri-gold font-bold bg-white/10'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 mb-0.5" />
-              <span>Dashboard</span>
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab('bendahara')}
+            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[10px] font-medium transition-all ${
+              activeTab === 'bendahara'
+                ? 'text-emerald-400 font-bold bg-white/10'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Wallet className="w-4 h-4 mb-0.5 text-emerald-400" />
+            <span>Kas/Iuran</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[10px] font-medium transition-all ${
+              activeTab === 'dashboard'
+                ? 'text-polri-gold font-bold bg-white/10'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 mb-0.5" />
+            <span>Eksekutif</span>
+          </button>
 
           <button
             onClick={onOpenAuthModal}
-            className="flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[11px] font-medium text-slate-400 hover:text-white"
+            className="flex flex-col items-center justify-center py-2 px-1 rounded-lg text-[10px] font-medium text-slate-400 hover:text-white"
           >
             <KeyRound className="w-4 h-4 mb-0.5" />
             <span>Akun</span>
