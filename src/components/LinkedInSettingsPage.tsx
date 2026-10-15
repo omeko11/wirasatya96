@@ -86,7 +86,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-800 flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'}
+              src={currentUser.fotoUrl || '/default-avatar.png'}
               alt={currentUser.nama}
               className="w-full h-full object-cover"
             />

@@ -72,7 +72,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       authorPangkat: currentUser.pangkat,
       authorJabatan: `${currentUser.satker || 'Alumni Akpol 1996'} • Leting 96`,
-      authorAvatar: currentUser.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
+      authorAvatar: currentUser.fotoUrl || '/default-avatar.png',
       authorNrp: currentUser.nrp,
       badgeLabel: currentUser.role === 'SUPERADMIN' ? 'Admin Leting' : currentUser.role === 'KETUA' ? 'Ketua Batalyon 96' : currentUser.role === 'BENDAHARA' ? 'Bendahara 96' : 'Alumni Akpol 1996',
       content: content.trim(),
@@ -102,9 +102,9 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop&crop=face'}
+              src={currentUser.fotoUrl || '/default-avatar.png'}
               alt={cleanUserName}
-              className="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm"
+              className="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm bg-white"
             />
             <div>
               <div className="flex items-center gap-1.5">

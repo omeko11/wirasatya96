@@ -377,7 +377,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                     <div className="relative flex-shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                        src={member.fotoUrl || '/default-avatar.png'}
                         alt={member.namaLengkap}
                         className="w-11 h-11 rounded-full object-cover border border-slate-200"
                       />
@@ -427,7 +427,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={activePartner.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                src={activePartner.fotoUrl || '/default-avatar.png'}
                 alt={activePartner.namaLengkap}
                 className="w-10 h-10 rounded-full object-cover border border-slate-200 cursor-pointer"
                 onClick={() => onSelectMember && onSelectMember(activePartner)}
@@ -654,7 +654,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={m.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                      src={m.fotoUrl || '/default-avatar.png'}
                       alt={m.namaLengkap}
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
                     />

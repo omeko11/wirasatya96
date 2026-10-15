@@ -232,8 +232,14 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col text-center"
                 >
                   {/* Top Cover */}
-                  <div className="h-14 bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 relative">
-                    <span className="absolute top-1.5 right-2 px-2 py-0.5 rounded-full bg-black/40 text-[9px] font-bold text-amber-300">
+                  <div className="h-14 relative overflow-hidden bg-slate-900">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/default-cover.jpg"
+                      alt="Sampul"
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute top-1.5 right-2 px-2 py-0.5 rounded-full bg-black/50 text-[9px] font-bold text-amber-300">
                       {member.pangkat}
                     </span>
                   </div>
@@ -248,7 +254,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face'}
+                          src={member.fotoUrl || '/default-avatar.png'}
                           alt={member.namaLengkap}
                           className="w-full h-full object-cover"
                         />

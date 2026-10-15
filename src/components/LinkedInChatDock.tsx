@@ -126,7 +126,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
               <div className="relative flex-shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={activeChatMember.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                  src={activeChatMember.fotoUrl || '/default-avatar.png'}
                   alt={activeChatMember.namaLengkap}
                   className="w-8 h-8 rounded-full object-cover border border-amber-400"
                 />
@@ -307,7 +307,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
                   <div className="relative flex-shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                      src={member.fotoUrl || '/default-avatar.png'}
                       alt={member.namaLengkap}
                       className="w-8 h-8 rounded-full object-cover border border-slate-200"
                     />

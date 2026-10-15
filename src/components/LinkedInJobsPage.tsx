@@ -80,7 +80,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       perwiraNrp: currentUser.nrp,
       namaPerwira: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       pangkat: currentUser.pangkat,
-      avatarUrl: currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',
+      avatarUrl: currentUser.fotoUrl || '/default-avatar.png',
       jabatan: newJabatan.jabatan,
       satker: newJabatan.satker,
       polda: newJabatan.polda,
@@ -142,14 +142,21 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           
           {/* User Career Card */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            {/* Bareskrim Red & Gold Header */}
-            <div className="h-16 bg-gradient-to-r from-red-950 via-red-900 to-amber-900 relative" />
+            {/* Default Polri Cover Header */}
+            <div className="h-16 bg-slate-900 relative overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/default-cover.jpg"
+                alt="Sampul Polri"
+                className="w-full h-full object-cover"
+              />
+            </div>
 
             <div className="px-5 pb-5 relative">
-              <div className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-slate-100">
+              <div className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'}
+                  src={currentUser.fotoUrl || '/default-avatar.png'}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover"
                 />
@@ -305,7 +312,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={item.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'}
+                            src={item.avatarUrl || '/default-avatar.png'}
                             alt={item.namaPerwira}
                             className="w-full h-full object-cover"
                           />

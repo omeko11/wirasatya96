@@ -91,12 +91,16 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
           {/* 1. HERO PROFILE CARD (1:1 WITH USER SCREENSHOT 1) */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
             
-            {/* Cover Banner Image with High-Tech / Polri Aesthetics */}
-            <div className="h-44 sm:h-52 w-full bg-gradient-to-r from-slate-900 via-polri-navy to-slate-800 relative overflow-hidden">
-              {/* Abstract network tech overlay */}
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:16px_16px]" />
+            {/* Cover Banner Image with Default Polri Cover */}
+            <div className="h-44 sm:h-52 w-full bg-slate-900 relative overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/default-cover.jpg"
+                alt="Sampul Polri"
+                className="w-full h-full object-cover"
+              />
               <div className="absolute bottom-3 right-4 flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-[11px] font-extrabold text-amber-300 flex items-center gap-1.5 shadow-lg">
+                <span className="px-3 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/20 text-[11px] font-extrabold text-amber-300 flex items-center gap-1.5 shadow-lg">
                   <Shield className="w-3.5 h-3.5" />
                   BATALYON WIRA SATYA 1996 • #SELALUBAHAGIA
                 </span>
@@ -120,9 +124,9 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop&crop=face'}
+                    src={member.fotoUrl || '/default-avatar.png'}
                     alt={member.namaLengkap}
-                    className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-white shadow-xl bg-slate-100"
+                    className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-white shadow-xl bg-white"
                   />
                   <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center absolute bottom-2 right-2 border-2 border-white shadow font-bold text-xs" title="Terverifikasi Alumni Akpol 1996">
                     ✓
@@ -343,7 +347,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               <div className="flex items-center gap-2.5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                  src={member.fotoUrl || '/default-avatar.png'}
                   alt={member.namaLengkap}
                   className="w-10 h-10 rounded-full object-cover border border-slate-200"
                 />
@@ -590,7 +594,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <div key={peer.id} className="flex items-start gap-2.5 pb-2 border-b border-slate-100 last:border-0 last:pb-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={peer.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                      src={peer.fotoUrl || '/default-avatar.png'}
                       alt={peer.namaLengkap}
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
                     />

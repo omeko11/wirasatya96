@@ -260,9 +260,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face'}
+                    src={currentUser.fotoUrl || '/default-avatar.png'}
                     alt={cleanDisplayName}
-                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 flex-shrink-0"
+                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 flex-shrink-0 bg-white"
                   />
                   <div className="flex items-center gap-0.5">
                     <span className="text-[10px] font-semibold text-slate-700 hidden sm:block whitespace-nowrap">
@@ -280,9 +280,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="px-4 pb-3 border-b border-slate-100 flex items-start gap-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'}
+                        src={currentUser.fotoUrl || '/default-avatar.png'}
                         alt={cleanDisplayName}
-                        className="w-12 h-12 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                        className="w-12 h-12 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1">

@@ -154,9 +154,9 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={post.authorAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'}
+              src={post.authorAvatar || '/default-avatar.png'}
               alt={post.authorName}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover bg-white"
             />
           </div>
 
@@ -374,7 +374,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
           <form onSubmit={handleCommentSubmit} className="flex items-start gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face'}
+              src={currentUser.fotoUrl || '/default-avatar.png'}
               alt={currentUser.nama}
               className="w-8 h-8 rounded-full object-cover border border-slate-200 mt-0.5 flex-shrink-0"
             />
@@ -417,7 +417,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
                 <div key={comm.id} className="flex items-start gap-2.5 text-xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={comm.authorAvatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face'}
+                    src={comm.authorAvatar || '/default-avatar.png'}
                     alt={comm.authorName}
                     className="w-7 h-7 rounded-full object-cover border border-slate-200 mt-0.5 flex-shrink-0"
                   />

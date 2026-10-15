@@ -128,7 +128,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       id: `c-${Date.now()}`,
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       authorPangkat: currentUser.pangkat,
-      authorAvatar: currentMemberObj?.fotoUrl || currentUser.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face',
+      authorAvatar: currentMemberObj?.fotoUrl || currentUser.fotoUrl || '/default-avatar.png',
       authorNrp: currentUser.nrp,
       content: commentText,
       createdAt: 'Baru saja',
@@ -256,18 +256,25 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           {/* User Mini Profile Card (Exact User Screenshot media_1792053907699_1addcb0f.png) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
             
-            {/* Header cover background - Bareskrim Red / Gold */}
-            <div className="h-16 bg-gradient-to-r from-red-950 via-red-900 to-amber-900 relative" />
+            {/* Header cover background - Default Polri Cover */}
+            <div className="h-16 bg-slate-900 relative overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/default-cover.jpg"
+                alt="Sampul Polri"
+                className="w-full h-full object-cover"
+              />
+            </div>
 
             {/* Avatar overlapping */}
             <div className="px-4 pb-4 relative">
               <div 
                 onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
-                className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-slate-100 cursor-pointer group"
+                className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || currentMemberObj?.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'}
+                  src={currentUser.fotoUrl || currentMemberObj?.fotoUrl || '/default-avatar.png'}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -392,9 +399,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={currentMemberObj?.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face'}
+                src={currentMemberObj?.fotoUrl || currentUser.fotoUrl || '/default-avatar.png'}
                 alt={currentUser.nama}
-                className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
+                className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
               />
               <button
                 onClick={() => setIsCreatePostModalOpen(true)}
@@ -559,8 +566,14 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Mini card cover */}
-                <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 relative">
-                  <span className="absolute top-2 right-3 px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur text-[10px] font-bold text-amber-300 border border-white/20">
+                <div className="h-16 bg-slate-900 relative overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/default-cover.jpg"
+                    alt="Sampul Polri"
+                    className="w-full h-full object-cover"
+                  />
+                  <span className="absolute top-2 right-3 px-2.5 py-0.5 rounded-full bg-black/50 backdrop-blur text-[10px] font-bold text-amber-300 border border-white/20">
                     {member.pangkat}
                   </span>
                 </div>
@@ -572,9 +585,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     <div className="relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={member.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face'}
+                        src={member.fotoUrl || '/default-avatar.png'}
                         alt={member.namaLengkap}
-                        className="w-16 h-16 rounded-full object-cover border-4 border-white shadow bg-slate-100 cursor-pointer"
+                        className="w-16 h-16 rounded-full object-cover border-4 border-white shadow bg-white cursor-pointer"
                         onClick={() => setSelectedMember(member)}
                       />
                       <span className="w-4 h-4 rounded-full bg-red-800 text-white flex items-center justify-center absolute bottom-0 right-0 border border-white text-[9px] font-bold">

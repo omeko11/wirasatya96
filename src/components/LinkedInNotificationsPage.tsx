@@ -55,12 +55,19 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
         <div className="lg:col-span-4 space-y-4">
           
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            <div className="h-16 bg-gradient-to-r from-polri-navy via-slate-800 to-amber-700" />
+            <div className="h-16 relative overflow-hidden bg-slate-900">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/default-cover.jpg"
+                alt="Sampul"
+                className="w-full h-full object-cover"
+              />
+            </div>
             <div className="px-4 pb-4 relative">
               <div className="w-16 h-16 rounded-full border-2 border-white shadow mx-auto -mt-8 overflow-hidden bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face'}
+                  src={currentUser.fotoUrl || '/default-avatar.png'}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover"
                 />
@@ -149,7 +156,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
                   <div className="flex items-start gap-3.5 min-w-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={notif.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face'}
+                      src={notif.avatarUrl || '/default-avatar.png'}
                       alt="Notifikasi"
                       className="w-11 h-11 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5"
                     />

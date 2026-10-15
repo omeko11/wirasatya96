@@ -173,11 +173,13 @@ export const serverStore = {
           mfaMethod: 'PIN',
           satker: reg.satker,
           polda: reg.polda,
+          fotoUrl: '/default-avatar.png',
           status: 'DISETUJUI_BELUM_PASSWORD',
         };
         globalStore.users.push(user);
       } else {
         user.status = 'DISETUJUI_BELUM_PASSWORD';
+        if (!user.fotoUrl) user.fotoUrl = '/default-avatar.png';
       }
 
       // Also ensure member exists in directory
@@ -219,6 +221,7 @@ export const serverStore = {
           kondisiKesehatan: 'SANGAT BAIK',
           asuransiAktif: ['BPJS'],
           rutinMcu: 'YA',
+          fotoUrl: '/default-avatar.png',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -270,6 +273,7 @@ export const serverStore = {
         mfaMethod: mfaMethod,
         satker: reg.satker,
         polda: reg.polda,
+        fotoUrl: '/default-avatar.png',
         status: 'AKTIF',
         password: newPassword,
       };
