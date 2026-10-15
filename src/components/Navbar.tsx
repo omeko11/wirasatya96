@@ -25,6 +25,12 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const isLeadership = currentUser.role !== 'ANGGOTA';
 
+  // Sanitize name for compact single-line display in navbar
+  const cleanDisplayName = currentUser.nama
+    .replace(/\(.*?\)/g, '')
+    .split(',')[0]
+    .trim();
+
   const roleColors: Record<UserRole, { badge: string; text: string }> = {
     SUPERADMIN: { badge: 'bg-red-500/20 text-red-300 border-red-400/40', text: 'Superadmin Dev' },
     KETUA: { badge: 'bg-purple-500/20 text-purple-300 border-purple-400/40', text: 'Ketua Batalyon' },
@@ -38,103 +44,103 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Top Header */}
       <header className="sticky top-0 z-40 bg-polri-navy border-b border-polri-gold/30 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-16 gap-3">
             {/* Logo & Brand */}
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('direktori')}>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-polri-gold to-polri-goldDark flex items-center justify-center shadow-lg border border-yellow-200">
-                <ShieldCheck className="w-6 h-6 text-polri-navy" />
+            <div className="flex items-center gap-2.5 cursor-pointer flex-shrink-0" onClick={() => setActiveTab('direktori')}>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-polri-gold to-polri-goldDark flex items-center justify-center shadow-md border border-yellow-200 flex-shrink-0">
+                <ShieldCheck className="w-5 h-5 text-polri-navy" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="font-extrabold text-white text-base sm:text-lg tracking-wide">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-extrabold text-white text-sm sm:text-base tracking-wide whitespace-nowrap">
                     WIRA SATYA 96
                   </h1>
-                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-polri-gold/20 text-polri-gold border border-polri-gold/40">
+                  <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-polri-gold/20 text-polri-gold border border-polri-gold/40 whitespace-nowrap">
                     Batalyon 1996
                   </span>
                 </div>
-                <p className="text-xs text-slate-300 hidden sm:block">
-                  Sistem Informasi Kesejahteraan & Direktori Purna Tugas
+                <p className="text-[11px] text-slate-300 hidden xl:block whitespace-nowrap">
+                  Yayasan & Sistem Informasi Alumni Akpol 1996
                 </p>
               </div>
             </div>
 
             {/* Desktop Navigation Tabs */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => setActiveTab('direktori')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
                   activeTab === 'direktori'
                     ? 'bg-polri-gold text-polri-navy shadow-sm'
                     : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
-                Buku Saku
-                <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-black/20 text-current ml-0.5">
+                <span>Buku Saku</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20 text-current ml-0.5 font-bold">
                   {totalMembers}
                 </span>
               </button>
 
               <button
                 onClick={() => setActiveTab('form')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
                   activeTab === 'form'
                     ? 'bg-polri-gold text-polri-navy shadow-sm'
                     : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
                 }`}
               >
                 <UserPlus className="w-4 h-4" />
-                {currentUser.role === 'ANGGOTA' ? 'Perbarui Data Saya' : 'Pendataan Anggota'}
+                <span>{currentUser.role === 'ANGGOTA' ? 'Data Saya' : 'Pendataan'}</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('bendahara')}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
                   activeTab === 'bendahara'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
                 }`}
               >
                 <Wallet className="w-4 h-4 text-emerald-400" />
-                <span>Portal Kebendaharaan</span>
+                <span>Kebendaharaan</span>
               </button>
 
               {isLeadership && (
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap ${
                     activeTab === 'dashboard'
                       ? 'bg-polri-gold text-polri-navy shadow-sm'
                       : 'text-slate-200 hover:text-white hover:bg-polri-navyLight'
                   }`}
                 >
                   <BarChart3 className="w-4 h-4" />
-                  <span>{currentUser.role === 'KETUA' ? 'Executive Ketua' : currentUser.role === 'BENDAHARA' ? 'Executive Summary' : 'Kesekretariatan'}</span>
+                  <span>{currentUser.role === 'KETUA' ? 'Executive' : currentUser.role === 'BENDAHARA' ? 'Ringkasan' : 'Anev Leting'}</span>
                 </button>
               )}
             </nav>
 
             {/* Auth / Role Switcher Header Pill */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={onOpenAuthModal}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white transition-all text-xs"
+                className="h-10 flex items-center gap-2 px-2.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white transition-all text-xs"
                 title="Pusat Keamanan & Manajemen Akun"
               >
-                <div className="text-right hidden sm:block">
-                  <span className="font-bold text-xs block text-slate-100 line-clamp-1 max-w-[140px]">
-                    {currentUser.nama.split(',')[0]}
+                <div className="text-right hidden sm:block leading-tight">
+                  <span className="font-bold text-xs block text-slate-100 truncate max-w-[110px] whitespace-nowrap">
+                    {cleanDisplayName}
                   </span>
                   <span
-                    className={`inline-block text-[9px] uppercase font-extrabold px-1.5 py-0.2 rounded border ${
+                    className={`inline-block text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border leading-none whitespace-nowrap ${
                       roleColors[currentUser.role].badge
                     }`}
                   >
                     {roleColors[currentUser.role].text}
                   </span>
                 </div>
-                <div className="w-7 h-7 rounded-lg bg-polri-gold text-polri-navy flex items-center justify-center font-extrabold">
+                <div className="w-7 h-7 rounded-md bg-polri-gold text-polri-navy flex items-center justify-center font-extrabold flex-shrink-0">
                   <UserCheck className="w-4 h-4" />
                 </div>
               </button>
@@ -142,7 +148,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30 transition-all text-xs flex items-center gap-1"
+                  className="h-10 px-2.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-400/30 transition-all text-xs flex items-center gap-1.5 flex-shrink-0"
                   title="Keluar dari Portal (Logout)"
                 >
                   <LogOut className="w-4 h-4" />
