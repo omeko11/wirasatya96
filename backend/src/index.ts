@@ -8,6 +8,7 @@ import postRoutes from './routes/posts';
 import financeRoutes from './routes/finance';
 import kesehatanRoutes from './routes/kesehatan';
 import storageRoutes from './routes/storage';
+import messageRoutes from './routes/messages';
 import { pool } from './config/db';
 import { s3Client, BUCKETS } from './config/minio';
 import { ListBucketsCommand } from '@aws-sdk/client-s3';
@@ -67,6 +68,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/kesehatan', kesehatanRoutes);
 app.use('/api/storage', storageRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -4,16 +4,16 @@ import { serverStore } from '@/lib/serverStore';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nrp, userId, mfaMethod } = body;
+    const { nrp, userId, username, identifier, mfaMethod } = body;
 
-    const identifier = userId || nrp;
-    if (!identifier) {
-      return NextResponse.json({ success: false, message: 'NRP atau ID Akun diperlukan' }, { status: 400 });
+    const targetId = identifier || username || userId || nrp;
+    if (!targetId) {
+      return NextResponse.json({ success: false, message: 'NRP atau Email dinas diperlukan' }, { status: 400 });
     }
 
-    const user = serverStore.authenticate(identifier);
+    const user = serverStore.authenticate(targetId);
     if (!user) {
-      return NextResponse.json({ success: false, message: 'Akun personel tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ success: false, message: 'Personel alumni tidak terdaftar di sistem' }, { status: 404 });
     }
 
     return NextResponse.json({

@@ -14,6 +14,7 @@ export interface AuthUser {
   mfaMethod: MfaMethod;
   fotoUrl?: string;
   satker?: string;
+  polda?: string;
 }
 
 export interface Anak {
@@ -251,4 +252,24 @@ export interface RiwayatJabatanLeting {
   prestasiOperasional?: string;
   dasarTR?: string;
 }
+
+// ==============================================================
+// MODUL PESAN & OBROLAN LETING 96 (MESSAGING)
+// ==============================================================
+export interface ChatMessage {
+  id: string;
+  senderNrp: string;
+  senderName: string;
+  senderPangkat?: string;
+  senderAvatar?: string;
+  receiverNrp: string;
+  receiverName?: string;
+  text: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  timestamp: string;
+  createdAt: string;
+  isRead: boolean;
+}
+
 

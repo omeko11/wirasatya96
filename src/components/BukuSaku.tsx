@@ -20,7 +20,8 @@ import {
   Users,
   Video,
   PenSquare,
-  Edit3
+  Edit3,
+  MessageSquare
 } from 'lucide-react';
 
 interface BukuSakuProps {
@@ -28,6 +29,7 @@ interface BukuSakuProps {
   onAddNew: () => void;
   currentUser: AuthUser;
   onEditMember?: (member: AnggotaWiraSatya) => void;
+  onOpenChat?: (member: AnggotaWiraSatya) => void;
   externalSearch?: string;
 }
 
@@ -36,6 +38,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   onAddNew, 
   currentUser,
   onEditMember,
+  onOpenChat,
   externalSearch = ''
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -230,6 +233,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         currentUser={currentUser}
         onClose={() => setSelectedMember(null)}
         onEditProfile={() => onEditMember && onEditMember(selectedMember)}
+        onOpenChat={onOpenChat}
         allMembers={members}
         onSelectMember={(m) => setSelectedMember(m)}
       />
@@ -610,17 +614,28 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                       href={formatWaUrl(member.noHp)}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex-1 py-1.5 px-3 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                      className="py-1.5 px-3 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                     >
                       <Phone className="w-3.5 h-3.5" />
-                      <span>Kirim Pesan WA</span>
+                      <span>Kirim WA</span>
                     </a>
+
+                    {currentUser.nrp !== member.nrp && onOpenChat && (
+                      <button
+                        onClick={() => onOpenChat(member)}
+                        className="py-1.5 px-3 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                        title="Buka Obrolan Leting Langsung"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Obrolan</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => setSelectedMember(member)}
-                      className="py-1.5 px-4 rounded-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+                      className="py-1.5 px-3.5 rounded-full border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
                     >
-                      Lihat Profil Lengkap
+                      Profil
                     </button>
 
                     {/* Role-based Edit: Pengurus (Sekretariat/Ketua/Superadmin) can edit any member, or user editing self */}

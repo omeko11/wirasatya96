@@ -20,13 +20,15 @@ import {
   Clock, 
   Home, 
   Award,
-  Plus
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 
 interface LinkedInProfileViewProps {
   member: AnggotaWiraSatya;
   currentUser: AuthUser;
   onEditProfile?: (targetMember?: AnggotaWiraSatya) => void;
+  onOpenChat?: (member: AnggotaWiraSatya) => void;
   onClose?: () => void;
   allMembers?: AnggotaWiraSatya[];
   onSelectMember?: (member: AnggotaWiraSatya) => void;
@@ -36,6 +38,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   member,
   currentUser,
   onEditProfile,
+  onOpenChat,
   onClose,
   allMembers = [],
   onSelectMember,
@@ -195,6 +198,16 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <Phone className="w-4 h-4" />
                   <span>Kirim Pesan WhatsApp</span>
                 </a>
+
+                {!isSelf && onOpenChat && (
+                  <button
+                    onClick={() => onOpenChat(member)}
+                    className="px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all"
+                  >
+                    <MessageSquare className="w-4 h-4 text-amber-400" />
+                    <span>Obrolan Leting</span>
+                  </button>
+                )}
 
                 {canEdit ? (
                   <button

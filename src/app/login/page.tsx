@@ -2,34 +2,29 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PRESET_USERS } from '@/data/mockUsers';
 import { AuthUser, MfaMethod } from '@/types';
 import { WSLogo } from '@/components/WSLogo';
 import { 
-  Key, 
   Eye, 
   EyeOff, 
   RotateCw, 
-  Sparkles,
-  AlertCircle,
+  AlertCircle, 
   Fingerprint,
-  ChevronRight
+  Key,
+  ChevronRight 
 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
 
   // Form inputs
-  const [username, setUsername] = useState('74080123'); // Default Ketua NRP or email
-  const [password, setPassword] = useState('wirasatya96');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // FIDO2 / Passkey Browser Modal Simulation State
   const [showPasskeyModal, setShowPasskeyModal] = useState(false);
-  const [passkeyAccount, setPasskeyAccount] = useState('omeko11');
-
-  // Role demo drawer state
-  const [showRoleDrawer, setShowRoleDrawer] = useState(false);
+  const [passkeyAccount, setPasskeyAccount] = useState('superadmin@wirasatya96.polri.go.id');
 
   // Status & feedback
   const [loading, setLoading] = useState(false);
@@ -60,30 +55,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Find matching user from PRESET_USERS
-      const matched = PRESET_USERS.find(
-        (u) => 
-          u.nrp === username.trim() || 
-          u.email.toLowerCase() === username.trim().toLowerCase() ||
-          u.id.toLowerCase().includes(username.trim().toLowerCase())
-      ) || PRESET_USERS[1]; // default to Ketua
-
-      // Call internal login API
+      // Call internal login API with entered credentials
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: matched.id }),
+        body: JSON.stringify({ identifier: username.trim(), password: password.trim() }),
       });
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && data.user) {
         handleLoginSuccess(data.user, 'PIN');
       } else {
-        handleLoginSuccess(matched, 'PIN');
+        setErrorMessage(data.message || 'NRP atau kata sandi tidak cocok. Silakan periksa kembali.');
       }
     } catch {
-      const fallback = PRESET_USERS[1];
-      handleLoginSuccess(fallback, 'PIN');
+      setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
     } finally {
       setLoading(false);
     }
@@ -91,28 +77,22 @@ export default function LoginPage() {
 
   const handlePasskeyContinue = async () => {
     setLoading(true);
-    const superadmin = PRESET_USERS[0];
     try {
-      await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: superadmin.id }),
+        body: JSON.stringify({ identifier: '96081299', mfaMethod: 'BIOMETRIC' }),
       });
+      const data = await res.json();
+      if (data.success && data.user) {
+        handleLoginSuccess(data.user, 'BIOMETRIC');
+      }
     } catch {
-      // client fallback
+      setErrorMessage('Autentikasi Kunci Sandi gagal.');
+    } finally {
+      setLoading(false);
+      setShowPasskeyModal(false);
     }
-    setTimeout(() => {
-      handleLoginSuccess(superadmin, 'BIOMETRIC');
-    }, 400);
-  };
-
-  const handleSelectRole = (user: AuthUser) => {
-    setUsername(user.nrp);
-    setPassword('wirasatya96');
-    setPasskeyAccount(user.id === 'u-superadmin' ? 'omeko11' : user.nrp);
-    setShowRoleDrawer(false);
-    // Instant login for demo convenience
-    handleLoginSuccess(user, user.mfaMethod);
   };
 
   return (
@@ -134,13 +114,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => setShowRoleDrawer(!showRoleDrawer)}
-          className="text-xs font-bold text-red-900 hover:text-red-950 hover:bg-red-50 flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-full border border-slate-300 shadow-sm transition-all"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Demo Role</span>
-        </button>
+        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span>Kanal Resmi Batalyon 1996</span>
+        </div>
       </header>
 
       {/* ============================================================== */}
@@ -184,24 +161,17 @@ export default function LoginPage() {
             <div className="flex items-center justify-between gap-2 pt-1 text-xs">
               <button
                 type="button"
-                onClick={() => setShowRoleDrawer(true)}
-                className="px-3 py-2 rounded-full bg-[#27303d] hover:bg-[#323d4e] text-slate-200 font-medium transition-all text-center flex-1 text-[11px]"
+                onClick={() => setShowPasskeyModal(false)}
+                className="px-3 py-2 rounded-full bg-[#27303d] hover:bg-[#323d4e] text-slate-300 font-medium transition-all text-center flex-1 text-[11px]"
               >
-                Kunci lain
+                Batal
               </button>
               <button
                 type="button"
                 onClick={handlePasskeyContinue}
-                className="px-4 py-2 rounded-full bg-[#7be0eb] hover:bg-[#68d1dc] text-slate-950 font-bold transition-all text-center text-xs shadow-md"
+                className="px-4 py-2 rounded-full bg-[#7be0eb] hover:bg-[#68d1dc] text-slate-950 font-bold transition-all text-center text-xs shadow-md flex-1"
               >
                 Lanjutkan
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPasskeyModal(false)}
-                className="px-3 py-2 rounded-full bg-[#27303d] hover:bg-[#323d4e] text-slate-300 font-medium transition-all text-center text-[11px]"
-              >
-                Batal
               </button>
             </div>
           </div>
@@ -227,39 +197,6 @@ export default function LoginPage() {
             <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Role Picker Drawer */}
-          {showRoleDrawer && (
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 animate-in fade-in duration-150">
-              <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-                <span className="text-[11px] font-bold text-slate-700">Pilih Akun Demo (1-Click Login):</span>
-                <button 
-                  onClick={() => setShowRoleDrawer(false)}
-                  className="text-xs text-slate-400 hover:text-slate-600"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="grid grid-cols-1 gap-1.5 max-h-48 overflow-y-auto">
-                {PRESET_USERS.map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => handleSelectRole(u)}
-                    className="p-2 text-left rounded-lg bg-white border border-slate-200 hover:border-red-800 hover:bg-red-50/50 transition-all flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <p className="font-bold text-slate-900 text-xs truncate">{u.nama.split(',')[0]}</p>
-                      <p className="text-[10px] text-slate-500">{u.pangkat} &bull; {u.nrp}</p>
-                    </div>
-                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                      {u.role}
-                    </span>
-                  </button>
-                ))}
-              </div>
             </div>
           )}
 
@@ -358,16 +295,6 @@ export default function LoginPage() {
             >
               <Fingerprint className="w-4 h-4 text-red-800" />
               <span>Masuk dengan Kunci Sandi / FIDO2</span>
-            </button>
-
-            {/* Role Demo Quick Picker Button */}
-            <button
-              type="button"
-              onClick={() => setShowRoleDrawer(!showRoleDrawer)}
-              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-full text-xs transition-colors flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Pilih Role Demo (Superadmin, Ketua, Bendahara, dll)</span>
             </button>
 
           </form>

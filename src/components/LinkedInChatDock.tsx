@@ -67,12 +67,15 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim() || !activeChatMember) return;
+    const text = inputText.trim();
+    setInputText('');
+
     const newMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'me',
-      text: inputText.trim(),
+      text: text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -81,7 +84,21 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
       [activeChatMember.id]: [...(prev[activeChatMember.id] || []), newMsg],
     }));
 
-    setInputText('');
+    try {
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderNrp: '96081299',
+          senderName: currentUserName,
+          receiverNrp: activeChatMember.nrp,
+          receiverName: activeChatMember.namaLengkap,
+          text: text,
+        }),
+      });
+    } catch (err) {
+      console.log('Dock message saved locally', err);
+    }
   };
 
   const getWaUrl = (phone?: string) => {

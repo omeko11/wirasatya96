@@ -1,4 +1,4 @@
-import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
+import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, ChatMessage } from '@/types';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY } from '@/data/mockFinance';
@@ -11,7 +11,83 @@ interface GlobalStore {
   iuranList: IuranAnggota[];
   financeSummary: FinanceSummary;
   activeSession: AuthUser | null;
+  messages: ChatMessage[];
 }
+
+const INITIAL_MESSAGES: ChatMessage[] = [
+  {
+    id: 'msg-1',
+    senderNrp: '74030456',
+    senderName: 'Irjen Pol. Achmad Kartiko',
+    senderPangkat: 'Irjen Pol',
+    receiverNrp: '96081299',
+    receiverName: 'Eko Agung',
+    text: 'Assalamu’alaikum Komandan. Mohon izin mengingatkan konsolidasi pengurus paguyuban terkait atensi rekan leting kita yang sedang pemulihan.',
+    timestamp: '14:45',
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    isRead: true,
+  },
+  {
+    id: 'msg-2',
+    senderNrp: '96081299',
+    senderName: 'Eko Agung',
+    senderPangkat: 'Briptu',
+    receiverNrp: '74030456',
+    receiverName: 'Irjen Pol. Achmad Kartiko',
+    text: 'Wa’alaikumsalam Jenderal. Siap, tim bendahara dan kesekretariatan sudah menyalurkan santunan tahap pertama.',
+    timestamp: '15:02',
+    createdAt: new Date(Date.now() - 1800000).toISOString(),
+    isRead: true,
+  },
+  {
+    id: 'msg-3',
+    senderNrp: '74030456',
+    senderName: 'Irjen Pol. Achmad Kartiko',
+    senderPangkat: 'Irjen Pol',
+    receiverNrp: '96081299',
+    receiverName: 'Eko Agung',
+    text: 'Alhamdulillah mantap. Teruskan semangat #SelaluBahagia untuk rekan-rekan!',
+    timestamp: '15:10',
+    createdAt: new Date(Date.now() - 600000).toISOString(),
+    isRead: false,
+  },
+  {
+    id: 'msg-4',
+    senderNrp: '96081299',
+    senderName: 'Eko Agung',
+    senderPangkat: 'Briptu',
+    receiverNrp: '74050234',
+    receiverName: 'Kombes Pol. Bambang Prasetyo',
+    text: 'Komandan Bambang, mohon konfirmasi transfer iuran tahunan leting 2026.',
+    timestamp: 'Kemarin 09:30',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    isRead: true,
+  },
+  {
+    id: 'msg-5',
+    senderNrp: '74050234',
+    senderName: 'Kombes Pol. Bambang Prasetyo',
+    senderPangkat: 'Kombes Pol',
+    receiverNrp: '96081299',
+    receiverName: 'Eko Agung',
+    text: 'Siap Komandan, iuran kas paguyuban bulan Oktober sudah terverifikasi lunas. Rekap neraca bisa dilihat langsung di portal kebendaharaan.',
+    timestamp: 'Kemarin 10:15',
+    createdAt: new Date(Date.now() - 82800000).toISOString(),
+    isRead: true,
+  },
+  {
+    id: 'msg-6',
+    senderNrp: '74080123',
+    senderName: 'Kombes Pol. Hadi Wicaksono',
+    senderPangkat: 'Kombes Pol',
+    receiverNrp: '96081299',
+    receiverName: 'Eko Agung',
+    text: 'Data penempatan perwira di Polda Papua Tengah sudah diupdate di direktori 38 Polda komandan.',
+    timestamp: '12 Okt 11:20',
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    isRead: true,
+  },
+];
 
 const globalStore: GlobalStore = {
   members: [...INITIAL_MEMBERS],
@@ -20,6 +96,7 @@ const globalStore: GlobalStore = {
   iuranList: [...INITIAL_IURAN_LIST],
   financeSummary: { ...INITIAL_FINANCE_SUMMARY },
   activeSession: PRESET_USERS[0], // default Superadmin
+  messages: [...INITIAL_MESSAGES],
 };
 
 export const serverStore = {
@@ -53,10 +130,44 @@ export const serverStore = {
   },
 
   authenticate: (identifier: string) => {
-    // Match by nrp, id, or email
-    const user = globalStore.users.find(
-      (u) => u.nrp === identifier || u.id === identifier || u.email.toLowerCase() === identifier.toLowerCase()
+    const cleanId = identifier.trim();
+    // Match by nrp, id, or email in registered users
+    let user = globalStore.users.find(
+      (u) =>
+        u.nrp === cleanId ||
+        u.id === cleanId ||
+        u.email.toLowerCase() === cleanId.toLowerCase() ||
+        u.id.toLowerCase().includes(cleanId.toLowerCase())
     );
+
+    // If not found in users, check if matches any of the 286 members in the directory
+    if (!user) {
+      const member = globalStore.members.find(
+        (m) =>
+          m.nrp === cleanId ||
+          m.id === cleanId ||
+          m.namaLengkap.toLowerCase().includes(cleanId.toLowerCase())
+      );
+
+      if (member) {
+        user = {
+          id: member.id,
+          nrp: member.nrp,
+          nama: member.namaLengkap,
+          pangkat: member.pangkat,
+          role: 'ANGGOTA',
+          profileId: member.id,
+          mfaEnabled: false,
+          mfaMethod: 'PIN',
+          satker: member.satuanKerja,
+          polda: member.polda,
+          email: `${member.nrp}@polri.go.id`,
+          fotoUrl: member.fotoUrl,
+        };
+        globalStore.users.push(user);
+      }
+    }
+
     if (user) {
       globalStore.activeSession = user;
     }
@@ -125,5 +236,66 @@ export const serverStore = {
       return target;
     }
     return null;
-  }
+  },
+
+  // ==============================================================
+  // MESSAGING METHODS
+  // ==============================================================
+  getMessages: (user1Nrp?: string, user2Nrp?: string) => {
+    if (!user1Nrp && !user2Nrp) {
+      return globalStore.messages;
+    }
+    if (user1Nrp && !user2Nrp) {
+      return globalStore.messages.filter(
+        (m) => m.senderNrp === user1Nrp || m.receiverNrp === user1Nrp
+      );
+    }
+    return globalStore.messages.filter(
+      (m) =>
+        (m.senderNrp === user1Nrp && m.receiverNrp === user2Nrp) ||
+        (m.senderNrp === user2Nrp && m.receiverNrp === user1Nrp)
+    );
+  },
+
+  addMessage: (msgData: {
+    senderNrp: string;
+    senderName: string;
+    senderPangkat?: string;
+    senderAvatar?: string;
+    receiverNrp: string;
+    receiverName?: string;
+    text: string;
+    attachmentUrl?: string;
+    attachmentName?: string;
+  }): ChatMessage => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newMsg: ChatMessage = {
+      id: 'msg-' + Date.now(),
+      senderNrp: msgData.senderNrp,
+      senderName: msgData.senderName,
+      senderPangkat: msgData.senderPangkat,
+      senderAvatar: msgData.senderAvatar,
+      receiverNrp: msgData.receiverNrp,
+      receiverName: msgData.receiverName,
+      text: msgData.text,
+      attachmentUrl: msgData.attachmentUrl,
+      attachmentName: msgData.attachmentName,
+      timestamp: timeStr,
+      createdAt: now.toISOString(),
+      isRead: false,
+    };
+
+    globalStore.messages.push(newMsg);
+    return newMsg;
+  },
+
+  markMessagesAsRead: (senderNrp: string, currentReceiverNrp: string) => {
+    globalStore.messages.forEach((m) => {
+      if (m.senderNrp === senderNrp && m.receiverNrp === currentReceiverNrp) {
+        m.isRead = true;
+      }
+    });
+  },
 };

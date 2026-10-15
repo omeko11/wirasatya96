@@ -30,6 +30,7 @@ export default function Home() {
   const [navbarSearchQuery, setNavbarSearchQuery] = useState('');
   const [viewingMember, setViewingMember] = useState<AnggotaWiraSatya | null>(null);
   const [editingMember, setEditingMember] = useState<AnggotaWiraSatya | null | 'NEW'>(null);
+  const [messagingTargetMember, setMessagingTargetMember] = useState<AnggotaWiraSatya | null>(null);
 
   // Financial State
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(INITIAL_FINANCE_SUMMARY);
@@ -90,6 +91,13 @@ export default function Home() {
     setViewingMember(null);
     setEditingMember('NEW');
     setActiveTab('form');
+  };
+
+  // Open direct chat with an alumnus
+  const handleOpenChatWithMember = (member: AnggotaWiraSatya) => {
+    setViewingMember(null);
+    setMessagingTargetMember(member);
+    setActiveTab('pesan');
   };
 
   // Save member profile
@@ -268,38 +276,19 @@ export default function Home() {
         }}
       />
 
-      {/* Role Banner Notification Bar - Bareskrim Red Theme */}
-      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/50 text-slate-300 text-xs py-1.5 px-3 sm:px-6 relative z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="inline-flex items-center gap-1 text-amber-400 font-bold flex-shrink-0 text-[11px]">
-              <UserCheck className="w-3.5 h-3.5" />
-              Sesi:
-            </span>
-            <span className="text-slate-100 text-xs truncate font-semibold max-w-[150px] sm:max-w-none">
-              {currentUser.nama.replace(/\(.*?\)/g, '').split(',')[0].trim()} ({currentUser.pangkat})
-            </span>
-            <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-900/80 text-amber-300 border border-amber-500/40 flex-shrink-0">
-              {currentUser.role}
-            </span>
+      {/* Official Platform Sub-header - Prestigious Bareskrim Theme */}
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/40 text-slate-300 text-xs py-1 px-4 sm:px-8 relative z-20">
+        <div className="max-w-7xl mx-auto flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-amber-400 font-extrabold tracking-wide">BATALYON WIRA SATYA 1996</span>
+            <span className="text-slate-500 hidden sm:inline">&bull;</span>
+            <span className="text-slate-300 hidden sm:inline font-medium">Sistem Informasi Alumni & Soliditas Bhayangkara #SelaluBahagia</span>
           </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0 text-xs">
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="text-amber-300 hover:text-amber-200 text-[10px] sm:text-[11px] font-semibold flex items-center gap-1 px-2 py-0.5 sm:py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <KeyRound className="w-3 h-3" />
-              <span>Ganti Role</span>
-            </button>
-            <span className="text-red-800 hidden sm:inline">•</span>
-            <button
-              onClick={() => router.push('/login')}
-              className="text-slate-300 hover:text-white text-[11px] font-medium hidden sm:flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span>Portal Login</span>
-            </button>
+          <div className="flex items-center gap-3 text-slate-400 text-[10px] sm:text-[11px]">
+            <span>Terhubung: <b className="text-slate-200">{members.length} Perwira</b></span>
+            <span>&bull;</span>
+            <span>38 Polda & Mabes Polri</span>
           </div>
         </div>
       </div>
@@ -315,6 +304,7 @@ export default function Home() {
             onEditProfile={(targetMember) => {
               handleStartEditMember(targetMember || viewingMember);
             }}
+            onOpenChat={handleOpenChatWithMember}
             allMembers={members}
             onSelectMember={(m) => setViewingMember(m)}
           />
@@ -327,6 +317,7 @@ export default function Home() {
                 onAddNew={handleAddNewMember}
                 currentUser={currentUser}
                 onEditMember={handleStartEditMember}
+                onOpenChat={handleOpenChatWithMember}
                 externalSearch={navbarSearchQuery}
               />
             )}
@@ -339,6 +330,7 @@ export default function Home() {
                 onSelectMember={(m) => setViewingMember(m)}
                 onAddNewMember={handleAddNewMember}
                 onEditMember={handleStartEditMember}
+                onOpenChat={handleOpenChatWithMember}
               />
             )}
 
@@ -357,6 +349,7 @@ export default function Home() {
               <LinkedInMessagingPage
                 currentUser={currentUser}
                 members={members}
+                initialTargetMember={messagingTargetMember}
                 onSelectMember={(m) => setViewingMember(m)}
               />
             )}

@@ -12,7 +12,8 @@ import {
   Search,
   Building2,
   Calendar,
-  HeartHandshake
+  HeartHandshake,
+  MessageSquare
 } from 'lucide-react';
 
 interface LinkedInNetworkPageProps {
@@ -21,6 +22,7 @@ interface LinkedInNetworkPageProps {
   onSelectMember: (member: AnggotaWiraSatya) => void;
   onEditMember?: (member: AnggotaWiraSatya) => void;
   onAddNewMember?: () => void;
+  onOpenChat?: (member: AnggotaWiraSatya) => void;
 }
 
 export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
@@ -29,6 +31,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
   onSelectMember,
   onEditMember,
   onAddNewMember,
+  onOpenChat,
 }) => {
   const [searchPolda, setSearchPolda] = useState('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
@@ -270,18 +273,29 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                       </div>
                     </div>
 
-                    {/* Action Buttons: Kirim WA, Profil, and Edit (conditional based on role) */}
-                    <div className="pt-3 mt-2 border-t border-slate-100 flex items-center gap-1.5">
+                    {/* Action Buttons: Kirim WA, Chat, Profil, and Edit */}
+                    <div className="pt-3 mt-2 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
                       <a
                         href={`https://wa.me/${member.noHp.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex-1 py-1 px-2 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors"
+                        className="py-1 px-2 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors flex-1"
                         title="Kirim Pesan WhatsApp"
                       >
                         <Phone className="w-3 h-3" />
-                        <span>Kirim WA</span>
+                        <span>WA</span>
                       </a>
+
+                      {!isSelf && onOpenChat && (
+                        <button
+                          onClick={() => onOpenChat(member)}
+                          className="py-1 px-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] flex items-center justify-center gap-1 transition-colors flex-1"
+                          title="Buka Obrolan Leting Langsung"
+                        >
+                          <MessageSquare className="w-3 h-3 text-amber-400" />
+                          <span>Chat</span>
+                        </button>
+                      )}
                       
                       <button
                         onClick={() => onSelectMember(member)}
