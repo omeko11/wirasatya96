@@ -9,6 +9,11 @@ import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
 import { BendaharaPortal } from '@/components/BendaharaPortal';
 import { RoleSwitcherModal } from '@/components/RoleSwitcherModal';
 import { LinkedInChatDock } from '@/components/LinkedInChatDock';
+import { LinkedInMessagingPage } from '@/components/LinkedInMessagingPage';
+import { LinkedInJobsPage } from '@/components/LinkedInJobsPage';
+import { LinkedInNetworkPage } from '@/components/LinkedInNetworkPage';
+import { LinkedInNotificationsPage } from '@/components/LinkedInNotificationsPage';
+import { LinkedInProfileView } from '@/components/LinkedInProfileView';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } from '@/data/mockFinance';
@@ -22,6 +27,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<AuthUser>(PRESET_USERS[0]); // Default Superadmin
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [navbarSearchQuery, setNavbarSearchQuery] = useState('');
+  const [viewingMember, setViewingMember] = useState<AnggotaWiraSatya | null>(null);
 
   // Financial State
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(INITIAL_FINANCE_SUMMARY);
@@ -221,12 +227,19 @@ export default function Home() {
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setViewingMember(null);
+          setActiveTab(tab);
+        }}
         totalMembers={members.length}
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         onSearchChange={setNavbarSearchQuery}
+        onViewMyProfile={() => {
+          const myProfile = members.find((m) => m.nrp === currentUser.nrp) || members[0];
+          setViewingMember(myProfile);
+        }}
       />
 
       {/* Role Banner Notification Bar */}
@@ -267,46 +280,101 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4">
-        {/* TAB 1: BUKU SAKU */}
-        {activeTab === 'direktori' && (
-          <BukuSaku
-            members={members}
-            onAddNew={() => setActiveTab('form')}
+        {/* VIEWING SPECIFIC PROFILE (VIA NAVBAR SAYA / CONNECTION CARDS) */}
+        {viewingMember ? (
+          <LinkedInProfileView
+            member={viewingMember}
             currentUser={currentUser}
-            onEditMember={() => setActiveTab('form')}
-            externalSearch={navbarSearchQuery}
+            onClose={() => setViewingMember(null)}
+            onEditProfile={() => {
+              setViewingMember(null);
+              setActiveTab('form');
+            }}
+            allMembers={members}
+            onSelectMember={(m) => setViewingMember(m)}
           />
-        )}
+        ) : (
+          <>
+            {/* TAB 1: BUKU SAKU & FEED BERANDA */}
+            {activeTab === 'direktori' && (
+              <BukuSaku
+                members={members}
+                onAddNew={() => setActiveTab('form')}
+                currentUser={currentUser}
+                onEditMember={() => setActiveTab('form')}
+                externalSearch={navbarSearchQuery}
+              />
+            )}
 
-        {/* TAB 2: DATA MANDIRI / PROFIL */}
-        {activeTab === 'form' && (
-          <FormWizard
-            currentUser={currentUser}
-            existingMember={currentMemberProfile}
-            onSave={handleSaveMember}
-            onCancel={() => setActiveTab('direktori')}
-          />
-        )}
+            {/* TAB 2: JARINGAN (MY NETWORK - USER SCREENSHOT 3) */}
+            {activeTab === 'jaringan' && (
+              <LinkedInNetworkPage
+                currentUser={currentUser}
+                members={members}
+                onSelectMember={(m) => setViewingMember(m)}
+              />
+            )}
 
-        {/* TAB 3: PORTAL KEBENDAHARAAN */}
-        {activeTab === 'bendahara' && (
-          <BendaharaPortal
-            currentUser={currentUser}
-            members={members}
-            financeSummary={financeSummary}
-            transactions={transactions}
-            iuranList={iuranList}
-            onAddTransaction={handleAddTransaction}
-            onPayIuran={handlePayIuran}
-          />
-        )}
+            {/* TAB 3: PEKERJAAN & PURNA TUGAS (JOBS - USER SCREENSHOT 2) */}
+            {activeTab === 'purnaTugas' && (
+              <LinkedInJobsPage
+                currentUser={currentUser}
+                members={members}
+                onOpenFormWizard={() => setActiveTab('form')}
+              />
+            )}
 
-        {/* TAB 4: EKSEKUTIF & KESEKRETARIATAN */}
-        {activeTab === 'dashboard' && currentUser.role !== 'ANGGOTA' && (
-          <ExecutiveDashboard
-            members={members}
-            currentUser={currentUser}
-          />
+            {/* TAB 4: PESAN & OBROLAN LETING (MESSAGING - USER SCREENSHOT 1) */}
+            {activeTab === 'pesan' && (
+              <LinkedInMessagingPage
+                currentUser={currentUser}
+                members={members}
+                onSelectMember={(m) => setViewingMember(m)}
+              />
+            )}
+
+            {/* TAB 5: NOTIFIKASI ANGKATAN (NOTIFICATIONS - USER SCREENSHOT 4) */}
+            {activeTab === 'notifikasi' && (
+              <LinkedInNotificationsPage
+                currentUser={currentUser}
+                onNavigateToTab={(t) => {
+                  setViewingMember(null);
+                  setActiveTab(t as AppTab);
+                }}
+              />
+            )}
+
+            {/* TAB 6: DATA MANDIRI / PROFIL */}
+            {activeTab === 'form' && (
+              <FormWizard
+                currentUser={currentUser}
+                existingMember={currentMemberProfile}
+                onSave={handleSaveMember}
+                onCancel={() => setActiveTab('direktori')}
+              />
+            )}
+
+            {/* TAB 7: PORTAL KEBENDAHARAAN */}
+            {activeTab === 'bendahara' && (
+              <BendaharaPortal
+                currentUser={currentUser}
+                members={members}
+                financeSummary={financeSummary}
+                transactions={transactions}
+                iuranList={iuranList}
+                onAddTransaction={handleAddTransaction}
+                onPayIuran={handlePayIuran}
+              />
+            )}
+
+            {/* TAB 8: EKSEKUTIF & KESEKRETARIATAN */}
+            {activeTab === 'dashboard' && currentUser.role !== 'ANGGOTA' && (
+              <ExecutiveDashboard
+                members={members}
+                currentUser={currentUser}
+              />
+            )}
+          </>
         )}
       </main>
 
