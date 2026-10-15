@@ -12,7 +12,6 @@ import { RegistrationModal } from '@/components/RegistrationModal';
 import { LinkedInChatDock } from '@/components/LinkedInChatDock';
 import { LinkedInMessagingPage } from '@/components/LinkedInMessagingPage';
 import { LinkedInJobsPage } from '@/components/LinkedInJobsPage';
-import { LinkedInNetworkPage } from '@/components/LinkedInNetworkPage';
 import { LinkedInNotificationsPage } from '@/components/LinkedInNotificationsPage';
 import { LinkedInSettingsPage } from '@/components/LinkedInSettingsPage';
 import { LinkedInProfileView } from '@/components/LinkedInProfileView';
@@ -345,19 +344,7 @@ export default function Home() {
               />
             )}
 
-            {/* TAB 2: JARINGAN (MY NETWORK - USER SCREENSHOT 3) */}
-            {activeTab === 'jaringan' && (
-              <LinkedInNetworkPage
-                currentUser={currentUser}
-                members={members}
-                onSelectMember={(m) => setViewingMember(m)}
-                onAddNewMember={handleAddNewMember}
-                onEditMember={handleStartEditMember}
-                onOpenChat={handleOpenChatWithMember}
-              />
-            )}
-
-            {/* TAB 3: RIWAYAT JABATAN & PENUGASAN LETING 96 */}
+            {/* TAB 2: RIWAYAT JABATAN & PENUGASAN LETING 96 */}
             {activeTab === 'purnaTugas' && (
               <LinkedInJobsPage
                 currentUser={currentUser}

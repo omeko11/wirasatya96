@@ -166,7 +166,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </p>
 
                   <p className="text-xs text-red-900 font-bold hover:underline cursor-pointer pt-0.5">
-                    286 rekan leting terhubung (Akpol 1996)
+                    {allMembers.length > 0 ? `${allMembers.length} rekan leting terdaftar (Akpol 1996)` : 'Alumni Akpol 1996'}
                   </p>
                 </div>
 
@@ -321,7 +321,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   Aktivitas & Postingan Leting
                 </h2>
                 <p className="text-xs text-red-900 font-semibold mt-0.5">
-                  286 Rekan Leting Terhubung
+                  {allMembers.length > 0 ? `${allMembers.length} Rekan Leting Terdaftar` : 'Alumni Akpol 1996'}
                 </p>
               </div>
 

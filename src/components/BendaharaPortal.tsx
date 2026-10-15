@@ -437,7 +437,11 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               </div>
               <div className="text-right flex-shrink-0">
                 <span className="text-[11px] text-emerald-700 font-semibold block">Tingkat Kepatuhan</span>
-                <span className="text-xl font-black text-emerald-900">83.3% Lunas</span>
+                <span className="text-xl font-black text-emerald-900">
+                  {iuranList.length > 0 
+                    ? `${((iuranList.filter(i => i.status === 'LUNAS').length / iuranList.length) * 100).toFixed(1)}% Lunas`
+                    : '0% Terdata'}
+                </span>
               </div>
             </div>
 
@@ -514,6 +518,13 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                       </td>
                     </tr>
                   ))}
+                  {iuranList.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                        Belum ada data kewajiban iuran perwira yang tercatat.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

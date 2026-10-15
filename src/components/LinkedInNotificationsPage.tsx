@@ -30,63 +30,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
   onNavigateToTab,
 }) => {
   const [activeFilter, setActiveFilter] = useState<'semua' | 'health' | 'treasury' | 'social'>('semua');
-  const [notifications, setNotifications] = useState<NotificationItem[]>([
-    {
-      id: 'notif-1',
-      type: 'HEALTH',
-      title: 'Atensi Kesehatan Leting',
-      description: 'Kombes Pol. Bambang Prasetyo menambahkan laporan medis: Rekan di Polda Jateng memerlukan doa dan atensi solidaritas paguyuban.',
-      timeAgo: '1 jam yang lalu',
-      isRead: false,
-      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face',
-      actionLabel: 'Lihat Atensi Medis',
-      targetTab: 'direktori',
-    },
-    {
-      id: 'notif-2',
-      type: 'TREASURY',
-      title: 'Transparansi Kas Yayasan 1996',
-      description: 'Laporan Rekapitulasi Kas & Iuran Wajib Oktober 2026 telah diperbarui oleh Bendahara. Saldo kas saat ini Rp 185.000.000.',
-      timeAgo: '3 jam yang lalu',
-      isRead: false,
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face',
-      actionLabel: 'Buka Portal Kebendaharaan',
-      targetTab: 'bendahara',
-    },
-    {
-      id: 'notif-3',
-      type: 'SOCIAL',
-      title: 'Interaksi Linimasa Leting',
-      description: 'Irjen Pol. Achmad Kartiko dan 24 rekan leting lainnya menyukai postingan pembaharuan penugasan Anda.',
-      timeAgo: '6 jam yang lalu',
-      isRead: true,
-      avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
-      actionLabel: 'Lihat Postingan',
-      targetTab: 'direktori',
-    },
-    {
-      id: 'notif-4',
-      type: 'CAREER',
-      title: 'Peluang Purna Tugas Baru',
-      description: 'Ada 2 peluang konsultan keamanan korporasi (CSO) baru yang relevan dengan masa purna dinas Anda.',
-      timeAgo: '1 hari yang lalu',
-      isRead: true,
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-      actionLabel: 'Lihat Peluang',
-      targetTab: 'purnaTugas',
-    },
-    {
-      id: 'notif-5',
-      type: 'SOCIAL',
-      title: 'Komentar Baru di Feed Silaturahmi',
-      description: 'Kombes Pol. Hadi Wicaksono meninggalkan komentar: "Siap Jenderal, salam presisi dan salam hormat untuk seluruh rekan letting!"',
-      timeAgo: '2 hari yang lalu',
-      isRead: true,
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-      actionLabel: 'Balas Komentar',
-      targetTab: 'direktori',
-    },
-  ]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   const markAllAsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
@@ -194,52 +138,60 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
 
           {/* Notifications Stream */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100">
-            {filteredNotifs.map((notif) => (
-              <div
-                key={notif.id}
-                className={`p-4 sm:p-5 flex items-start justify-between gap-3 transition-colors ${
-                  !notif.isRead ? 'bg-red-50/40' : 'hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-start gap-3.5 min-w-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={notif.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face'}
-                    alt="Notifikasi"
-                    className="w-11 h-11 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5"
-                  />
+            {filteredNotifs.length > 0 ? (
+              filteredNotifs.map((notif) => (
+                <div
+                  key={notif.id}
+                  className={`p-4 sm:p-5 flex items-start justify-between gap-3 transition-colors ${
+                    !notif.isRead ? 'bg-red-50/40' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3.5 min-w-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={notif.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop&crop=face'}
+                      alt="Notifikasi"
+                      className="w-11 h-11 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5"
+                    />
 
-                  <div className="min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-900">{notif.title}</span>
-                      {!notif.isRead && (
-                        <span className="w-2 h-2 rounded-full bg-red-800" />
-                      )}
-                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">{notif.title}</span>
+                        {!notif.isRead && (
+                          <span className="w-2 h-2 rounded-full bg-red-800" />
+                        )}
+                      </div>
 
-                    <p className="text-xs text-slate-700 leading-relaxed">
-                      {notif.description}
-                    </p>
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {notif.description}
+                      </p>
 
-                    <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-1">
-                      <span>{notif.timeAgo}</span>
-                      {notif.actionLabel && notif.targetTab && (
-                        <button
-                          onClick={() => onNavigateToTab(notif.targetTab!)}
-                          className="text-red-900 font-bold hover:underline"
-                        >
-                          {notif.actionLabel} →
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3 text-[10px] text-slate-400 pt-1">
+                        <span>{notif.timeAgo}</span>
+                        {notif.actionLabel && notif.targetTab && (
+                          <button
+                            onClick={() => onNavigateToTab(notif.targetTab!)}
+                            className="text-red-900 font-bold hover:underline"
+                          >
+                            {notif.actionLabel} →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <button className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex-shrink-0">
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
+                  <button className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex-shrink-0">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="p-8 text-center text-slate-500 text-xs space-y-2">
+                <Bell className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="font-semibold text-slate-700">Belum ada notifikasi baru.</p>
+                <p className="text-slate-400 text-[11px]">Pemberitahuan terkait atensi medis, mutasi arus kas, dan kabar leting akan muncul di sini.</p>
               </div>
-            ))}
+            )}
           </div>
 
         </div>

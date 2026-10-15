@@ -262,7 +262,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             {/* Avatar overlapping */}
             <div className="px-4 pb-4 relative">
               <div 
-                onClick={() => setSelectedMember(currentMemberObj)}
+                onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
                 className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-slate-100 cursor-pointer group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -274,7 +274,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
 
               <h3 
-                onClick={() => setSelectedMember(currentMemberObj)}
+                onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
                 className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight"
               >
                 {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
@@ -287,7 +287,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Rekan Letting:</span>
-                  <span className="font-bold text-red-900">286 Perwira</span>
+                  <span className="font-bold text-red-900">{members.length} Perwira</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Status Iuran 2026:</span>
@@ -303,10 +303,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
               {/* Action Button */}
               <button
-                onClick={() => setSelectedMember(currentMemberObj)}
+                onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
                 className="w-full mt-3 py-1.5 px-3 rounded-lg border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
-                Lihat Profil Saya
+                {currentMemberObj ? 'Lihat Profil Saya' : 'Lengkapi Profil Saya'}
               </button>
             </div>
           </div>
@@ -551,7 +551,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           </div>
 
           {/* Member Feed Cards (LinkedIn-style Connection Cards) */}
-          <div className="space-y-3.5">
+          {filteredMembers.length > 0 ? (
+            <div className="space-y-3.5">
             {filteredMembers.map((member) => (
               <div
                 key={member.id}
@@ -666,7 +667,23 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl p-8 border border-slate-200 text-center space-y-2">
+              <Users className="w-8 h-8 text-slate-300 mx-auto" />
+              <p className="text-slate-700 text-xs font-semibold">Belum ada data perwira alumni terdaftar.</p>
+              <p className="text-slate-400 text-[11px]">Silakan masukkan data melalui formulir pendataan SIPP atau registrasi alumni.</p>
+              {['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role) && (
+                <button
+                  onClick={onAddNew}
+                  className="mt-2 px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Input Anggota Baru</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -693,69 +710,75 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               Program kepedulian leting bagi rekan yang memerlukan doa, atensi medis khusus, dan bantuan:
             </p>
 
-            <div className="space-y-2.5">
-              {healthAttentionMembers.map((m) => {
-                const isUrgent = m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT';
-                return (
-                  <div 
-                    key={m.id} 
-                    className={`p-3 rounded-xl border transition-all ${
-                      isUrgent 
-                        ? 'bg-red-50/70 border-red-200/90 shadow-sm' 
-                        : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span 
-                        onClick={() => setSelectedMember(m)}
-                        className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px]"
-                        title={m.namaLengkap}
-                      >
-                        {m.namaLengkap.split(',')[0]}
-                      </span>
-                      <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 ${
+            {healthAttentionMembers.length > 0 ? (
+              <div className="space-y-2.5">
+                {healthAttentionMembers.map((m) => {
+                  const isUrgent = m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT';
+                  return (
+                    <div 
+                      key={m.id} 
+                      className={`p-3 rounded-xl border transition-all ${
                         isUrgent 
-                          ? 'bg-red-600 text-white shadow-sm' 
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}>
-                        {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                        {isUrgent ? 'ATENSI KHUSUS' : 'TERPANTAU'}
-                      </span>
-                    </div>
+                          ? 'bg-red-50/70 border-red-200/90 shadow-sm' 
+                          : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span 
+                          onClick={() => setSelectedMember(m)}
+                          className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px]"
+                          title={m.namaLengkap}
+                        >
+                          {m.namaLengkap.split(',')[0]}
+                        </span>
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 ${
+                          isUrgent 
+                            ? 'bg-red-600 text-white shadow-sm' 
+                            : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                          {isUrgent ? 'ATENSI KHUSUS' : 'TERPANTAU'}
+                        </span>
+                      </div>
 
-                    <div className="text-[10px] text-slate-600 line-clamp-2">
-                      <span className="text-slate-500 font-semibold">Diagnosa: </span>
-                      <b>{(m.daftarPenyakit || []).join(', ') || 'Dalam Pemulihan'}</b>
-                    </div>
+                      <div className="text-[10px] text-slate-600 line-clamp-2">
+                        <span className="text-slate-500 font-semibold">Diagnosa: </span>
+                        <b>{(m.daftarPenyakit || []).join(', ') || 'Dalam Pemulihan'}</b>
+                      </div>
 
-                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200/60">
-                      <a
-                        href={formatWaUrl(m.noHp)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
-                      >
-                        <Phone className="w-3 h-3" /> Kirim Doa & Semangat
-                      </a>
-                      <button
-                        onClick={() => setSelectedMember(m)}
-                        className="text-[10px] font-bold text-red-900 hover:underline"
-                      >
-                        Detail Medis →
-                      </button>
+                      <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200/60">
+                        <a
+                          href={formatWaUrl(m.noHp)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                        >
+                          <Phone className="w-3 h-3" /> Kirim Doa & Semangat
+                        </a>
+                        <button
+                          onClick={() => setSelectedMember(m)}
+                          className="text-[10px] font-bold text-red-900 hover:underline"
+                        >
+                          Detail Medis →
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs">
+                Tidak ada rekan yang membutuhkan atensi medis khusus.
+              </div>
+            )}
           </div>
 
-          {/* Widget 2: Status Kas Yayasan & Iuran */}
+          {/* Widget 2: Status Arus Kas */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="font-bold text-slate-900 flex items-center gap-1.5">
                 <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                Kas Yayasan Leting 1996
+                Arus Kas
               </span>
               <span className="text-[10px] text-slate-400 font-semibold">2026</span>
             </div>
@@ -763,11 +786,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Saldo Kas Utama:</span>
-                <span className="font-bold text-slate-900">Rp 185.000.000</span>
+                <span className="font-bold text-slate-900">Rp 0</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Alokasi Rekan Sakit:</span>
-                <span className="font-bold text-emerald-600">Rp 45.000.000</span>
+                <span className="font-bold text-emerald-600">Rp 0</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Iuran Wajib / Bulan:</span>
@@ -777,7 +800,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
             <div className="pt-2 border-t border-slate-100">
               <span className="text-[11px] text-slate-400 block text-center">
-                Dikelola transparan oleh Bendahara Batalyon
+                Dikelola oleh Bendahara
               </span>
             </div>
           </div>

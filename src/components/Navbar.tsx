@@ -29,7 +29,6 @@ import { WSLogo } from './WSLogo';
 
 export type AppTab = 
   | 'direktori' 
-  | 'jaringan' 
   | 'purnaTugas' 
   | 'pesan' 
   | 'notifikasi' 
@@ -151,26 +150,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Halaman Utama</span>
               </button>
 
-              {/* 2. Jaringan (My Network) */}
-              <button
-                onClick={() => setActiveTab('jaringan')}
-                className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
-                  activeTab === 'jaringan'
-                    ? 'border-red-900 text-red-900 font-bold'
-                    : 'border-transparent text-slate-500 hover:text-slate-900'
-                }`}
-                title="Jaringan 286 Perwira"
-              >
-                <div className="relative">
-                  <Users className="w-5 h-5" />
-                  <span className="px-1 py-0.2 rounded-full bg-red-100 text-red-900 text-[8px] font-bold absolute -top-1 -right-2">
-                    {totalMembers}
-                  </span>
-                </div>
-                <span className="text-[10px] mt-0.5 whitespace-nowrap">Jaringan</span>
-              </button>
-
-              {/* 3. Riwayat Jabatan & Penugasan Leting 96 */}
+              {/* 2. Riwayat Jabatan & Penugasan Leting 96 */}
               <button
                 onClick={() => setActiveTab('purnaTugas')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -184,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Jabatan</span>
               </button>
 
-              {/* 4. Pesan */}
+              {/* 3. Pesan */}
               <button
                 onClick={() => setActiveTab('pesan')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -197,13 +177,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="relative">
                   <MessageSquare className="w-5 h-5" />
                   <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-bold flex items-center justify-center absolute -top-1 -right-2">
-                    2
+                    0
                   </span>
                 </div>
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Pesan</span>
               </button>
 
-              {/* 5. Notifikasi */}
+              {/* 4. Notifikasi */}
               <button
                 onClick={() => setActiveTab('notifikasi')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -215,14 +195,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <div className="relative">
                   <Bell className="w-5 h-5" />
-                  <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-bold flex items-center justify-center absolute -top-1 -right-2">
-                    4
-                  </span>
                 </div>
                 <span className="text-[10px] mt-0.5 whitespace-nowrap">Notifikasi</span>
               </button>
 
-              {/* 6. Kebendaharaan */}
+              {/* 5. Arus Kas */}
               <button
                 onClick={() => setActiveTab('bendahara')}
                 className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[50px] sm:min-w-[56px] text-center transition-all border-b-2 ${
@@ -230,10 +207,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'border-amber-700 text-amber-800 font-bold'
                     : 'border-transparent text-slate-500 hover:text-slate-900'
                 }`}
-                title="Kas Yayasan & Iuran"
+                title="Arus Kas & Iuran"
               >
                 <Wallet className="w-5 h-5" />
-                <span className="text-[10px] mt-0.5 whitespace-nowrap">Kebendaharaan</span>
+                <span className="text-[10px] mt-0.5 whitespace-nowrap">Arus Kas</span>
               </button>
 
               {/* Anev Leting (Leadership) */}
@@ -420,7 +397,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                       >
                         <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Transparansi Kas Yayasan</span>
+                        <span>Arus Kas</span>
                       </button>
                       <button
                         onClick={() => {
@@ -505,8 +482,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="p-2.5 rounded-xl border border-slate-100 hover:border-red-800/40 hover:bg-red-50/50 text-left transition-all"
                         >
                           <Wallet className="w-4 h-4 text-emerald-700 mb-1" />
-                          <div className="font-bold text-slate-800 text-[11px]">Kas Yayasan</div>
-                          <div className="text-[10px] text-slate-500">Transparansi kebendaharaan</div>
+                          <div className="font-bold text-slate-800 text-[11px]">Arus Kas</div>
+                          <div className="text-[10px] text-slate-500">Mutasi kas & iuran</div>
                         </button>
 
                         <button
@@ -557,7 +534,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Bottom Mobile Tab Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 pt-1.5 pb-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
-        <div className="grid grid-cols-6 gap-0.5 text-[9px]">
+        <div className="grid grid-cols-5 gap-0.5 text-[9px]">
           {/* 1. Beranda */}
           <button
             onClick={() => setActiveTab('direktori')}
@@ -574,23 +551,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Beranda</span>
           </button>
 
-          {/* 2. Jaringan */}
-          <button
-            onClick={() => setActiveTab('jaringan')}
-            className={`flex flex-col items-center justify-center py-1 transition-colors ${
-              activeTab === 'jaringan' ? 'text-red-900 font-bold' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <div className="relative">
-              <Users className="w-5 h-5 mb-0.5" />
-              <span className="px-1 rounded-full bg-red-100 text-red-900 text-[8px] font-bold absolute -top-1 -right-2">
-                286
-              </span>
-            </div>
-            <span>Jaringan</span>
-          </button>
-
-          {/* 3. Jabatan */}
+          {/* 2. Jabatan */}
           <button
             onClick={() => setActiveTab('purnaTugas')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
@@ -601,7 +562,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Jabatan</span>
           </button>
 
-          {/* 4. Kas 96 */}
+          {/* 3. Arus Kas */}
           <button
             onClick={() => setActiveTab('bendahara')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
@@ -609,10 +570,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Wallet className="w-5 h-5 mb-0.5" />
-            <span>Kas 96</span>
+            <span>Arus Kas</span>
           </button>
 
-          {/* 5. Pesan */}
+          {/* 4. Pesan */}
           <button
             onClick={() => setActiveTab('pesan')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
@@ -621,14 +582,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <div className="relative">
               <MessageSquare className="w-5 h-5 mb-0.5" />
-              <span className="w-3.5 h-3.5 rounded-full bg-red-700 text-white text-[8px] font-bold flex items-center justify-center absolute -top-1 -right-2">
-                2
-              </span>
             </div>
             <span>Pesan</span>
           </button>
 
-          {/* 6. Notifikasi */}
+          {/* 5. Notifikasi */}
           <button
             onClick={() => setActiveTab('notifikasi')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
@@ -637,9 +595,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <div className="relative">
               <Bell className="w-5 h-5 mb-0.5" />
-              <span className="w-3.5 h-3.5 rounded-full bg-red-700 text-white text-[8px] font-bold flex items-center justify-center absolute -top-1 -right-2">
-                4
-              </span>
             </div>
             <span>Notif</span>
           </button>
