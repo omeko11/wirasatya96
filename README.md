@@ -150,8 +150,7 @@ docker-compose up --build -d
 ### 3. Akses Layanan Melalui Browser:
 - **Frontend Portal**: [http://localhost:3000](http://localhost:3000)
 - **Backend REST API Healthcheck**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
-- **MinIO Object Storage Console**: [http://localhost:9001](http://localhost:9001)  
-  *(User: `minioadmin`, Password: `minioadmin_ws96_secure`)*
+- **MinIO Object Storage Console**: [http://localhost:9001](http://localhost:9001) *(Kredensial merujuk pada konfigurasi `.env`)*
 - **PostgreSQL Database Port**: `localhost:5432`
 
 ### 4. Menghentikan Kontainer:
@@ -192,33 +191,35 @@ npm run build
 
 ## ⚙️ Variabel Lingkungan (Environment Variables)
 
-Contoh konfigurasi variabel lingkungan yang digunakan oleh backend dan frontend:
+Sistem menggunakan file `.env` yang **wajib diisolasi secara lokal** dan **tidak boleh di-commit ke repositori publik**. Template variabel konfigurasi telah disediakan pada file [`.env.example`](./.env.example).
 
-```env
-# Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-
-# Backend Server Configuration
-PORT=5000
-NODE_ENV=production
-JWT_SECRET=wirasatya96_super_secret_jwt_key_polri_2026
-
-# Database Connection (PostgreSQL)
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres_ws96_secure
-DB_NAME=wirasatya96
-
-# MinIO Object Storage Connection
-MINIO_ENDPOINT=http://localhost:9000
-MINIO_REGION=us-east-1
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin_ws96_secure
-BUCKET_AVATARS=wirasatya-avatars
-BUCKET_POSTS=wirasatya-posts
-BUCKET_DOCUMENTS=wirasatya-documents
+### Langkah Konfigurasi:
+```bash
+# Salin template konfigurasi ke file .env lokal Anda
+cp .env.example .env
 ```
+
+### Daftar Variabel Konfigurasi:
+
+| Kategori | Nama Variabel | Wajib | Keterangan & Nilai Default |
+|---|---|:---:|---|
+| **Frontend** | `NEXT_PUBLIC_API_URL` | Ya | URL API Gateway Backend (Default: `http://localhost:5000/api`) |
+| **Backend** | `PORT` | Tidak | Port listener layanan API Express (Default: `5000`) |
+| | `NODE_ENV` | Ya | Lingkungan aplikasi (`development` / `production`) |
+| | `JWT_SECRET` | Ya | Kunci rahasia untuk menandatangani token sesi JWT |
+| **Database** | `DB_HOST` | Ya | Host database PostgreSQL (`localhost` atau nama container `postgres`) |
+| | `DB_PORT` | Ya | Port PostgreSQL (Default: `5432`) |
+| | `DB_USER` | Ya | Username database PostgreSQL |
+| | `DB_PASSWORD` | Ya | Kata sandi akun database PostgreSQL |
+| | `DB_NAME` | Ya | Nama basis data utama (Default: `wirasatya96`) |
+| **Storage (S3)** | `MINIO_ENDPOINT` | Ya | URL endpoint MinIO S3 (Default: `http://localhost:9000`) |
+| | `MINIO_REGION` | Tidak | Wilayah penyimpanan S3 (Default: `us-east-1`) |
+| | `MINIO_ACCESS_KEY` | Ya | Kunci akses identitas MinIO S3 |
+| | `MINIO_SECRET_KEY` | Ya | Kunci rahasia kredensial MinIO S3 |
+| | `BUCKET_*` | Ya | Nama bucket: `wirasatya-avatars`, `wirasatya-posts`, `wirasatya-documents` |
+
+> [!CAUTION]
+> **Peringatan Keamanan Kredensial**: Jangan pernah mengunggah atau membagikan berkas `.env` yang memuat kata sandi basis data dan `JWT_SECRET` produksi ke repositori publik. Seluruh kunci rahasia wajib dikelola melalui *Docker Secrets* atau *Environment Variables Manager* hosting produksi (Vercel / Cloud Vault).
 
 ---
 
