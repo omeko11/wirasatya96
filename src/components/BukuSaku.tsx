@@ -446,13 +446,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 <PenSquare className="w-4 h-4 text-amber-600" />
                 <span>Tulis Artikel</span>
               </button>
-              <button 
-                onClick={onAddNew}
-                className="flex items-center gap-2 hover:text-purple-600 transition-colors p-1 hidden sm:inline-flex"
-              >
-                <UserPlus className="w-4 h-4 text-purple-600" />
-                <span>Pendataan</span>
-              </button>
+              {['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) && (
+                <button 
+                  onClick={onAddNew}
+                  className="flex items-center gap-2 hover:text-purple-600 transition-colors p-1 hidden sm:inline-flex"
+                >
+                  <UserPlus className="w-4 h-4 text-purple-600" />
+                  <span>Pendataan</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -557,11 +559,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
                 <b>{filteredMembers.length}</b> perwira
               </span>
-              {['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role) && (
+              {['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) && (
                 <button
                   onClick={onAddNew}
                   className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-colors whitespace-nowrap"
-                  title="Tambah Anggota Baru"
+                  title="Tambah Anggota Baru (Admin & Kesekretariatan)"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">+ Input Anggota</span>
@@ -665,8 +667,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                       Profil
                     </button>
 
-                    {/* Role-based Edit: Pengurus (Sekretariat/Ketua/Superadmin) can edit any member, or user editing self */}
-                    {(['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role) || currentUser.nrp === member.nrp) && onEditMember && (
+                    {/* Role-based Edit: Strictly Admin (Superadmin) & Kesekretariatan can edit any member, or user editing self */}
+                    {(['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) || currentUser.nrp === member.nrp) && onEditMember && (
                       <button
                         onClick={() => onEditMember(member)}
                         className="py-1.5 px-3 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors shadow-sm flex items-center gap-1"
@@ -698,8 +700,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="bg-white rounded-xl p-8 border border-slate-200 text-center space-y-2">
               <Users className="w-8 h-8 text-slate-300 mx-auto" />
               <p className="text-slate-700 text-xs font-semibold">Belum ada data perwira alumni terdaftar.</p>
-              <p className="text-slate-400 text-[11px]">Silakan masukkan data melalui formulir pendataan SIPP atau registrasi alumni.</p>
-              {['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role) && (
+              <p className="text-slate-400 text-[11px]">Silakan masukkan data melalui manajemen pengguna atau formulir pendataan.</p>
+              {['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) && (
                 <button
                   onClick={onAddNew}
                   className="mt-2 px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm"

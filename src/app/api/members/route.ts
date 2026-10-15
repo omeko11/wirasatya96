@@ -28,6 +28,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = serverStore.getSession();
+    if (session && session.role !== 'SUPERADMIN' && session.role !== 'SEKRETARIAT') {
+      return NextResponse.json(
+        { success: false, message: 'Akses Ditolak: Hanya Admin (Superadmin) dan Kesekretariatan yang dapat menambahkan anggota baru.' },
+        { status: 403 }
+      );
+    }
+
     const member: AnggotaWiraSatya = await req.json();
     if (!member.nrp || !member.namaLengkap) {
       return NextResponse.json({ success: false, message: 'NRP dan Nama Lengkap wajib diisi' }, { status: 400 });
@@ -45,10 +53,10 @@ export async function PUT(req: NextRequest) {
     const member: AnggotaWiraSatya = await req.json();
     const session = serverStore.getSession();
 
-    // Role check: If logged in as ANGGOTA, they can only edit their own NRP
-    if (session && session.role === 'ANGGOTA' && session.nrp !== member.nrp) {
+    // Role check: Only SUPERADMIN and SEKRETARIAT can edit other members' profiles; other roles can only edit their own NRP
+    if (session && !['SUPERADMIN', 'SEKRETARIAT'].includes(session.role) && session.nrp !== member.nrp) {
       return NextResponse.json(
-        { success: false, message: 'Akses Ditolak: Anda hanya berwenang memperbarui profil pribadi Anda.' },
+        { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang berwenang memperbarui profil anggota lain.' },
         { status: 403 }
       );
     }

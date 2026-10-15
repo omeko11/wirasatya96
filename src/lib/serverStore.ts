@@ -139,8 +139,67 @@ export const serverStore = {
     const idx = globalStore.members.findIndex((m) => m.id === member.id || m.nrp === member.nrp);
     if (idx >= 0) {
       globalStore.members[idx] = { ...member, updatedAt: new Date().toISOString() };
+      // Also sync name/pangkat to user if exists
+      const uIdx = globalStore.users.findIndex((u) => u.nrp === member.nrp);
+      if (uIdx >= 0) {
+        globalStore.users[uIdx].nama = member.namaLengkap;
+        globalStore.users[uIdx].pangkat = member.pangkat;
+        globalStore.users[uIdx].satker = member.satuanKerja;
+        globalStore.users[uIdx].polda = member.polda;
+      }
     } else {
-      globalStore.members.push({ ...member, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      globalStore.members.unshift({ ...member, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      // Ensure user account exists
+      if (!globalStore.users.some((u) => u.nrp === member.nrp)) {
+        globalStore.users.push({
+          id: 'u-' + member.nrp,
+          nrp: member.nrp,
+          nama: member.namaLengkap,
+          pangkat: member.pangkat,
+          email: member.email || `${member.nrp}@wirasatya96.id`,
+          role: 'ANGGOTA',
+          profileId: member.id || 'ws-' + member.nrp,
+          mfaEnabled: false,
+          mfaMethod: 'PIN',
+          status: 'DISETUJUI_BELUM_PASSWORD',
+          satker: member.satuanKerja,
+          polda: member.polda,
+          fotoUrl: member.fotoUrl || '/default-avatar.png',
+        });
+      }
+      // Ensure registration entry exists
+      if (!globalStore.registrations.some((r) => r.nrp === member.nrp)) {
+        globalStore.registrations.unshift({
+          id: 'reg-' + member.nrp,
+          nrp: member.nrp,
+          nama: member.namaLengkap,
+          pangkat: member.pangkat,
+          satker: member.satuanKerja,
+          polda: member.polda,
+          noHp: member.noHp || '',
+          email: member.email || `${member.nrp}@wirasatya96.id`,
+          alasanDaftar: 'Ditambahkan oleh Admin / Kesekretariatan melalui Pendataan',
+          status: 'DISETUJUI_BELUM_PASSWORD',
+          createdAt: new Date().toISOString(),
+          verifiedAt: new Date().toISOString(),
+          verifiedBy: 'Admin / Kesekretariatan',
+        });
+      }
+      // Ensure iuran entry exists
+      if (!globalStore.iuranList.some((i) => i.nrp === member.nrp)) {
+        globalStore.iuranList.push({
+          id: 'iur-' + member.nrp,
+          nrp: member.nrp,
+          namaLengkap: member.namaLengkap,
+          pangkat: member.pangkat,
+          polda: member.polda,
+          tahun: 2026,
+          bulanTerbayar: [],
+          totalTagihan: 3000000,
+          totalTerbayar: 0,
+          status: 'BELUM_BAYAR',
+        });
+      }
     }
     return member;
   },
@@ -148,8 +207,125 @@ export const serverStore = {
   getUsers: () => globalStore.users,
 
   addUser: (user: AuthUser) => {
-    globalStore.users.push(user);
+    const existingIdx = globalStore.users.findIndex((u) => u.nrp === user.nrp);
+    if (existingIdx >= 0) {
+      globalStore.users[existingIdx] = { ...globalStore.users[existingIdx], ...user };
+    } else {
+      globalStore.users.unshift(user);
+    }
+
+    // Ensure registration entry exists
+    const existingReg = globalStore.registrations.find((r) => r.nrp === user.nrp);
+    if (!existingReg) {
+      globalStore.registrations.unshift({
+        id: 'reg-' + user.nrp,
+        nrp: user.nrp,
+        nama: user.nama,
+        pangkat: user.pangkat,
+        satker: user.satker || 'Mabes Polri',
+        polda: user.polda || 'MABES POLRI',
+        noHp: '',
+        email: user.email,
+        alasanDaftar: `Ditambahkan oleh Admin / Kesekretariatan (${user.role})`,
+        status: user.status || (user.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD'),
+        password: user.password,
+        createdAt: new Date().toISOString(),
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: 'Admin / Kesekretariatan',
+      });
+    }
+
+    // Ensure directory member exists
+    const existingMember = globalStore.members.find((m) => m.nrp === user.nrp);
+    if (!existingMember) {
+      globalStore.members.unshift({
+        id: 'ws-' + user.nrp,
+        nrp: user.nrp,
+        namaLengkap: user.nama,
+        pangkat: user.pangkat,
+        jabatanTerakhir: user.satker || 'Perwira Alumni Akpol 1996',
+        satuanKerja: user.satker || 'Polri',
+        polda: user.polda || 'MABES POLRI',
+        tipeSatker: (user.polda || 'MABES POLRI') === 'MABES POLRI' ? 'MABES' : 'POLDA',
+        pendidikanTerakhir: 'Akpol 1996',
+        tempatLahir: 'Jakarta',
+        tanggalLahir: '1974-01-01',
+        usia: 52,
+        jenisKelamin: 'LAKI-LAKI',
+        noHp: '',
+        email: user.email,
+        fotoUrl: user.fotoUrl || '/default-avatar.png',
+        alamatTempatTinggal: user.polda || 'Jakarta',
+        statusTempatTinggal: 'MILIK PRIBADI',
+        statusPerkawinan: 'MENIKAH',
+        jumlahAnak: 0,
+        daftarAnak: [],
+        tahunPurnaTugas: 2032,
+        sisaTahunDinas: 6,
+        alamatPurnaTugas: user.polda || 'Jakarta',
+        statusRumahPurnaTugas: 'MILIK PRIBADI',
+        sudahPembekalan: 'SUDAH',
+        rencanaAktivitas: ['USAHA SENDIRI'],
+        sumberPenghasilanPasca: ['DANA PENSIUN'],
+        kecukupanDanaPensiun: 'CUKUP',
+        kesiapanPensiun: 'SIAP',
+        perasaanPensiun: 'OPTIMIS',
+        dukunganKeluarga: 'SANGAT MENDUKUNG',
+        adaPenyakitKronis: 'TIDAK ADA',
+        kondisiKesehatan: 'BAIK',
+        daftarPenyakit: [],
+        asuransiAktif: ['BPJS'],
+        rutinMcu: 'YA',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // Ensure iuran entry exists
+    const existingIuran = globalStore.iuranList.find((i) => i.nrp === user.nrp);
+    if (!existingIuran) {
+      globalStore.iuranList.push({
+        id: 'iur-' + user.nrp,
+        nrp: user.nrp,
+        namaLengkap: user.nama,
+        pangkat: user.pangkat,
+        polda: user.polda || 'MABES POLRI',
+        tahun: 2026,
+        bulanTerbayar: [],
+        totalTagihan: 3000000,
+        totalTerbayar: 0,
+        status: 'BELUM_BAYAR',
+      });
+    }
+
     return user;
+  },
+
+  updateUser: (nrp: string, updates: Partial<AuthUser>) => {
+    const idx = globalStore.users.findIndex((u) => u.nrp === nrp);
+    if (idx < 0) return null;
+    globalStore.users[idx] = { ...globalStore.users[idx], ...updates };
+    const updatedUser = globalStore.users[idx];
+
+    // Sync member name/pangkat/satker if changed
+    const mIdx = globalStore.members.findIndex((m) => m.nrp === nrp);
+    if (mIdx >= 0) {
+      if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
+      if (updates.pangkat) globalStore.members[mIdx].pangkat = updates.pangkat;
+      if (updates.satker) globalStore.members[mIdx].satuanKerja = updates.satker;
+      if (updates.polda) globalStore.members[mIdx].polda = updates.polda;
+    }
+
+    return updatedUser;
+  },
+
+  deleteUser: (nrp: string) => {
+    if (nrp === '98010710') return false; // Protect primary superadmin
+    globalStore.users = globalStore.users.filter((u) => u.nrp !== nrp);
+    globalStore.registrations = globalStore.registrations.filter((r) => r.nrp !== nrp);
+    globalStore.members = globalStore.members.filter((m) => m.nrp !== nrp);
+    globalStore.iuranList = globalStore.iuranList.filter((i) => i.nrp !== nrp);
+    return true;
   },
 
   getSession: () => globalStore.activeSession,
@@ -221,7 +397,8 @@ export const serverStore = {
   verifyRegistration: (
     idOrNrp: string, 
     action: 'APPROVE' | 'REJECT', 
-    verifierName: string = 'Superadmin'
+    verifierName: string = 'Superadmin',
+    assignedRole: AuthUser['role'] = 'ANGGOTA'
   ): { success: boolean; message: string; registration?: PendingRegistration } => {
     const reg = globalStore.registrations.find((r) => r.id === idOrNrp || r.nrp === idOrNrp);
     if (!reg) return { success: false, message: 'Data pendaftaran tidak ditemukan.' };
@@ -240,7 +417,7 @@ export const serverStore = {
           nama: reg.nama,
           pangkat: reg.pangkat,
           email: reg.email,
-          role: 'ANGGOTA',
+          role: assignedRole,
           profileId: 'ws-' + reg.nrp,
           mfaEnabled: false,
           mfaMethod: 'PIN',
@@ -252,6 +429,7 @@ export const serverStore = {
         globalStore.users.push(user);
       } else {
         user.status = 'DISETUJUI_BELUM_PASSWORD';
+        user.role = assignedRole || user.role;
         if (!user.fotoUrl) user.fotoUrl = '/default-avatar.png';
       }
 

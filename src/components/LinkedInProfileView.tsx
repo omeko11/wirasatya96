@@ -45,7 +45,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   allMembers = [],
   onSelectMember,
 }) => {
-  const isLeadership = ['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role);
+  const isLeadership = ['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role);
   const isSelf = currentUser.nrp === member.nrp;
   const isOwner = isSelf;
   const canEdit = isLeadership || isSelf;

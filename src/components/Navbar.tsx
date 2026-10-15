@@ -230,12 +230,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {/* Verifikasi Registrasi Alumni (Admin/Sekretariat Only) */}
+              {/* Manajemen Pengguna & Verifikasi (Admin/Sekretariat Only) */}
               {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && onOpenVerificationModal && (
                 <button
                   onClick={onOpenVerificationModal}
                   className="relative flex flex-col items-center justify-center px-1.5 py-1 text-slate-600 hover:text-red-900 transition-colors"
-                  title="Verifikasi Pendaftaran Alumni Baru"
+                  title="Manajemen Pengguna & Verifikasi Akun"
                 >
                   <div className="relative">
                     <ShieldAlert className="w-5 h-5 text-red-800" />
@@ -245,7 +245,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] mt-0.5 whitespace-nowrap font-medium text-red-900">Verifikasi</span>
+                  <span className="text-[10px] mt-0.5 whitespace-nowrap font-medium text-red-900">Manajemen User</span>
                 </button>
               )}
 
@@ -333,7 +333,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-900">FIDO2</span>
                       </button>
 
-                      {/* Verifikasi Anggota (Superadmin / Sekretariat) */}
+                      {/* Manajemen Pengguna & Verifikasi (Hanya Admin & Kesekretariatan) */}
                       {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && onOpenVerificationModal && (
                         <button
                           onClick={() => {
@@ -343,46 +343,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="w-full px-4 py-2 text-left hover:bg-red-50/80 flex items-center justify-between text-slate-700 transition-colors"
                         >
                           <span className="flex items-center gap-2">
-                            <ShieldAlert className="w-3.5 h-3.5 text-red-800" />
-                            <span className="font-semibold text-red-950">Verifikasi Pendaftaran</span>
+                            <UserPlus className="w-3.5 h-3.5 text-red-800" />
+                            <span className="font-semibold text-red-950">Manajemen Pengguna & Verifikasi</span>
                           </span>
                           {pendingVerificationCount > 0 ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-700 text-white animate-pulse">
-                              {pendingVerificationCount} Baru
+                              {pendingVerificationCount} Antrean
                             </span>
                           ) : (
-                            <span className="text-[10px] font-medium text-slate-400">0</span>
+                            <span className="text-[10px] font-semibold text-red-800">Kelola</span>
                           )}
                         </button>
                       )}
 
-                      {/* Pendaftaran Akun Alumni Baru */}
-                      {onOpenRegisterModal && (
+                      {/* Formulir Pendataan Anggota (Hanya Admin & Kesekretariatan) */}
+                      {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
-                            onOpenRegisterModal();
+                            setActiveTab('form');
                           }}
-                          className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center justify-between text-slate-700"
+                          className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
                         >
-                          <span className="flex items-center gap-2">
-                            <UserPlus className="w-3.5 h-3.5 text-slate-600" />
-                            <span>Pendaftaran Anggota Baru</span>
-                          </span>
-                          <span className="text-[10px] font-semibold text-red-800">Daftar</span>
+                          <FileText className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Tambah / Pendataan Anggota</span>
                         </button>
                       )}
-
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          setActiveTab('form');
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Formulir Pendataan SIPP</span>
-                      </button>
                     </div>
 
                     {/* Section: Kelola */}

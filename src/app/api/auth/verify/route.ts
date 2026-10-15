@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverStore } from '@/lib/serverStore';
+import { UserRole } from '@/types';
 
 // POST /api/auth/verify - Superadmin/Sekretariat approves or rejects registration
 export async function POST(req: NextRequest) {
   try {
+    const session = serverStore.getSession();
+    if (session && session.role !== 'SUPERADMIN' && session.role !== 'SEKRETARIAT') {
+      return NextResponse.json(
+        { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang memiliki hak verifikasi pengguna.' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
-    const { id, nrp, action, verifierName } = body;
+    const { id, nrp, action, verifierName, role } = body;
 
     const targetId = id || nrp;
     if (!targetId || !action) {
@@ -25,7 +34,8 @@ export async function POST(req: NextRequest) {
     const result = serverStore.verifyRegistration(
       targetId,
       action,
-      verifierName || 'Superadmin WS96'
+      verifierName || 'Admin WS96',
+      (role as UserRole) || 'ANGGOTA'
     );
 
     if (!result.success) {

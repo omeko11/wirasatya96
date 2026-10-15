@@ -103,6 +103,22 @@ export default function Home() {
       }
     }
 
+    // Refresh members from API store
+    fetch('/api/members')
+      .then((res) => res.json())
+      .then((data) => {
+        const list = data.members || data.data;
+        if (data.success && Array.isArray(list) && list.length > 0) {
+          const sanitizedMembers = list.map((m: AnggotaWiraSatya) => ({
+            ...m,
+            fotoUrl: getAvatarUrl(m.fotoUrl),
+          }));
+          setMembers(sanitizedMembers);
+          localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
+        }
+      })
+      .catch(() => {});
+
     // Refresh pending verification count
     fetch('/api/auth/register')
       .then((res) => res.json())
@@ -115,15 +131,21 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
-  // Start editing a specific member (leadership or self)
+  // Start editing a specific member (Admin/Sekretariat or self)
   const handleStartEditMember = (member: AnggotaWiraSatya) => {
+    if (!['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) && member.nrp !== currentUser.nrp) {
+      return;
+    }
     setViewingMember(null);
     setEditingMember(member);
     setActiveTab('form');
   };
 
-  // Add a new member (leadership only)
+  // Add a new member (Strictly Admin & Kesekretariatan only)
   const handleAddNewMember = () => {
+    if (!['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role)) {
+      return;
+    }
     setViewingMember(null);
     setEditingMember('NEW');
     setActiveTab('form');
@@ -352,13 +374,17 @@ export default function Home() {
             <span>Terhubung: <b className="text-slate-200">{members.length} Perwira</b></span>
             <span>&bull;</span>
             <span>38 Polda & Mabes Polri</span>
-            <span className="hidden sm:inline">&bull;</span>
-            <button
-              onClick={() => setIsRegisterModalOpen(true)}
-              className="text-amber-300 hover:text-white font-bold transition-colors hidden sm:inline-flex items-center gap-1"
-            >
-              + Registrasi Alumni
-            </button>
+            {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
+              <>
+                <span className="hidden sm:inline">&bull;</span>
+                <button
+                  onClick={() => setIsVerificationModalOpen(true)}
+                  className="text-amber-300 hover:text-white font-bold transition-colors hidden sm:inline-flex items-center gap-1"
+                >
+                  + Manajemen Pengguna
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -397,7 +423,7 @@ export default function Home() {
               <LinkedInJobsPage
                 currentUser={currentUser}
                 members={members}
-                onOpenFormWizard={handleAddNewMember}
+                onOpenFormWizard={() => handleStartEditMember(currentMemberProfile)}
                 onSelectMember={(m) => setViewingMember(m)}
               />
             )}
@@ -481,11 +507,12 @@ export default function Home() {
         )}
       </main>
 
-      {/* Superadmin Verification Modal */}
+      {/* Manajemen Pengguna & Verifikasi Modal (Hanya Admin & Kesekretariatan) */}
       <AdminVerificationModal
         isOpen={isVerificationModalOpen}
         onClose={() => setIsVerificationModalOpen(false)}
         adminName={currentUser.nama}
+        onOpenFullWizard={handleAddNewMember}
         onVerificationUpdate={() => {
           fetch('/api/auth/register')
             .then((res) => res.json())

@@ -1,4 +1,4 @@
-import { AuthUser } from '@/types';
+import { AuthUser, UserRole } from '@/types';
 
 export const PRESET_USERS: AuthUser[] = [
   {
@@ -77,3 +77,62 @@ export const PRESET_USERS: AuthUser[] = [
     status: 'DISETUJUI_BELUM_PASSWORD',
   },
 ];
+
+export const ROLE_PERMISSIONS: Record<
+  UserRole,
+  {
+    label: string;
+    description: string;
+    badgeColor: string;
+    canEditAllMembers: boolean;
+    canManageUsers: boolean;
+    canManageFinance: boolean;
+    canViewExecutiveAnalytics: boolean;
+  }
+> = {
+  SUPERADMIN: {
+    label: 'Superadmin',
+    description: 'Otoritas penuh sistem, manajemen pengguna, verifikasi, dan konfigurasi.',
+    badgeColor: 'bg-red-900 text-amber-300 border border-amber-500/40',
+    canEditAllMembers: true,
+    canManageUsers: true,
+    canManageFinance: true,
+    canViewExecutiveAnalytics: true,
+  },
+  SEKRETARIAT: {
+    label: 'Kesekretariatan',
+    description: 'Pengelola pendataan anggota, penambahan user, dan verifikasi pendaftaran.',
+    badgeColor: 'bg-indigo-700 text-white',
+    canEditAllMembers: true,
+    canManageUsers: true,
+    canManageFinance: false,
+    canViewExecutiveAnalytics: true,
+  },
+  KETUA: {
+    label: 'Ketua Paguyuban',
+    description: 'Pimpinan paguyuban, akses dashboard eksekutif & pemantauan anev leting.',
+    badgeColor: 'bg-amber-600 text-white',
+    canEditAllMembers: false,
+    canManageUsers: false,
+    canManageFinance: false,
+    canViewExecutiveAnalytics: true,
+  },
+  BENDAHARA: {
+    label: 'Bendahara',
+    description: 'Pengelola arus kas, pencatatan transaksi keluar/masuk, dan iuran leting.',
+    badgeColor: 'bg-emerald-700 text-white',
+    canEditAllMembers: false,
+    canManageUsers: false,
+    canManageFinance: true,
+    canViewExecutiveAnalytics: true,
+  },
+  ANGGOTA: {
+    label: 'Anggota',
+    description: 'Perwira alumni batalyon, akses direktori, profil pribadi, dan obrolan.',
+    badgeColor: 'bg-slate-700 text-white',
+    canEditAllMembers: false,
+    canManageUsers: false,
+    canManageFinance: false,
+    canViewExecutiveAnalytics: false,
+  },
+};
