@@ -17,6 +17,7 @@ export interface PendingRegistration {
   polda: string;
   noHp: string;
   email: string;
+  secondaryEmail?: string;
   alasanDaftar?: string;
   status: UserAccountStatus;
   password?: string;
@@ -31,6 +32,8 @@ export interface AuthUser {
   nama: string;
   pangkat: string;
   email: string;
+  secondaryEmail?: string;
+  noHp?: string;
   role: UserRole;
   profileId: string;
   mfaEnabled: boolean;
@@ -82,6 +85,7 @@ export interface AnggotaWiraSatya {
   jenisKelamin: 'LAKI-LAKI' | 'PEREMPUAN';
   noHp: string;
   email?: string;
+  secondaryEmail?: string;
   kontakAdc?: string;
   namaAdc?: string;
   fotoUrl?: string;
@@ -157,6 +161,18 @@ export const DAFTAR_PANGKAT_POLRI = [
   'Brigpol',
   'Briptu',
   'Bripda',
+  // Tamtama (ADC / Pengawal / Staf Pendukung)
+  'Abrip',
+  'Abriptu',
+  'Abripda',
+  'Bharaka',
+  'Bharatu',
+  'Bharada',
+  // ASN / PNS Polri (ADC / Staf Kesekretariatan & Administrasi)
+  'Pembina / ASN Polri',
+  'Penata / ASN Polri',
+  'Pengatur / ASN Polri',
+  'ASN / PNS Polri',
 ] as const;
 
 // Modul Kebendaharaan & Portofolio Aset Paguyuban Wira Satya 1996

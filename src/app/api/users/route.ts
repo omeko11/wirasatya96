@@ -17,24 +17,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body: Partial<AuthUser> & { satker?: string; polda?: string; password?: string; noHp?: string } = await req.json();
+    const body: Partial<AuthUser> & {
+      satker?: string;
+      polda?: string;
+      password?: string;
+      noHp?: string;
+      secondaryEmail?: string;
+    } = await req.json();
     if (!body.nrp || !body.nama) {
       return NextResponse.json({ success: false, message: 'NRP dan Nama wajib diisi' }, { status: 400 });
     }
 
     const cleanNrp = body.nrp.trim();
-    const newUser: AuthUser & { satker?: string; polda?: string; password?: string; noHp?: string } = {
+    const newUser: AuthUser & {
+      satker?: string;
+      polda?: string;
+      password?: string;
+      noHp?: string;
+      secondaryEmail?: string;
+    } = {
       id: 'u-' + cleanNrp,
       nrp: cleanNrp,
       nama: body.nama.trim(),
       pangkat: body.pangkat || 'Kombes Pol',
-      email: body.email || `${cleanNrp}@wirasatya96.polri.go.id`,
+      email: body.email?.trim() || `${cleanNrp}@polri.go.id`,
+      secondaryEmail: body.secondaryEmail ? body.secondaryEmail.trim() : undefined,
       role: (body.role as UserRole) || 'ANGGOTA',
       profileId: 'ws-' + cleanNrp,
       mfaEnabled: body.mfaEnabled ?? false,
       mfaMethod: body.mfaMethod || 'PIN',
       satker: body.satker || 'Mabes Polri',
-      polda: body.polda || 'Mabes Polri',
+      polda: body.polda || 'MABES POLRI',
       password: body.password || undefined,
       noHp: body.noHp || '',
     };
@@ -70,6 +83,13 @@ export async function PUT(req: NextRequest) {
         { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang dapat mengubah role atau data pengguna lain.' },
         { status: 403 }
       );
+    }
+
+    if (updates.email !== undefined && typeof updates.email === 'string') {
+      updates.email = updates.email.trim() || `${String(nrp).trim()}@polri.go.id`;
+    }
+    if (updates.secondaryEmail !== undefined && typeof updates.secondaryEmail === 'string') {
+      updates.secondaryEmail = updates.secondaryEmail.trim();
     }
 
     const updated = serverStore.updateUser(nrp, updates);

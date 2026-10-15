@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar, AppTab } from '@/components/Navbar';
 import { BukuSaku } from '@/components/BukuSaku';
@@ -29,6 +29,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<AppTab>('direktori');
   const [members, setMembers] = useState<AnggotaWiraSatya[]>(INITIAL_MEMBERS);
   const [currentUser, setCurrentUser] = useState<AuthUser>(PRESET_USERS[0]); // Default Superadmin
+  const [impersonatorUser, setImpersonatorUser] = useState<AuthUser | null>(null);
   const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [pendingVerificationCount, setPendingVerificationCount] = useState(0);
@@ -47,6 +48,48 @@ export default function Home() {
   const [assets, setAssets] = useState<AssetPortfolioItem[]>(INITIAL_ASSETS);
   const [iuranList, setIuranList] = useState<IuranAnggota[]>(INITIAL_IURAN_LIST);
 
+  // Helper to refresh pending verification count & synced data
+  const fetchPendingVerificationCount = useCallback(() => {
+    fetch('/api/auth/register')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.registrations)) {
+          const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
+          setPendingVerificationCount(count);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/members')
+      .then((res) => res.json())
+      .then((data) => {
+        const list = data.members || data.data;
+        if (data.success && Array.isArray(list) && list.length > 0) {
+          const sanitizedMembers = list.map((m: AnggotaWiraSatya) => ({
+            ...m,
+            fotoUrl: getAvatarUrl(m.fotoUrl),
+          }));
+          setMembers(sanitizedMembers);
+          localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/finance')
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          if (res.data.summary) setFinanceSummary(res.data.summary);
+          if (Array.isArray(res.data.transactions)) setTransactions(res.data.transactions);
+          if (Array.isArray(res.data.assets)) setAssets(res.data.assets);
+          if (Array.isArray(res.data.iuranList) && res.data.iuranList.length > 0) {
+            setIuranList(res.data.iuranList);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Load from localStorage or API on initial mount
   useEffect(() => {
     // Purge stale dummy caches from previous versions
@@ -60,8 +103,27 @@ export default function Home() {
       localStorage.setItem('ws96_storage_version', STORAGE_VERSION);
     }
 
+    // Load Impersonator User if Superadmin is currently impersonating someone
+    const savedImpersonator = localStorage.getItem('ws96_impersonator_user');
+    if (savedImpersonator) {
+      try {
+        const parsedImp = JSON.parse(savedImpersonator);
+        if (parsedImp && parsedImp.nrp) {
+          setImpersonatorUser({
+            ...parsedImp,
+            fotoUrl: getAvatarUrl(parsedImp.fotoUrl),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to parse impersonator session', err);
+      }
+    }
+
     // Load User and sanitize any legacy Unsplash avatar URL
-    const savedUser = localStorage.getItem('ws96_active_user') || localStorage.getItem('wirasatya96_current_user');
+    const savedUser =
+      localStorage.getItem('ws96_auth_user') ||
+      localStorage.getItem('ws96_active_user') ||
+      localStorage.getItem('wirasatya96_current_user');
     let activeNrp = PRESET_USERS[0].nrp;
     if (savedUser) {
       try {
@@ -73,6 +135,7 @@ export default function Home() {
             fotoUrl: getAvatarUrl(parsed.fotoUrl),
           };
           setCurrentUser(sanitizedUser);
+          localStorage.setItem('ws96_auth_user', JSON.stringify(sanitizedUser));
           localStorage.setItem('ws96_active_user', JSON.stringify(sanitizedUser));
           localStorage.setItem('wirasatya96_current_user', JSON.stringify(sanitizedUser));
         }
@@ -112,22 +175,6 @@ export default function Home() {
       }
     }
 
-    // Refresh members from API store
-    fetch('/api/members')
-      .then((res) => res.json())
-      .then((data) => {
-        const list = data.members || data.data;
-        if (data.success && Array.isArray(list) && list.length > 0) {
-          const sanitizedMembers = list.map((m: AnggotaWiraSatya) => ({
-            ...m,
-            fotoUrl: getAvatarUrl(m.fotoUrl),
-          }));
-          setMembers(sanitizedMembers);
-          localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
-        }
-      })
-      .catch(() => {});
-
     // Refresh feed posts from API store
     fetch('/api/posts')
       .then((res) => res.json())
@@ -139,31 +186,7 @@ export default function Home() {
       })
       .catch(() => {});
 
-    // Refresh finance & assets from API store
-    fetch('/api/finance')
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.success && res.data) {
-          if (res.data.summary) setFinanceSummary(res.data.summary);
-          if (Array.isArray(res.data.transactions)) setTransactions(res.data.transactions);
-          if (Array.isArray(res.data.assets)) setAssets(res.data.assets);
-          if (Array.isArray(res.data.iuranList) && res.data.iuranList.length > 0) {
-            setIuranList(res.data.iuranList);
-          }
-        }
-      })
-      .catch(() => {});
-
-    // Refresh pending verification count
-    fetch('/api/auth/register')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.registrations)) {
-          const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
-          setPendingVerificationCount(count);
-        }
-      })
-      .catch(() => {});
+    fetchPendingVerificationCount();
 
     // Refresh messages for active user
     const refreshMessages = () => {
@@ -179,9 +202,69 @@ export default function Home() {
     refreshMessages();
     window.addEventListener('ws96_messages_updated', refreshMessages);
     return () => window.removeEventListener('ws96_messages_updated', refreshMessages);
-  }, []);
+  }, [fetchPendingVerificationCount]);
 
-  // Start editing a specific member (Admin/Sekretariat or self)
+  // Superadmin Impersonate User handler
+  const handleImpersonateUser = (targetUser: AuthUser) => {
+    const sanitizedTarget: AuthUser = {
+      ...targetUser,
+      fotoUrl: getAvatarUrl(targetUser.fotoUrl),
+    };
+    if (!impersonatorUser) {
+      setImpersonatorUser(currentUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ws96_impersonator_user', JSON.stringify(currentUser));
+      }
+    }
+    setCurrentUser(sanitizedTarget);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ws96_auth_user', JSON.stringify(sanitizedTarget));
+      localStorage.setItem('ws96_active_user', JSON.stringify(sanitizedTarget));
+      localStorage.setItem('wirasatya96_current_user', JSON.stringify(sanitizedTarget));
+    }
+    setViewingMember(null);
+    setEditingMember(null);
+    setIsVerificationModalOpen(false);
+    setActiveTab('direktori');
+
+    fetch(`/api/messages?userNrp=${encodeURIComponent(sanitizedTarget.nrp)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      })
+      .catch(() => {});
+  };
+
+  // Stop Impersonating and restore Superadmin session
+  const handleStopImpersonating = () => {
+    if (!impersonatorUser) return;
+    const restoredUser: AuthUser = {
+      ...impersonatorUser,
+      fotoUrl: getAvatarUrl(impersonatorUser.fotoUrl),
+    };
+    setCurrentUser(restoredUser);
+    setImpersonatorUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ws96_impersonator_user');
+      localStorage.setItem('ws96_auth_user', JSON.stringify(restoredUser));
+      localStorage.setItem('ws96_active_user', JSON.stringify(restoredUser));
+      localStorage.setItem('wirasatya96_current_user', JSON.stringify(restoredUser));
+    }
+    setViewingMember(null);
+    fetchPendingVerificationCount();
+    fetch(`/api/messages?userNrp=${encodeURIComponent(restoredUser.nrp)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      })
+      .catch(() => {});
+  };
+
+  // Start editing a specific member (Admin/Sekretaris or self)
   const handleStartEditMember = (member: AnggotaWiraSatya) => {
     if (!['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) && member.nrp !== currentUser.nrp) {
       return;
@@ -191,7 +274,7 @@ export default function Home() {
     setActiveTab('form');
   };
 
-  // Add a new member (Strictly Admin & Kesekretariatan only)
+  // Add a new member (Strictly Admin & Sekretaris only)
   const handleAddNewMember = () => {
     if (!['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role)) {
       return;
@@ -243,6 +326,7 @@ export default function Home() {
       };
       setCurrentUser(updatedUser);
       if (typeof window !== 'undefined') {
+        localStorage.setItem('ws96_auth_user', JSON.stringify(updatedUser));
         localStorage.setItem('ws96_active_user', JSON.stringify(updatedUser));
         localStorage.setItem('wirasatya96_current_user', JSON.stringify(updatedUser));
       }
@@ -428,19 +512,6 @@ export default function Home() {
     }
   };
 
-  // Switch role or user
-  const handleSelectUser = (user: AuthUser) => {
-    setCurrentUser(user);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ws96_active_user', JSON.stringify(user));
-      localStorage.setItem('wirasatya96_current_user', JSON.stringify(user));
-    }
-    // Redirect if Anggota is on leadership tab
-    if (user.role === 'ANGGOTA' && activeTab === 'dashboard') {
-      setActiveTab('direktori');
-    }
-  };
-
   // Logout
   const handleLogout = async () => {
     try {
@@ -448,7 +519,10 @@ export default function Home() {
     } catch {
       // ignore
     }
+    localStorage.removeItem('ws96_auth_user');
     localStorage.removeItem('ws96_active_user');
+    localStorage.removeItem('wirasatya96_current_user');
+    localStorage.removeItem('ws96_impersonator_user');
     localStorage.removeItem('ws96_mfa_verified');
     router.push('/login');
   };
@@ -524,7 +598,10 @@ export default function Home() {
         members={members}
         onSelectMember={(m) => setViewingMember(m)}
         onOpenChat={handleOpenChatWithMember}
-        onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
+        onOpenVerificationModal={() => {
+          setViewingMember(null);
+          setActiveTab('users');
+        }}
         pendingVerificationCount={pendingVerificationCount}
         unreadMessagesCount={unreadMessagesCount}
         unreadNotificationsCount={unreadNotificationsCount}
@@ -535,6 +612,8 @@ export default function Home() {
           const myProfile = getOrBuildUserProfile(currentUser, members);
           setViewingMember(myProfile);
         }}
+        impersonatorUser={impersonatorUser}
+        onStopImpersonating={handleStopImpersonating}
       />
 
       {/* Official Platform Sub-header - Prestigious Bareskrim Theme */}
@@ -554,7 +633,10 @@ export default function Home() {
               <>
                 <span className="hidden sm:inline">&bull;</span>
                 <button
-                  onClick={() => setIsVerificationModalOpen(true)}
+                  onClick={() => {
+                    setViewingMember(null);
+                    setActiveTab('users');
+                  }}
                   className="text-amber-300 hover:text-white font-bold transition-colors hidden sm:inline-flex items-center gap-1"
                 >
                   + Manajemen User
@@ -592,11 +674,16 @@ export default function Home() {
                 onOpenChat={handleOpenChatWithMember}
                 onNavigateToJabatan={() => setActiveTab('purnaTugas')}
                 onNavigateToBendahara={() => setActiveTab('bendahara')}
+                onNavigateToUsers={() => setActiveTab('users')}
                 financeSummary={financeSummary}
+                transactions={transactions}
                 iuranList={iuranList}
                 externalPosts={posts}
                 onPostsChange={setPosts}
                 externalSearch={navbarSearchQuery}
+                impersonatorUser={impersonatorUser}
+                onStopImpersonating={handleStopImpersonating}
+                onImpersonateUser={handleImpersonateUser}
               />
             )}
 
@@ -612,7 +699,7 @@ export default function Home() {
               />
             )}
 
-            {/* TAB 4: PESAN & OBROLAN LETING (MESSAGING - USER SCREENSHOT 1) */}
+            {/* TAB 4: PESAN & OBROLAN LETING (MESSAGING) */}
             {activeTab === 'pesan' && (
               <LinkedInMessagingPage
                 currentUser={currentUser}
@@ -622,7 +709,7 @@ export default function Home() {
               />
             )}
 
-            {/* TAB 5: NOTIFIKASI ANGKATAN (NOTIFICATIONS - USER SCREENSHOT 4) */}
+            {/* TAB 5: NOTIFIKASI ANGKATAN (NOTIFICATIONS) */}
             {activeTab === 'notifikasi' && (
               <LinkedInNotificationsPage
                 currentUser={currentUser}
@@ -640,7 +727,10 @@ export default function Home() {
                   setViewingMember(getOrBuildUserProfile(currentUser, members));
                 }}
                 onSelectMember={(m) => setViewingMember(m)}
-                onOpenVerificationModal={() => setIsVerificationModalOpen(true)}
+                onOpenVerificationModal={() => {
+                  setViewingMember(null);
+                  setActiveTab('users');
+                }}
               />
             )}
 
@@ -679,7 +769,7 @@ export default function Home() {
               />
             )}
 
-            {/* TAB 8: EKSEKUTIF & KESEKRETARIATAN */}
+            {/* TAB 8: EKSEKUTIF & SEKRETARIS */}
             {activeTab === 'dashboard' && currentUser.role !== 'ANGGOTA' && (
               <ExecutiveDashboard
                 members={members}
@@ -698,15 +788,39 @@ export default function Home() {
                 }}
               />
             )}
+
+            {/* TAB 10: MANAJEMEN USER (FULL-PAGE VIEW) */}
+            {activeTab === 'users' && (
+              <AdminVerificationModal
+                isOpen={true}
+                asPage={true}
+                onClose={() => setActiveTab('direktori')}
+                adminName={currentUser.nama}
+                currentUserRole={currentUser?.role}
+                currentUserNrp={currentUser?.nrp}
+                onImpersonateUser={handleImpersonateUser}
+                onOpenFullWizard={handleAddNewMember}
+                onEditMemberByNrp={(nrp) => {
+                  const found = members.find((m) => m.nrp === nrp);
+                  if (found) {
+                    handleStartEditMember(found);
+                  }
+                }}
+                onVerificationUpdate={fetchPendingVerificationCount}
+              />
+            )}
           </>
         )}
       </main>
 
-      {/* Manajemen Pengguna & Verifikasi Modal (Hanya Admin & Kesekretariatan) */}
+      {/* Manajemen Pengguna & Verifikasi Modal (Fallback if opened as modal) */}
       <AdminVerificationModal
         isOpen={isVerificationModalOpen}
         onClose={() => setIsVerificationModalOpen(false)}
         adminName={currentUser.nama}
+        currentUserRole={currentUser?.role}
+        currentUserNrp={currentUser?.nrp}
+        onImpersonateUser={handleImpersonateUser}
         onOpenFullWizard={handleAddNewMember}
         onEditMemberByNrp={(nrp) => {
           const found = members.find((m) => m.nrp === nrp);
@@ -714,52 +828,14 @@ export default function Home() {
             handleStartEditMember(found);
           }
         }}
-        onVerificationUpdate={() => {
-          fetch('/api/auth/register')
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success && Array.isArray(data.registrations)) {
-                const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
-                setPendingVerificationCount(count);
-              }
-            })
-            .catch(() => {});
-          fetch('/api/members')
-            .then((res) => res.json())
-            .then((data) => {
-              const list = data.members || data.data;
-              if (data.success && Array.isArray(list)) {
-                setMembers(list);
-                localStorage.setItem('wirasatya96_members', JSON.stringify(list));
-              }
-            })
-            .catch(() => {});
-          fetch('/api/finance')
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success && data.data) {
-                if (data.data.iuranList) setIuranList(data.data.iuranList);
-              }
-            })
-            .catch(() => {});
-        }}
+        onVerificationUpdate={fetchPendingVerificationCount}
       />
 
       {/* Alumnus Registration Modal */}
       <RegistrationModal
         isOpen={isRegisterModalOpen}
         onClose={() => setIsRegisterModalOpen(false)}
-        onSuccess={() => {
-          fetch('/api/auth/register')
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success && Array.isArray(data.registrations)) {
-                const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
-                setPendingVerificationCount(count);
-              }
-            })
-            .catch(() => {});
-        }}
+        onSuccess={fetchPendingVerificationCount}
       />
 
       {/* LinkedIn Floating Messenger Dock at Bottom Right */}

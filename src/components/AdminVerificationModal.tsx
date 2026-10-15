@@ -3,11 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
-import {
-  DAFTAR_38_POLDA as POLDA_LIST,
-  getSatkerUtamaByWilayah,
-  getSubSatkerOptionsBySatker,
-} from '@/data/polriStructure';
+import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
 import { 
   ShieldCheck, 
   X, 
@@ -26,7 +22,12 @@ import {
   Trash2,
   FilePlus2,
   KeyRound,
-  Pencil
+  Pencil,
+  Lock,
+  Eye,
+  EyeOff,
+  IdCard,
+  Check
 } from 'lucide-react';
 
 interface AdminVerificationModalProps {
@@ -37,11 +38,15 @@ interface AdminVerificationModalProps {
   onOpenFullWizard?: () => void;
   onEditMemberByNrp?: (nrp: string) => void;
   initialTab?: 'USERS' | 'VERIFICATION' | 'ADD_USER';
+  asPage?: boolean;
+  currentUserRole?: UserRole;
+  currentUserNrp?: string;
+  onImpersonateUser?: (user: AuthUser) => void;
 }
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'ANGGOTA', label: 'Anggota (Alumni Wira Satya 96 / ADC)' },
-  { value: 'SEKRETARIAT', label: 'Kesekretariatan (Admin Data & User)' },
+  { value: 'SEKRETARIAT', label: 'Sekretaris (Admin Data & User)' },
   { value: 'BENDAHARA', label: 'Bendahara (Pengelola Kas & Aset)' },
   { value: 'KETUA', label: 'Ketua Paguyuban (Pengurus Pusat)' },
   { value: 'SUPERADMIN', label: 'Superadmin (Administrator Sistem)' },
@@ -57,6 +62,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   onOpenFullWizard,
   onEditMemberByNrp,
   initialTab = 'USERS',
+  asPage = false,
+  currentUserRole,
+  currentUserNrp,
+  onImpersonateUser,
 }) => {
   const [activeTab, setActiveTab] = useState<'USERS' | 'VERIFICATION' | 'ADD_USER'>(initialTab);
   const [users, setUsers] = useState<AuthUser[]>([]);
@@ -68,6 +77,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
   const [updatingUserNrp, setUpdatingUserNrp] = useState<string | null>(null);
 
+  // CAS-style Add User Modal state (when clicking "+ Tambah Pengguna")
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+
   // Edit User Modal state (inside Manajemen Pengguna)
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
   const [editNama, setEditNama] = useState('');
@@ -75,8 +87,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [editRole, setEditRole] = useState<UserRole>('ANGGOTA');
   const [editPolda, setEditPolda] = useState('MABES POLRI');
   const [editSatkerUtama, setEditSatkerUtama] = useState('BARESKRIM POLRI');
-  const [editSubSatker, setEditSubSatker] = useState('Pimpinan / Staf Utama Satker');
+  const [editSubSatker, setEditSubSatker] = useState('');
+  const [editComposedSatker, setEditComposedSatker] = useState('BARESKRIM POLRI');
+  const [editKodeSatker, setEditKodeSatker] = useState('060.01.00.01');
   const [editEmail, setEditEmail] = useState('');
+  const [editSecondaryEmail, setEditSecondaryEmail] = useState('');
   const [editNoHp, setEditNoHp] = useState('');
 
   // Filters for Verification tab
@@ -85,57 +100,63 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedApproveRoles, setSelectedApproveRoles] = useState<Record<string, UserRole>>({});
 
-  // Add User Form state (with Cascading Master Satker Dropdown)
+  // Add User Form state (CAS 2-Column Layout + Satker Berjenjang Modal)
   const [newNrp, setNewNrp] = useState('');
   const [newNama, setNewNama] = useState('');
   const [newPangkat, setNewPangkat] = useState('Kombes Pol');
   const [newRole, setNewRole] = useState<UserRole>('ANGGOTA');
-  const [newPolda, setNewPolda] = useState('MABES POLRI');
-  const [newSatkerUtama, setNewSatkerUtama] = useState('BARESKRIM POLRI');
-  const [newSubSatker, setNewSubSatker] = useState('Pimpinan / Staf Utama Satker');
+  const [newPolda, setNewPolda] = useState('');
+  const [newSatkerUtama, setNewSatkerUtama] = useState('');
+  const [newSubSatker, setNewSubSatker] = useState('');
+  const [newComposedSatker, setNewComposedSatker] = useState('');
+  const [newKodeSatker, setNewKodeSatker] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newSecondaryEmail, setNewSecondaryEmail] = useState('');
   const [newNoHp, setNewNoHp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newConfirmPassword, setNewConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
 
   // CAS-Style "Pilih Satker Berjenjang" Modal State
   const [satkerPickerMode, setSatkerPickerMode] = useState<'ADD' | 'EDIT' | null>(null);
-  const [pickerPolda, setPickerPolda] = useState('MABES POLRI');
-  const [pickerSatker, setPickerSatker] = useState('BARESKRIM POLRI');
-  const [pickerSubSatker, setPickerSubSatker] = useState('Pimpinan / Staf Utama Satker');
-  const [pickerSearch1, setPickerSearch1] = useState('');
-  const [pickerSearch2, setPickerSearch2] = useState('');
-  const [pickerSearch3, setPickerSearch3] = useState('');
 
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  const canImpersonate =
+    currentUserRole === 'SUPERADMIN' ||
+    currentUserNrp === '98010710' ||
+    adminName.toLowerCase().includes('eko agung');
+
   const openSatkerPicker = (mode: 'ADD' | 'EDIT') => {
     setSatkerPickerMode(mode);
-    setPickerSearch1('');
-    setPickerSearch2('');
-    setPickerSearch3('');
-    if (mode === 'EDIT') {
-      setPickerPolda(editPolda);
-      setPickerSatker(editSatkerUtama);
-      setPickerSubSatker(editSubSatker);
-    } else {
-      setPickerPolda(newPolda);
-      setPickerSatker(newSatkerUtama);
-      setPickerSubSatker(newSubSatker);
-    }
   };
 
-  const applySatkerPicker = () => {
+  const handleApplySatkerFromModal = (result: SatkerSelectionResult) => {
     if (satkerPickerMode === 'EDIT') {
-      setEditPolda(pickerPolda);
-      setEditSatkerUtama(pickerSatker);
-      setEditSubSatker(pickerSubSatker);
+      setEditPolda(result.polda);
+      setEditSatkerUtama(result.satkerUtama);
+      setEditSubSatker(result.subSatker);
+      setEditComposedSatker(result.composedSatker);
+      setEditKodeSatker(result.kodeSatker);
     } else if (satkerPickerMode === 'ADD') {
-      setNewPolda(pickerPolda);
-      setNewSatkerUtama(pickerSatker);
-      setNewSubSatker(pickerSubSatker);
+      setNewPolda(result.polda);
+      setNewSatkerUtama(result.satkerUtama);
+      setNewSubSatker(result.subSatker);
+      setNewComposedSatker(result.composedSatker);
+      setNewKodeSatker(result.kodeSatker);
     }
     setSatkerPickerMode(null);
+  };
+
+  const handleNewNrpChange = (rawVal: string) => {
+    const digitsOnly = rawVal.replace(/\D/g, '');
+    const oldAutoEmail = `${newNrp}@polri.go.id`;
+    setNewNrp(digitsOnly);
+    if (!newEmail.trim() || newEmail.trim() === oldAutoEmail) {
+      setNewEmail(digitsOnly ? `${digitsOnly}@polri.go.id` : '');
+    }
   };
 
   const fetchAllData = async () => {
@@ -162,13 +183,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || asPage) {
       setActiveTab(initialTab);
       fetchAllData();
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, asPage, initialTab]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !asPage) return null;
 
   const showToast = (text: string, type: 'success' | 'error') => {
     setToastMessage({ text, type });
@@ -200,18 +221,19 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
   const handleStartEditUser = (u: AuthUser) => {
     const poldaVal = u.polda || 'MABES POLRI';
-    const satkerOpts = getSatkerUtamaByWilayah(poldaVal);
-    const firstSatker = satkerOpts.find((s) => (u.satker || '').toUpperCase().includes(s.toUpperCase())) || satkerOpts[0] || poldaVal;
-    const subOpts = getSubSatkerOptionsBySatker(poldaVal, firstSatker);
+    const satkerVal = u.satker || 'BARESKRIM POLRI';
     const regMatch = registrations.find((r) => r.nrp === u.nrp);
     setEditingUser(u);
     setEditNama(u.nama);
     setEditPangkat(u.pangkat || 'Kombes Pol');
     setEditRole(u.role);
     setEditPolda(poldaVal);
-    setEditSatkerUtama(firstSatker);
-    setEditSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-    setEditEmail(u.email || `${u.nrp}@wirasatya96.id`);
+    setEditSatkerUtama(satkerVal);
+    setEditSubSatker('');
+    setEditComposedSatker(satkerVal);
+    setEditKodeSatker('060.01.00.01');
+    setEditEmail(u.email || `${u.nrp}@polri.go.id`);
+    setEditSecondaryEmail(u.secondaryEmail || regMatch?.secondaryEmail || '');
     setEditNoHp(u.noHp || regMatch?.noHp || '');
   };
 
@@ -220,9 +242,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     if (!editingUser) return;
     setUpdatingUserNrp(editingUser.nrp);
     const composedSatker =
-      editSubSatker && editSubSatker !== 'Pimpinan / Staf Utama Satker'
+      editComposedSatker ||
+      (editSubSatker && editSubSatker !== 'Pimpinan / Staf Utama Satker'
         ? `${editSubSatker} - ${editSatkerUtama}`
-        : editSatkerUtama;
+        : editSatkerUtama) ||
+      'MABES POLRI';
 
     try {
       const res = await fetch('/api/users', {
@@ -233,15 +257,16 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           nama: editNama.trim(),
           pangkat: editPangkat,
           role: editRole,
-          polda: editPolda,
+          polda: editPolda || 'MABES POLRI',
           satker: composedSatker,
-          email: editEmail.trim(),
+          email: editEmail.trim() || `${editingUser.nrp}@polri.go.id`,
+          secondaryEmail: editSecondaryEmail.trim(),
           noHp: editNoHp.trim(),
         }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Data, WhatsApp & Satker ${editNama} (NRP ${editingUser.nrp}) berhasil diperbarui.`, 'success');
+        showToast(`Data, Email & Satker ${editNama} (NRP ${editingUser.nrp}) berhasil diperbarui.`, 'success');
         setEditingUser(null);
         await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
@@ -292,7 +317,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           nrp: reg.nrp,
           action,
           role: assignedRole,
-          verifierName: adminName || 'Admin / Kesekretariatan WS96',
+          verifierName: adminName || 'Admin / Sekretaris WS96',
         }),
       });
       const data = await res.json();
@@ -316,16 +341,37 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     }
   };
 
+  const resetAddUserForm = () => {
+    setNewNrp('');
+    setNewNama('');
+    setNewEmail('');
+    setNewSecondaryEmail('');
+    setNewNoHp('');
+    setNewPassword('');
+    setNewConfirmPassword('');
+    setNewRole('ANGGOTA');
+    setNewPolda('');
+    setNewSatkerUtama('');
+    setNewSubSatker('');
+    setNewComposedSatker('');
+    setNewKodeSatker('');
+  };
+
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNrp.trim() || !newNama.trim()) {
       showToast('NRP dan Nama Lengkap wajib diisi.', 'error');
       return;
     }
-    const composedSatker =
-      newSubSatker && newSubSatker !== 'Pimpinan / Staf Utama Satker'
-        ? `${newSubSatker} - ${newSatkerUtama}`
-        : newSatkerUtama;
+    if (!newPolda || !newComposedSatker) {
+      showToast('Silakan pilih Satker Melekat terlebih dahulu melalui tombol Pilih Satker Berjenjang.', 'error');
+      openSatkerPicker('ADD');
+      return;
+    }
+    if (newPassword.trim() && newConfirmPassword.trim() && newPassword.trim() !== newConfirmPassword.trim()) {
+      showToast('Konfirmasi Password tidak cocok dengan Password.', 'error');
+      return;
+    }
 
     setCreatingUser(true);
     try {
@@ -337,9 +383,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           nama: newNama.trim(),
           pangkat: newPangkat,
           role: newRole,
-          satker: composedSatker || 'Mabes Polri',
-          polda: newPolda,
-          email: newEmail.trim() || `${newNrp.trim()}@wirasatya96.id`,
+          satker: newComposedSatker || newSatkerUtama || 'MABES POLRI',
+          polda: newPolda || 'MABES POLRI',
+          email: newEmail.trim() || `${newNrp.trim()}@polri.go.id`,
+          secondaryEmail: newSecondaryEmail.trim() || undefined,
           noHp: newNoHp.trim(),
           password: newPassword.trim() || undefined,
         }),
@@ -347,12 +394,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       const data = await res.json();
       if (data.success) {
         showToast(data.message || 'Pengguna baru berhasil ditambahkan!', 'success');
-        setNewNrp('');
-        setNewNama('');
-        setNewEmail('');
-        setNewNoHp('');
-        setNewPassword('');
-        setNewRole('ANGGOTA');
+        resetAddUserForm();
+        setShowAddUserModal(false);
         await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
         setActiveTab('USERS');
@@ -373,6 +416,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       u.nrp.toLowerCase().includes(q) ||
       (u.satker || '').toLowerCase().includes(q) ||
       (u.polda || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.secondaryEmail || '').toLowerCase().includes(q) ||
       u.role.toLowerCase().includes(q);
     if (roleFilter === 'ALL') return matchesSearch;
     return matchesSearch && u.role === roleFilter;
@@ -392,1062 +437,1028 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
   const pendingCount = registrations.filter((r) => r.status === 'PENDING_VERIFIKASI').length;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-      <div 
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh] animate-scaleUp"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 p-4 sm:p-5 text-white flex items-center justify-between border-b border-red-900/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-900/60 border border-red-700/50 flex items-center justify-center text-amber-400">
-              <Users className="w-6 h-6" />
-            </div>
+  // Shared 2-Column CAS Add User Form Content
+  const renderCasAddUserForm = (onCancel: () => void) => (
+    <form onSubmit={handleAddUser} className="space-y-5 text-xs">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* KOLOM KIRI: IDENTITAS & SATKER */}
+        <div className="space-y-3.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
+            <IdCard className="w-4 h-4" />
+            <span>🪪 IDENTITAS &amp; SATKER</span>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Nama Lengkap &amp; Gelar <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={newNama}
+              onChange={(e) => setNewNama(e.target.value)}
+              placeholder="Contoh: Kombes Pol. Budi Santoso, S.I.K."
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              NRP / NIP (wajib angka) <span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={newNrp}
+              onChange={(e) => handleNewNrpChange(e.target.value)}
+              placeholder="Contoh: 98010710"
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-base sm:text-lg text-white">
-                  Manajemen Pengguna &amp; Verifikasi Akun
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
-                  Otoritas: Admin &amp; Kesekretariatan
-                </span>
-                {pendingCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold animate-pulse">
-                    {pendingCount} Menunggu Verifikasi
+              <label className="block font-semibold text-slate-700 mb-1">Pangkat</label>
+              <select
+                value={newPangkat}
+                onChange={(e) => setNewPangkat(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+              >
+                {PANGKAT_OPTIONS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Role Akses <span className="text-red-600">*</span>
+              </label>
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as UserRole)}
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+              >
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* SATKER MELEKAT (ALA CAS) */}
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Satker Melekat <span className="text-red-600">*</span>
+            </label>
+            <div className="flex items-stretch gap-2">
+              <div
+                onClick={() => openSatkerPicker('ADD')}
+                className={`flex-1 px-3 py-2.5 rounded-xl border cursor-pointer flex items-center gap-2 transition-colors ${
+                  newComposedSatker
+                    ? 'bg-slate-50 border-slate-200 hover:border-blue-400'
+                    : 'bg-slate-50 border-dashed border-slate-300 hover:border-blue-400'
+                }`}
+              >
+                {newComposedSatker ? (
+                  <>
+                    <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-slate-900 block truncate text-[11px]">
+                        {newComposedSatker}
+                      </span>
+                      <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                        <span>{newPolda}</span>
+                        {newKodeSatker && (
+                          <span className="font-mono text-slate-400">({newKodeSatker})</span>
+                        )}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1.5">
+                    <span>🔒 — Belum Memilih Satker —</span>
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
-                Kelola daftar pengguna, ubah role/hak akses, tambahkan akun personel baru, dan verifikasi pendaftaran alumni.
-              </p>
+              <button
+                type="button"
+                onClick={() => openSatkerPicker('ADD')}
+                className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] whitespace-nowrap transition-colors"
+              >
+                Pilih Satker Berjenjang
+              </button>
             </div>
           </div>
+        </div>
+
+        {/* KOLOM KANAN: AKUN & KREDENSIAL */}
+        <div className="space-y-3.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
+            <Lock className="w-4 h-4" />
+            <span>🔐 AKUN &amp; KREDENSIAL</span>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Email Dinas (@polri.go.id)
+            </label>
+            <input
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder={newNrp ? `${newNrp}@polri.go.id` : 'nrp@polri.go.id'}
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">
+              Email Sekunder / Pribadi <span className="text-slate-400 font-normal">(Opsional — misal Gmail, Yahoo)</span>
+            </label>
+            <input
+              type="email"
+              value={newSecondaryEmail}
+              onChange={(e) => setNewSecondaryEmail(e.target.value)}
+              placeholder="Contoh: agungkrisdianto98@gmail.com"
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-slate-700 mb-1">No. HP / WhatsApp</label>
+            <input
+              type="tel"
+              value={newNoHp}
+              onChange={(e) => setNewNoHp(e.target.value)}
+              placeholder="Contoh: 081234567890"
+              className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Password</label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Kosongkan jika set mandiri"
+                  className="w-full pl-3.5 pr-8 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Konfirmasi Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={newConfirmPassword}
+                  onChange={(e) => setNewConfirmPassword(e.target.value)}
+                  placeholder="Ulangi password"
+                  className="w-full pl-3.5 pr-8 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+        {onOpenFullWizard ? (
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddUserModal(false);
+              if (!asPage) onClose();
+              onOpenFullWizard();
+            }}
+            className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-[11px] flex items-center gap-1.5"
+          >
+            <FilePlus2 className="w-3.5 h-3.5" />
+            <span>Form Pendataan Lengkap (5 Tahap)</span>
+          </button>
+        ) : <span />}
+
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-blue-600 hover:text-blue-800 font-bold text-xs transition-colors"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            disabled={creatingUser}
+            className="px-5 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-red-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50"
+          >
+            <Check className="w-4 h-4 stroke-[2.5]" />
+            <span>{creatingUser ? 'Menyimpan...' : 'Simpan & Aktifkan Pengguna'}</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+
+  const innerContent = (
+    <div
+      className={
+        asPage
+          ? 'bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col'
+          : 'bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-5xl overflow-hidden flex flex-col max-h-[92vh] animate-scaleUp'
+      }
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 p-4 sm:p-5 text-white flex items-center justify-between border-b border-red-900/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-900/60 border border-red-700/50 flex items-center justify-center text-amber-400">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-base sm:text-lg text-white">
+                Manajemen Pengguna &amp; Verifikasi Akun
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
+                Otoritas: Admin &amp; Sekretaris
+              </span>
+              {pendingCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold animate-pulse">
+                  {pendingCount} Menunggu Verifikasi
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-300 mt-0.5">
+              Kelola daftar pengguna, ubah role/hak akses, impersonate akun, tambahkan personel baru, dan verifikasi pendaftaran alumni.
+            </p>
+          </div>
+        </div>
+        {!asPage && (
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
+        )}
+      </div>
 
-        {/* Navigation Tabs */}
-        <div className="bg-slate-100 px-4 pt-2.5 border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-auto">
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setActiveTab('USERS')}
-              className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
-                activeTab === 'USERS'
-                  ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
-                  : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Daftar Pengguna ({users.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('VERIFICATION')}
-              className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
-                activeTab === 'VERIFICATION'
-                  ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
-                  : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Verifikasi Pendaftaran</span>
-              {pendingCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab('ADD_USER')}
-              className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
-                activeTab === 'ADD_USER'
-                  ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
-                  : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
-              }`}
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>+ Tambah Pengguna Baru</span>
-            </button>
-          </div>
+      {/* Navigation Tabs */}
+      <div className="bg-slate-100 px-4 pt-2.5 border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-auto">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setActiveTab('USERS')}
+            className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
+              activeTab === 'USERS'
+                ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
+                : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Daftar Pengguna ({users.length})</span>
+          </button>
 
           <button
-            onClick={fetchAllData}
-            disabled={loading}
-            className="mb-1.5 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-red-800 hover:bg-slate-50 transition-colors"
-            title="Segarkan data"
+            onClick={() => setActiveTab('VERIFICATION')}
+            className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
+              activeTab === 'VERIFICATION'
+                ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
+                : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
+            }`}
           >
-            <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin text-red-800' : ''}`} />
+            <ShieldCheck className="w-4 h-4" />
+            <span>Verifikasi Pendaftaran</span>
+            {pendingCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              setShowAddUserModal(true);
+            }}
+            className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
+              activeTab === 'ADD_USER' || showAddUserModal
+                ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
+                : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>+ Tambah Pengguna Baru</span>
           </button>
         </div>
 
-        {/* Toast Alert */}
-        {toastMessage && (
-          <div className={`py-2 px-4 text-xs font-semibold flex items-center gap-2 ${
-            toastMessage.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
-          }`}>
-            {toastMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-            <span>{toastMessage.text}</span>
-          </div>
-        )}
+        <button
+          onClick={fetchAllData}
+          disabled={loading}
+          className="mb-1.5 p-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-red-800 hover:bg-slate-50 transition-colors"
+          title="Segarkan data"
+        >
+          <RotateCw className={`w-4 h-4 ${loading ? 'animate-spin text-red-800' : ''}`} />
+        </button>
+      </div>
 
-        {/* TAB 1: DAFTAR PENGGUNA */}
-        {activeTab === 'USERS' && (
-          <>
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  placeholder="Cari pengguna berdasarkan NRP, Nama, Role, atau Satker..."
-                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                />
-              </div>
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className={`py-2 px-4 text-xs font-semibold flex items-center gap-2 ${
+          toastMessage.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {toastMessage.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
 
-              <div className="flex items-center gap-2 overflow-x-auto text-xs">
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value as 'ALL' | UserRole)}
-                  className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-800"
-                >
-                  <option value="ALL">Semua Role ({users.length})</option>
-                  <option value="SUPERADMIN">Superadmin</option>
-                  <option value="KETUA">Ketua Paguyuban</option>
-                  <option value="SEKRETARIAT">Kesekretariatan</option>
-                  <option value="BENDAHARA">Bendahara</option>
-                  <option value="ANGGOTA">Anggota</option>
-                </select>
-
-                <button
-                  onClick={() => setActiveTab('ADD_USER')}
-                  className="px-3 py-1.5 rounded-lg bg-red-900 hover:bg-red-800 text-white font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Tambah Pengguna</span>
-                </button>
-              </div>
+      {/* TAB 1: DAFTAR PENGGUNA */}
+      {activeTab === 'USERS' && (
+        <>
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Cari pengguna berdasarkan NRP, Nama, Email, Role, atau Satker..."
+                className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+              />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-              {filteredUsers.length === 0 ? (
-                <div className="py-12 text-center">
-                  <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="font-bold text-slate-700 text-sm">Tidak ada pengguna ditemukan</p>
-                </div>
-              ) : (
-                filteredUsers.map((u) => {
-                  const roleBadge = ROLE_PERMISSIONS[u.role];
-                  const regInfo = registrations.find((r) => r.nrp === u.nrp);
-                  const accountStatus = regInfo?.status || u.status || 'DISETUJUI_BELUM_PASSWORD';
-                  return (
-                    <div
-                      key={u.nrp}
-                      className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-extrabold text-sm text-slate-900">{u.nama}</span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
-                            NRP {u.nrp}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-900 font-bold border border-red-200">
-                            {u.pangkat}
-                          </span>
-                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${roleBadge?.badgeColor || 'bg-slate-700 text-white'}`}>
-                            {roleBadge?.label || u.role}
-                          </span>
-                          {accountStatus === 'AKTIF' ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
-                              <UserCheck className="w-3 h-3" /> Password Aktif
-                            </span>
-                          ) : (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
-                              <KeyRound className="w-3 h-3" /> Belum Set Password
-                            </span>
-                          )}
-                        </div>
+            <div className="flex items-center gap-2 overflow-x-auto text-xs">
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as 'ALL' | UserRole)}
+                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-800"
+              >
+                <option value="ALL">Semua Role ({users.length})</option>
+                <option value="SUPERADMIN">Superadmin</option>
+                <option value="KETUA">Ketua Paguyuban</option>
+                <option value="SEKRETARIAT">Sekretaris</option>
+                <option value="BENDAHARA">Bendahara</option>
+                <option value="ANGGOTA">Anggota</option>
+              </select>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                            {u.satker || 'Mabes Polri'} &bull; {u.polda || 'MABES POLRI'}
+              <button
+                type="button"
+                onClick={() => setShowAddUserModal(true)}
+                className="px-3 py-1.5 rounded-lg bg-red-900 hover:bg-red-800 text-white font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm transition-colors"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Tambah Pengguna</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+            {filteredUsers.length === 0 ? (
+              <div className="py-12 text-center">
+                <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="font-bold text-slate-700 text-sm">Tidak ada pengguna ditemukan</p>
+              </div>
+            ) : (
+              filteredUsers.map((u) => {
+                const roleBadge = ROLE_PERMISSIONS[u.role];
+                const regInfo = registrations.find((r) => r.nrp === u.nrp);
+                const accountStatus = regInfo?.status || u.status || 'DISETUJUI_BELUM_PASSWORD';
+                const secondaryEmail = u.secondaryEmail || regInfo?.secondaryEmail;
+
+                return (
+                  <div
+                    key={u.nrp}
+                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-extrabold text-sm text-slate-900">{u.nama}</span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
+                          NRP {u.nrp}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-900 font-bold border border-red-200">
+                          {u.pangkat}
+                        </span>
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${roleBadge?.badgeColor || 'bg-slate-700 text-white'}`}>
+                          {roleBadge?.label || u.role}
+                        </span>
+                        {accountStatus === 'AKTIF' ? (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" /> Password Aktif
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3.5 h-3.5 text-slate-400" />
-                            {u.email}
+                        ) : (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
+                            <KeyRound className="w-3 h-3" /> Belum Set Password
                           </span>
-                        </div>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <div className="flex flex-col">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ubah Hak Akses / Role</label>
-                          <select
-                            value={u.role}
-                            disabled={updatingUserNrp === u.nrp}
-                            onChange={(e) => handleRoleChange(u.nrp, e.target.value as UserRole)}
-                            className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800 disabled:opacity-50"
-                          >
-                            {ROLE_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>
-                                {opt.value}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <button
-                          onClick={() => handleStartEditUser(u)}
-                          disabled={updatingUserNrp === u.nrp}
-                          className="mt-4 px-2.5 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
-                          title="Edit Data, Pangkat & Master Satker"
-                        >
-                          <Pencil className="w-3.5 h-3.5 text-red-800" />
-                          <span>Edit</span>
-                        </button>
-
-                        {u.nrp !== '98010710' && (
-                          <button
-                            onClick={() => handleDeleteUser(u)}
-                            disabled={updatingUserNrp === u.nrp}
-                            className="mt-4 p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                            title="Hapus Pengguna"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                        <span className="flex items-center gap-1">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                          {u.satker || 'Mabes Polri'} &bull; {u.polda || 'MABES POLRI'}
+                        </span>
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <Mail className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="font-mono text-slate-600">{u.email || `${u.nrp}@polri.go.id`}</span>
+                          {secondaryEmail && (
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                              &bull; Sekunder: {secondaryEmail}
+                            </span>
+                          )}
+                        </span>
+                        {(u.noHp || regInfo?.noHp) && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{u.noHp || regInfo?.noHp}</span>
+                          </span>
                         )}
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
 
-            {/* MODAL EDIT PENGGUNA & MASTER SATKER BERJENJANG */}
-            {editingUser && (
-              <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp">
-                  <div className="px-5 py-3.5 bg-red-900 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Pencil className="w-4 h-4 text-amber-300" />
-                      <h4 className="font-bold text-sm">
-                        Edit Pengguna &amp; Satker (NRP {editingUser.nrp})
-                      </h4>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setEditingUser(null)}
-                      className="text-white/80 hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <form onSubmit={handleSaveEditUser} className="p-5 space-y-3.5 text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="sm:col-span-2">
-                        <label className="block font-bold text-slate-700 mb-1">Nama Lengkap &amp; Gelar</label>
-                        <input
-                          type="text"
-                          required
-                          value={editNama}
-                          onChange={(e) => setEditNama(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Pangkat (Termasuk ADC)</label>
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                      <div className="flex flex-col">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ubah Hak Akses / Role</label>
                         <select
-                          value={editPangkat}
-                          onChange={(e) => setEditPangkat(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                          value={u.role}
+                          disabled={updatingUserNrp === u.nrp}
+                          onChange={(e) => handleRoleChange(u.nrp, e.target.value as UserRole)}
+                          className="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800 disabled:opacity-50"
                         >
-                          {PANGKAT_OPTIONS.map((p) => (
-                            <option key={p} value={p}>{p}</option>
+                          {ROLE_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.value === 'SEKRETARIAT' ? 'SEKRETARIS' : opt.value}
+                            </option>
                           ))}
                         </select>
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Role / Hak Akses</label>
-                        <select
-                          value={editRole}
-                          onChange={(e) => setEditRole(e.target.value as UserRole)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-red-900 focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        >
-                          {ROLE_OPTIONS.map((r) => (
-                            <option key={r.value} value={r.value}>{r.label}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="sm:col-span-2 flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-                        <div>
-                          <span className="font-bold text-slate-800 block">Hierarki Satker Polri Berjenjang</span>
-                          <span className="text-[10px] text-slate-500">Pilih melalui dropdown di bawah atau buka Popup Pencarian Satker Berjenjang (ala CAS)</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => openSatkerPicker('EDIT')}
-                          className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs whitespace-nowrap"
-                        >
-                          <Building2 className="w-3.5 h-3.5" />
-                          <span>Pilih Satker Berjenjang</span>
-                        </button>
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">1. Wilayah Induk (Mabes / 38 Polda)</label>
-                        <select
-                          value={editPolda}
-                          onChange={(e) => {
-                            const w = e.target.value;
-                            setEditPolda(w);
-                            const satkerOpts = getSatkerUtamaByWilayah(w);
-                            const firstS = satkerOpts[0] || w;
-                            setEditSatkerUtama(firstS);
-                            const subOpts = getSubSatkerOptionsBySatker(w, firstS);
-                            setEditSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-                          }}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        >
-                          {POLDA_LIST.map((p) => (
-                            <option key={p} value={p}>{p}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">2. Master Satker Utama</label>
-                        <select
-                          value={editSatkerUtama}
-                          onChange={(e) => {
-                            const s = e.target.value;
-                            setEditSatkerUtama(s);
-                            const subOpts = getSubSatkerOptionsBySatker(editPolda, s);
-                            setEditSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-                          }}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        >
-                          {getSatkerUtamaByWilayah(editPolda).map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block font-bold text-slate-700 mb-1">3. Sub-Satker / Direktorat / Bagian / ADC</label>
-                        <select
-                          value={editSubSatker}
-                          onChange={(e) => setEditSubSatker(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        >
-                          {getSubSatkerOptionsBySatker(editPolda, editSatkerUtama).map((sub) => (
-                            <option key={sub} value={sub}>{sub}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">No. HP / WhatsApp Aktif</label>
-                        <input
-                          type="tel"
-                          value={editNoHp}
-                          onChange={(e) => setEditNoHp(e.target.value)}
-                          placeholder="Contoh: 081234567890"
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Email</label>
-                        <input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      {onEditMemberByNrp ? (
+                      {canImpersonate && u.nrp !== '98010710' && (
                         <button
                           type="button"
                           onClick={() => {
-                            const targetNrp = editingUser.nrp;
-                            setEditingUser(null);
-                            onClose();
-                            onEditMemberByNrp(targetNrp);
+                            if (onImpersonateUser) {
+                              onImpersonateUser(u);
+                            }
                           }}
-                          className="px-3 py-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-[11px] flex items-center gap-1.5"
+                          disabled={updatingUserNrp === u.nrp}
+                          className="mt-4 px-2.5 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          title="Masuk sebagai akun ini (Impersonate Superadmin)"
                         >
-                          <FilePlus2 className="w-3.5 h-3.5" />
-                          <span>Edit Biodata Lengkap (5 Tahap)</span>
+                          <KeyRound className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Impersonate</span>
                         </button>
-                      ) : <span />}
+                      )}
 
-                      <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditUser(u)}
+                        disabled={updatingUserNrp === u.nrp}
+                        className="mt-4 px-2.5 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
+                        title="Edit Data, Pangkat & Master Satker"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-red-800" />
+                        <span>Edit</span>
+                      </button>
+
+                      {u.nrp !== '98010710' && (
                         <button
                           type="button"
-                          onClick={() => setEditingUser(null)}
-                          className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-50"
+                          onClick={() => handleDeleteUser(u)}
+                          disabled={updatingUserNrp === u.nrp}
+                          className="mt-4 p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          title="Hapus Pengguna"
                         >
-                          Batal
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                        <button
-                          type="submit"
-                          disabled={updatingUserNrp === editingUser.nrp}
-                          className="px-4 py-2 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold shadow-md disabled:opacity-50"
-                        >
-                          {updatingUserNrp === editingUser.nrp ? 'Menyimpan...' : 'Simpan Perubahan'}
-                        </button>
-                      </div>
+                      )}
                     </div>
-                  </form>
-                </div>
-              </div>
+                  </div>
+                );
+              })
             )}
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {/* TAB 2: VERIFIKASI PENDAFTARAN */}
-        {activeTab === 'VERIFICATION' && (
-          <>
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={regSearch}
-                  onChange={(e) => setRegSearch(e.target.value)}
-                  placeholder="Cari antrean berdasarkan NRP, Nama, Satker, atau Polda..."
-                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-1 overflow-x-auto text-xs">
-                <button
-                  onClick={() => setFilterStatus('PENDING_VERIFIKASI')}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
-                    filterStatus === 'PENDING_VERIFIKASI'
-                      ? 'bg-amber-600 text-white shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Menunggu ({pendingCount})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('DISETUJUI_BELUM_PASSWORD')}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
-                    filterStatus === 'DISETUJUI_BELUM_PASSWORD'
-                      ? 'bg-red-800 text-white shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Disetujui
-                </button>
-                <button
-                  onClick={() => setFilterStatus('ALL')}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
-                    filterStatus === 'ALL'
-                      ? 'bg-slate-800 text-white shadow-sm'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  Semua ({registrations.length})
-                </button>
-              </div>
+      {/* TAB 2: VERIFIKASI PENDAFTARAN */}
+      {activeTab === 'VERIFICATION' && (
+        <>
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={regSearch}
+                onChange={(e) => setRegSearch(e.target.value)}
+                placeholder="Cari antrean berdasarkan NRP, Nama, Satker, atau Polda..."
+                className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+              />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
-              {filteredRegistrations.length === 0 ? (
-                <div className="py-12 text-center">
-                  <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                  <p className="font-bold text-slate-700 text-sm">Tidak ada pendaftaran dengan kriteria ini</p>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Semua alumni yang mendaftar telah diproses atau belum ada antrean baru.
-                  </p>
-                </div>
-              ) : (
-                filteredRegistrations.map((reg) => (
-                  <div 
-                    key={reg.id} 
-                    className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-extrabold text-sm text-slate-900">
-                            {reg.nama}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
-                            NRP {reg.nrp}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-900 font-bold border border-red-200">
-                            {reg.pangkat}
-                          </span>
+            <div className="flex items-center gap-1 overflow-x-auto text-xs">
+              <button
+                onClick={() => setFilterStatus('PENDING_VERIFIKASI')}
+                className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
+                  filterStatus === 'PENDING_VERIFIKASI'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                Menunggu ({pendingCount})
+              </button>
+              <button
+                onClick={() => setFilterStatus('DISETUJUI_BELUM_PASSWORD')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  filterStatus === 'DISETUJUI_BELUM_PASSWORD'
+                    ? 'bg-red-800 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                Disetujui
+              </button>
+              <button
+                onClick={() => setFilterStatus('ALL')}
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
+                  filterStatus === 'ALL'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                Semua ({registrations.length})
+              </button>
+            </div>
+          </div>
 
-                          {reg.status === 'PENDING_VERIFIKASI' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> Menunggu Verifikasi
-                            </span>
-                          )}
-                          {reg.status === 'DISETUJUI_BELUM_PASSWORD' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Disetujui (Belum Set Password)
-                            </span>
-                          )}
-                          {reg.status === 'AKTIF' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
-                              <UserCheck className="w-3 h-3" /> Akun Aktif
-                            </span>
-                          )}
-                          {reg.status === 'DITOLAK' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold flex items-center gap-1">
-                              <XCircle className="w-3 h-3" /> Ditolak
-                            </span>
-                          )}
-                        </div>
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+            {filteredRegistrations.length === 0 ? (
+              <div className="py-12 text-center">
+                <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="font-bold text-slate-700 text-sm">Tidak ada pendaftaran dengan kriteria ini</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Semua alumni yang mendaftar telah diproses atau belum ada antrean baru.
+                </p>
+              </div>
+            ) : (
+              filteredRegistrations.map((reg) => (
+                <div 
+                  key={reg.id} 
+                  className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-extrabold text-sm text-slate-900">
+                          {reg.nama}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
+                          NRP {reg.nrp}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 rounded bg-red-50 text-red-900 font-bold border border-red-200">
+                          {reg.pangkat}
+                        </span>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 pt-1">
-                          <div className="flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span className="truncate">{reg.satker} &bull; {reg.polda}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span>{reg.noHp || '-'}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                            <span className="truncate">{reg.email}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                            <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span>Diajukan: {new Date(reg.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}</span>
-                          </div>
-                        </div>
-
-                        {reg.alasanDaftar && (
-                          <p className="text-xs text-slate-500 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mt-2">
-                            &quot;{reg.alasanDaftar}&quot;
-                          </p>
+                        {reg.status === 'PENDING_VERIFIKASI' && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> Menunggu Verifikasi
+                          </span>
                         )}
-
-                        {reg.verifiedBy && (
-                          <p className="text-[11px] text-slate-400 pt-1">
-                            Diverifikasi oleh: <strong className="text-slate-600">{reg.verifiedBy}</strong> pada {new Date(reg.verifiedAt || '').toLocaleString('id-ID')}
-                          </p>
+                        {reg.status === 'DISETUJUI_BELUM_PASSWORD' && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Disetujui (Belum Set Password)
+                          </span>
+                        )}
+                        {reg.status === 'AKTIF' && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
+                            <UserCheck className="w-3 h-3" /> Akun Aktif
+                          </span>
+                        )}
+                        {reg.status === 'DITOLAK' && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-800 font-bold flex items-center gap-1">
+                            <XCircle className="w-3 h-3" /> Ditolak
+                          </span>
                         )}
                       </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex flex-col items-stretch sm:items-end gap-2 pt-2 sm:pt-0 flex-shrink-0">
-                        {reg.status === 'PENDING_VERIFIKASI' ? (
-                          <>
-                            <div className="w-full sm:w-44">
-                              <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                                Tetapkan Role Saat Disetujui:
-                              </label>
-                              <select
-                                value={selectedApproveRoles[reg.id] || 'ANGGOTA'}
-                                onChange={(e) =>
-                                  setSelectedApproveRoles((prev) => ({
-                                    ...prev,
-                                    [reg.id]: e.target.value as UserRole,
-                                  }))
-                                }
-                                className="w-full px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800"
-                              >
-                                {ROLE_OPTIONS.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>
-                                    {opt.value}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div className="flex sm:flex-row gap-2 w-full sm:w-44">
-                              <button
-                                onClick={() => handleVerify(reg, 'APPROVE')}
-                                disabled={actionLoadingId === reg.id}
-                                className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors shadow-sm disabled:opacity-50"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{actionLoadingId === reg.id ? '...' : 'Setujui'}</span>
-                              </button>
-                              <button
-                                onClick={() => handleVerify(reg, 'REJECT')}
-                                disabled={actionLoadingId === reg.id}
-                                className=" py-1.5 px-3 rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-50 font-bold text-xs flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
-                              >
-                                <XCircle className="w-3.5 h-3.5" />
-                                <span>Tolak</span>
-                              </button>
-                            </div>
-                          </>
-                        ) : reg.status === 'DISETUJUI_BELUM_PASSWORD' ? (
-                          <div className="text-right">
-                            <span className="text-[11px] font-bold text-blue-700 block">Siap Aktivasi</span>
-                            <span className="text-[10px] text-slate-400">Menunggu alumni login &amp; buat password</span>
-                          </div>
-                        ) : null}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{reg.satker} &bull; {reg.polda}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span>{reg.noHp || '-'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="truncate">{reg.email}</span>
+                          {reg.secondaryEmail && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
+                              &bull; Sekunder: {reg.secondaryEmail}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                          <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>Diajukan: {new Date(reg.createdAt).toLocaleDateString('id-ID', { dateStyle: 'medium' })}</span>
+                        </div>
                       </div>
+
+                      {reg.alasanDaftar && (
+                        <p className="text-xs text-slate-500 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mt-2">
+                          &quot;{reg.alasanDaftar}&quot;
+                        </p>
+                      )}
+
+                      {reg.verifiedBy && (
+                        <p className="text-[11px] text-slate-400 pt-1">
+                          Diverifikasi oleh: <strong className="text-slate-600">{reg.verifiedBy}</strong> pada {new Date(reg.verifiedAt || '').toLocaleString('id-ID')}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col items-stretch sm:items-end gap-2 pt-2 sm:pt-0 flex-shrink-0">
+                      {reg.status === 'PENDING_VERIFIKASI' ? (
+                        <>
+                          <div className="w-full sm:w-44">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
+                              Tetapkan Role Saat Disetujui:
+                            </label>
+                            <select
+                              value={selectedApproveRoles[reg.id] || 'ANGGOTA'}
+                              onChange={(e) =>
+                                setSelectedApproveRoles((prev) => ({
+                                  ...prev,
+                                  [reg.id]: e.target.value as UserRole,
+                                }))
+                              }
+                              className="w-full px-2 py-1 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800"
+                            >
+                              {ROLE_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.value === 'SEKRETARIAT' ? 'SEKRETARIS' : opt.value}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex sm:flex-row gap-2 w-full sm:w-44">
+                            <button
+                              onClick={() => handleVerify(reg, 'APPROVE')}
+                              disabled={actionLoadingId === reg.id}
+                              className="flex-1 py-1.5 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{actionLoadingId === reg.id ? '...' : 'Setujui'}</span>
+                            </button>
+                            <button
+                              onClick={() => handleVerify(reg, 'REJECT')}
+                              disabled={actionLoadingId === reg.id}
+                              className="py-1.5 px-3 rounded-lg bg-white border border-red-300 text-red-700 hover:bg-red-50 font-bold text-xs flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Tolak</span>
+                            </button>
+                          </div>
+                        </>
+                      ) : reg.status === 'DISETUJUI_BELUM_PASSWORD' ? (
+                        <div className="text-right">
+                          <span className="text-[11px] font-bold text-blue-700 block">Siap Aktivasi</span>
+                          <span className="text-[10px] text-slate-400">Menunggu alumni login &amp; buat password</span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </>
-        )}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
 
-        {/* TAB 3: TAMBAH PENGGUNA BARU */}
-        {activeTab === 'ADD_USER' && (
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6">
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-5 flex items-start justify-between gap-3">
+      {/* TAB 3: TAMBAH PENGGUNA BARU (CAS 2-COLUMN LAYOUT) */}
+      {activeTab === 'ADD_USER' && (
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-5 flex items-start justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-extrabold text-amber-900">
+                  Penambahan Langsung oleh Admin / Sekretaris
+                </h4>
+                <p className="text-[11px] text-amber-800 mt-0.5">
+                  Akun yang ditambahkan di sini langsung terdaftar sebagai pengguna terverifikasi, masuk ke Direktori Anggota, dan terdaftar di Buku Kas/Iuran.
+                </p>
+              </div>
+            </div>
+            {renderCasAddUserForm(() => setActiveTab('USERS'))}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL POPUP CAS: TAMBAH PENGGUNA                             */}
+      {/* ============================================================ */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-700">
+                  <UserPlus className="w-4 h-4" />
+                </div>
                 <div>
-                  <h4 className="text-xs font-extrabold text-amber-900">
-                    Penambahan Langsung oleh Admin / Kesekretariatan
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    Tambah Pengguna Baru
                   </h4>
-                  <p className="text-[11px] text-amber-800 mt-0.5">
-                    Akun yang ditambahkan di sini langsung terdaftar sebagai pengguna terverifikasi, masuk ke Direktori Anggota, dan terdaftar di Buku Kas/Iuran.
+                  <p className="text-[11px] text-slate-500">
+                    Lengkapi identitas, satker melekat berjenjang, serta email dinas &amp; sekunder personel
                   </p>
                 </div>
-                {onOpenFullWizard && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      onOpenFullWizard();
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-white border border-amber-400 text-amber-900 hover:bg-amber-100 text-[11px] font-bold flex items-center gap-1.5 flex-shrink-0 shadow-sm transition-colors"
-                  >
-                    <FilePlus2 className="w-3.5 h-3.5" />
-                    <span>Form Pendataan 5 Tahap</span>
-                  </button>
-                )}
               </div>
+              <button
+                type="button"
+                onClick={() => setShowAddUserModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              <form onSubmit={handleAddUser} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-6 max-h-[82vh] overflow-y-auto">
+              {renderCasAddUserForm(() => setShowAddUserModal(false))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL POPUP CAS: EDIT PENGGUNA & MASTER SATKER BERJENJANG     */}
+      {/* ============================================================ */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-700">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    Edit Pengguna (NRP {editingUser.nrp})
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Perbarui identitas, role akses, satker melekat berjenjang, atau kredensial kontak
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="p-6 space-y-5 text-xs max-h-[82vh] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* KOLOM KIRI: IDENTITAS & SATKER */}
+                <div className="space-y-3.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
+                    <IdCard className="w-4 h-4" />
+                    <span>🪪 IDENTITAS &amp; SATKER</span>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      NRP <span className="text-red-600">*</span>
-                    </label>
+                    <label className="block font-semibold text-slate-700 mb-1">Nama Lengkap &amp; Gelar</label>
                     <input
                       type="text"
                       required
-                      value={newNrp}
-                      onChange={(e) => setNewNrp(e.target.value)}
-                      placeholder="Contoh: 980107107"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      value={editNama}
+                      onChange={(e) => setEditNama(e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Nama Lengkap &amp; Gelar <span className="text-red-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newNama}
-                      onChange={(e) => setNewNama(e.target.value)}
-                      placeholder="Contoh: Kombes Pol. Budi Santoso, S.I.K."
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Pangkat
-                    </label>
-                    <select
-                      value={newPangkat}
-                      onChange={(e) => setNewPangkat(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    >
-                      {PANGKAT_OPTIONS.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Role / Hak Akses Sistem <span className="text-red-600">*</span>
-                    </label>
-                    <select
-                      value={newRole}
-                      onChange={(e) => setNewRole(e.target.value as UserRole)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-red-900 focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    >
-                      {ROLE_OPTIONS.map((r) => (
-                        <option key={r.value} value={r.value}>{r.label}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2 flex items-center justify-between bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200">
+                  <div className="grid grid-cols-2 gap-2.5">
                     <div>
-                      <span className="font-bold text-xs text-slate-800 block">Hierarki Satker Polri Berjenjang</span>
-                      <span className="text-[10px] text-slate-500">Pilih dari dropdown di bawah atau klik tombol untuk membuka Popup Pilih Satker Berjenjang (ala CAS)</span>
+                      <label className="block font-semibold text-slate-700 mb-1">Pangkat</label>
+                      <select
+                        value={editPangkat}
+                        onChange={(e) => setEditPangkat(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                      >
+                        {PANGKAT_OPTIONS.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => openSatkerPicker('ADD')}
-                      className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs whitespace-nowrap"
-                    >
-                      <Building2 className="w-3.5 h-3.5" />
-                      <span>Pilih Satker Berjenjang</span>
-                    </button>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Role Akses</label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value as UserRole)}
+                        className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                      >
+                        {ROLE_OPTIONS.map((r) => (
+                          <option key={r.value} value={r.value}>
+                            {r.value === 'SEKRETARIAT' ? 'SEKRETARIS' : r.value}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* SATKER MELEKAT (ALA CAS) */}
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Satker Melekat</label>
+                    <div className="flex items-stretch gap-2">
+                      <div
+                        onClick={() => openSatkerPicker('EDIT')}
+                        className="flex-1 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-blue-400 cursor-pointer flex items-center gap-2 transition-colors"
+                      >
+                        <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-slate-900 block truncate text-[11px]">
+                            {editComposedSatker || editSatkerUtama}
+                          </span>
+                          <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                            <span>{editPolda}</span>
+                            {editKodeSatker && (
+                              <span className="font-mono text-slate-400">({editKodeSatker})</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openSatkerPicker('EDIT')}
+                        className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-bold text-[11px] whitespace-nowrap transition-colors"
+                      >
+                        Pilih Satker Berjenjang
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* KOLOM KANAN: AKUN & KREDENSIAL */}
+                <div className="space-y-3.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider text-blue-600 pb-1 border-b border-slate-100">
+                    <Lock className="w-4 h-4" />
+                    <span>🔐 AKUN &amp; KREDENSIAL</span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      1. Wilayah Induk (Mabes / 38 Polda / Luar Struktur)
-                    </label>
-                    <select
-                      value={newPolda}
-                      onChange={(e) => {
-                        const selectedWilayah = e.target.value;
-                        setNewPolda(selectedWilayah);
-                        const satkerOpts = getSatkerUtamaByWilayah(selectedWilayah);
-                        const firstSatker = satkerOpts[0] || selectedWilayah;
-                        setNewSatkerUtama(firstSatker);
-                        const subOpts = getSubSatkerOptionsBySatker(selectedWilayah, firstSatker);
-                        setNewSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-                      }}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    >
-                      {POLDA_LIST.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      2. Master Satker Utama (Satker / Direktorat / Polres)
-                    </label>
-                    <select
-                      value={newSatkerUtama}
-                      onChange={(e) => {
-                        const selectedSatker = e.target.value;
-                        setNewSatkerUtama(selectedSatker);
-                        const subOpts = getSubSatkerOptionsBySatker(newPolda, selectedSatker);
-                        setNewSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-                      }}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    >
-                      {getSatkerUtamaByWilayah(newPolda).map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      3. Sub-Satker / Direktorat / Bagian / Penugasan ADC (Dropdown)
-                    </label>
-                    <select
-                      value={newSubSatker}
-                      onChange={(e) => setNewSubSatker(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    >
-                      {getSubSatkerOptionsBySatker(newPolda, newSatkerUtama).map((sub) => (
-                        <option key={sub} value={sub}>{sub}</option>
-                      ))}
-                    </select>
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      Hasil Satker Tersimpan: <strong className="text-red-900">{newSubSatker && newSubSatker !== 'Pimpinan / Staf Utama Satker' ? `${newSubSatker} - ${newSatkerUtama}` : newSatkerUtama} ({newPolda})</strong>
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      No. HP / WhatsApp Aktif
-                    </label>
+                    <label className="block font-semibold text-slate-700 mb-1">NRP / NIP (Terkunci)</label>
                     <input
-                      type="tel"
-                      value={newNoHp}
-                      onChange={(e) => setNewNoHp(e.target.value)}
-                      placeholder="Contoh: 081234567890"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      type="text"
+                      disabled
+                      value={editingUser.nrp}
+                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-500 cursor-not-allowed"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Email
+                    <label className="block font-semibold text-slate-700 mb-1">Email Dinas (@polri.go.id)</label>
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder={`${editingUser.nrp}@polri.go.id`}
+                      className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Email Sekunder / Pribadi <span className="text-slate-400 font-normal">(Opsional &amp; Editable)</span>
                     </label>
                     <input
                       type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="Opsional (otomatis dibuat jika kosong)"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      value={editSecondaryEmail}
+                      onChange={(e) => setEditSecondaryEmail(e.target.value)}
+                      placeholder="Contoh: agungkrisdianto98@gmail.com"
+                      className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Password Awal (Opsional)
-                    </label>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">No. HP / WhatsApp Aktif</label>
                     <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Kosongkan agar user buat password saat login"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      type="tel"
+                      value={editNoHp}
+                      onChange={(e) => setEditNoHp(e.target.value)}
+                      placeholder="Contoh: 081234567890"
+                      className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
                 </div>
+              </div>
 
-                <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-200">
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                {onEditMemberByNrp ? (
                   <button
                     type="button"
-                    onClick={() => setActiveTab('USERS')}
-                    className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold"
+                    onClick={() => {
+                      const targetNrp = editingUser.nrp;
+                      setEditingUser(null);
+                      if (!asPage) onClose();
+                      onEditMemberByNrp(targetNrp);
+                    }}
+                    className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-[11px] flex items-center gap-1.5"
+                  >
+                    <FilePlus2 className="w-3.5 h-3.5" />
+                    <span>Edit Biodata Lengkap (5 Tahap)</span>
+                  </button>
+                ) : <span />}
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    className="px-4 py-2 text-blue-600 hover:text-blue-800 font-bold text-xs transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    disabled={creatingUser}
-                    className="px-5 py-2 rounded-lg bg-red-900 hover:bg-red-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                    disabled={updatingUserNrp === editingUser.nrp}
+                    className="px-5 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-red-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50"
                   >
-                    <UserPlus className="w-4 h-4" />
-                    <span>{creatingUser ? 'Menyimpan...' : 'Simpan & Aktifkan Pengguna'}</span>
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                    <span>{updatingUserNrp === editingUser.nrp ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
                   </button>
                 </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* MODAL POPUP: PILIH SATKER BERJENJANG (ALA CAS / BDB)         */}
-        {/* ============================================================ */}
-        {satkerPickerMode && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-            <div
-              className="bg-slate-900 text-slate-100 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-700 overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-white">Pilih Satker Berjenjang</h4>
-                    <p className="text-[11px] text-slate-400">Pilih dari Tingkat 1 hingga unit terkecil</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSatkerPickerMode(null)}
-                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
-
-              <div className="p-5 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
-                {/* TINGKAT 1 — MABES / POLDA */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span>Tingkat 1 — Mabes / Polda</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPickerPolda('MABES POLRI');
-                        setPickerSatker('BARESKRIM POLRI');
-                        setPickerSubSatker('Pimpinan / Staf Utama Satker');
-                      }}
-                      className="text-[10px] text-rose-400 hover:underline font-semibold"
-                    >
-                      ✕ Reset
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    value={pickerSearch1}
-                    onChange={(e) => setPickerSearch1(e.target.value)}
-                    placeholder="Ketik untuk mencari Mabes / Polda..."
-                    className="w-full px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                  />
-                  <select
-                    value={pickerPolda}
-                    onChange={(e) => {
-                      const w = e.target.value;
-                      setPickerPolda(w);
-                      const sOpts = getSatkerUtamaByWilayah(w);
-                      const firstS = sOpts[0] || w;
-                      setPickerSatker(firstS);
-                      const subOpts = getSubSatkerOptionsBySatker(w, firstS);
-                      setPickerSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-                    }}
-                    className="w-full px-3 py-2 bg-slate-800 border border-amber-500/60 rounded-lg text-xs font-bold text-white focus:outline-none"
-                  >
-                    {POLDA_LIST.filter((p) =>
-                      !pickerSearch1.trim() || p.toLowerCase().includes(pickerSearch1.toLowerCase())
-                    ).map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* TINGKAT 2 — POLRES / SATKER */}
-                <div className="space-y-1.5 pl-3 border-l-2 border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-400" />
-                      <span>Tingkat 2 — Polres / Satker ({getSatkerUtamaByWilayah(pickerPolda).length})</span>
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    value={pickerSearch2}
-                    onChange={(e) => setPickerSearch2(e.target.value)}
-                    placeholder="Ketik untuk mencari Polres / Satker..."
-                    className="w-full px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                  />
-                  <select
-                    value={pickerSatker}
-                    onChange={(e) => {
-                      const s = e.target.value;
-                      setPickerSatker(s);
-                      const subOpts = getSubSatkerOptionsBySatker(pickerPolda, s);
-                      setPickerSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
-                    }}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-amber-400"
-                  >
-                    {getSatkerUtamaByWilayah(pickerPolda)
-                      .filter(
-                        (s) =>
-                          !pickerSearch2.trim() ||
-                          s.toLowerCase().includes(pickerSearch2.toLowerCase())
-                      )
-                      .map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* TINGKAT 3 — SUB-SATKER / DIREKTORAT / POLSEK / ADC */}
-                <div className="space-y-1.5 pl-6 border-l-2 border-slate-700">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                    <span>
-                      Tingkat 3 — Sub-Satker / Direktorat / ADC (
-                      {getSubSatkerOptionsBySatker(pickerPolda, pickerSatker).length})
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={pickerSearch3}
-                    onChange={(e) => setPickerSearch3(e.target.value)}
-                    placeholder="Ketik untuk mencari Direktorat / Subdit / Polsek / ADC..."
-                    className="w-full px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
-                  />
-                  <select
-                    value={pickerSubSatker}
-                    onChange={(e) => setPickerSubSatker(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs font-bold text-white focus:outline-none focus:border-amber-400"
-                  >
-                    {getSubSatkerOptionsBySatker(pickerPolda, pickerSatker)
-                      .filter(
-                        (sub) =>
-                          !pickerSearch3.trim() ||
-                          sub.toLowerCase().includes(pickerSearch3.toLowerCase())
-                      )
-                      .map((sub) => (
-                        <option key={sub} value={sub}>
-                          {sub}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                {/* SATKER TERPILIH SUMMARY BOX */}
-                <div className="p-3.5 rounded-xl bg-slate-800/90 border border-amber-500/40 flex items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">
-                      Satker Terpilih
-                    </span>
-                    <span className="text-xs font-extrabold text-white block mt-0.5">
-                      {pickerSubSatker && pickerSubSatker !== 'Pimpinan / Staf Utama Satker'
-                        ? `${pickerSubSatker} — ${pickerSatker}`
-                        : pickerSatker}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">{pickerPolda}</span>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono text-xs font-bold">
-                    {String(
-                      Math.abs(
-                        (pickerPolda + pickerSatker)
-                          .split('')
-                          .reduce((acc, c) => acc + c.charCodeAt(0), 0)
-                      ) % 9000 + 1000
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="px-5 py-3.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => setSatkerPickerMode(null)}
-                  className="flex-1 py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={applySatkerPicker}
-                  className="flex-1 py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs transition-colors shadow-md"
-                >
-                  ✓ Terapkan Satker
-                </button>
-              </div>
-            </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Otoritas Manajemen Pengguna: <strong>Hanya Admin (Superadmin) &amp; Kesekretariatan</strong></span>
-          </div>
+      {/* ============================================================ */}
+      {/* MODAL POPUP: PILIH SATKER BERJENJANG (ALA CAS / BDB)         */}
+      {/* ============================================================ */}
+      <SatkerBerjenjangModal
+        isOpen={satkerPickerMode !== null}
+        onClose={() => setSatkerPickerMode(null)}
+        initialPolda={satkerPickerMode === 'EDIT' ? editPolda : newPolda}
+        initialSatker={satkerPickerMode === 'EDIT' ? editSatkerUtama : newSatkerUtama}
+        initialSubSatker={satkerPickerMode === 'EDIT' ? editSubSatker : newSubSatker}
+        onApply={handleApplySatkerFromModal}
+      />
+
+      {/* Footer */}
+      <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <span>Otoritas Manajemen Pengguna: <strong>Hanya Admin (Superadmin) &amp; Sekretaris</strong></span>
+        </div>
+        {!asPage && (
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold transition-colors"
           >
             Tutup
           </button>
-        </div>
+        )}
       </div>
+    </div>
+  );
+
+  if (asPage) {
+    return (
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-4">
+        {innerContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+      {innerContent}
     </div>
   );
 };

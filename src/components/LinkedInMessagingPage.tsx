@@ -7,8 +7,6 @@ import {
   Search, 
   Send, 
   Phone, 
-  MoreHorizontal, 
-  Smile, 
   ShieldCheck, 
   CheckCheck, 
   Paperclip,
@@ -16,7 +14,8 @@ import {
   FileText,
   X,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Pin
 } from 'lucide-react';
 
 interface LinkedInMessagingPageProps {
@@ -32,21 +31,57 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
   initialTargetMember,
   onSelectMember,
 }) => {
-  const [activeFilter, setActiveFilter] = useState<'terfokus' | 'semua' | 'unread' | 'starred'>('terfokus');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'active' | 'pinned'>('active');
+  const [showDirectoryPicker, setShowDirectoryPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatSearch, setNewChatSearch] = useState('');
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Pinned chats persisted in localStorage under ws96_pinned_chats_v1
+  const [pinnedNrps, setPinnedNrps] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('ws96_pinned_chats_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {
+        console.error('Failed to parse pinned chats', e);
+      }
+    }
+    return [];
+  });
+
+  const togglePinChat = (nrp: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setPinnedNrps((prev) => {
+      const next = prev.includes(nrp) ? prev.filter((id) => id !== nrp) : [...prev, nrp];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ws96_pinned_chats_v1', JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  // Track contact explicitly selected via + Obrolan or initialTargetMember
+  const [selectedNewChatNrp, setSelectedNewChatNrp] = useState<string>(() => {
+    if (initialTargetMember && initialTargetMember.nrp !== currentUser.nrp) {
+      return initialTargetMember.nrp;
+    }
+    return '';
+  });
 
   // Active chat partner
   const [activePartnerNrp, setActivePartnerNrp] = useState<string>(() => {
     if (initialTargetMember && initialTargetMember.nrp !== currentUser.nrp) {
       return initialTargetMember.nrp;
     }
-    const firstOther = members.find((m) => m.nrp !== currentUser.nrp);
-    return firstOther ? firstOther.nrp : '';
+    return '';
   });
 
   // All messages in state
@@ -68,7 +103,9 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
   // Sync with initialTargetMember when passed from outside
   useEffect(() => {
     if (initialTargetMember && initialTargetMember.nrp !== currentUser.nrp) {
+      setSelectedNewChatNrp(initialTargetMember.nrp);
       setActivePartnerNrp(initialTargetMember.nrp);
+      setShowDirectoryPicker(false);
     }
   }, [initialTargetMember, currentUser.nrp]);
 
@@ -145,8 +182,20 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length, activePartnerNrp]);
 
+  // Group messages by contact NRP
+  const messagesByContact = React.useMemo(() => {
+    const map: Record<string, ChatMessage[]> = {};
+    messages.forEach((msg) => {
+      const otherNrp = msg.senderNrp === currentUser.nrp ? msg.receiverNrp : msg.senderNrp;
+      if (!otherNrp || otherNrp === currentUser.nrp) return;
+      if (!map[otherNrp]) map[otherNrp] = [];
+      map[otherNrp].push(msg);
+    });
+    return map;
+  }, [messages, currentUser.nrp]);
+
   // Compute unique conversation partners from messages and ALL members list
-  const conversationPartners = React.useMemo(() => {
+  const contacts = React.useMemo(() => {
     const partnerMap = new Map<string, { member: AnggotaWiraSatya; lastMessage?: ChatMessage; unread: number }>();
 
     // 1. Process all messages to find active chat threads
@@ -184,7 +233,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
       }
     });
 
-    // 2. Ensure ALL registered members in directory are accessible (not just slice(0, 6))
+    // 2. Ensure ALL registered members in directory are accessible when searching or picking
     members.forEach((m) => {
       if (m.nrp !== currentUser.nrp && !partnerMap.has(m.nrp)) {
         partnerMap.set(m.nrp, {
@@ -195,20 +244,47 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     });
 
     return Array.from(partnerMap.values()).sort((a, b) => {
+      const aPinned = pinnedNrps.includes(a.member.nrp) ? 1 : 0;
+      const bPinned = pinnedNrps.includes(b.member.nrp) ? 1 : 0;
       const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
       const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
       if (timeB !== timeA) return timeB - timeA;
+      if (bPinned !== aPinned) return bPinned - aPinned;
       return a.member.namaLengkap.localeCompare(b.member.namaLengkap);
     });
-  }, [messages, currentUser.nrp, members]);
+  }, [messages, currentUser.nrp, members, pinnedNrps]);
+
+  // Auto-select most recent active conversation if none selected yet
+  useEffect(() => {
+    if (!activePartnerNrp) {
+      const firstActive = contacts.find((c) => (messagesByContact[c.member.nrp]?.length || 0) > 0);
+      if (firstActive) {
+        setActivePartnerNrp(firstActive.member.nrp);
+      }
+    }
+  }, [contacts, messagesByContact, activePartnerNrp]);
+
+  // Counts for tabs
+  const activeChatCount = React.useMemo(
+    () =>
+      contacts.filter(
+        (c) => (messagesByContact[c.member.nrp]?.length || 0) > 0 || c.member.nrp === selectedNewChatNrp
+      ).length,
+    [contacts, messagesByContact, selectedNewChatNrp]
+  );
+
+  const pinnedCount = React.useMemo(
+    () => contacts.filter((c) => pinnedNrps.includes(c.member.nrp)).length,
+    [contacts, pinnedNrps]
+  );
 
   // Active Partner Profile (only real partner or custom target NRP or null)
   const activePartner: AnggotaWiraSatya | null = React.useMemo(() => {
-    const targetNrp = activePartnerNrp || conversationPartners[0]?.member.nrp || '';
+    const targetNrp = activePartnerNrp || '';
     if (!targetNrp) return null;
     const fromMembers = members.find((m) => m.nrp === targetNrp);
     if (fromMembers) return fromMembers;
-    const fromPartners = conversationPartners.find((p) => p.member.nrp === targetNrp);
+    const fromPartners = contacts.find((p) => p.member.nrp === targetNrp);
     if (fromPartners) return fromPartners.member;
     return {
       id: 'ws-' + targetNrp,
@@ -221,7 +297,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
       noHp: '',
       fotoUrl: '/default-avatar.png',
     } as AnggotaWiraSatya;
-  }, [activePartnerNrp, members, conversationPartners]);
+  }, [activePartnerNrp, members, contacts]);
 
   // Messages between currentUser and activePartner
   const activeChatMessages = activePartner
@@ -299,11 +375,11 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     return `https://wa.me/${clean}?text=Halo%20Komandan%2C%20mohon%20izin%20menghubungi%20dari%20Obrolan%20Alumni%20Akpol%201996`;
   };
 
-  const activeThreadsCount = conversationPartners.filter((p) => Boolean(p.lastMessage)).length;
+  const isDirectoryMode = showDirectoryPicker || searchQuery.trim().length > 0;
 
   // Filtered conversation partners in left rail
-  const filteredPartners = conversationPartners.filter((p) => {
-    const q = searchTerm.toLowerCase().trim();
+  const filteredPartners = contacts.filter((p) => {
+    const q = searchQuery.toLowerCase().trim();
     const matchesSearch =
       !q ||
       p.member.namaLengkap.toLowerCase().includes(q) ||
@@ -314,15 +390,28 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
 
     if (!matchesSearch) return false;
 
-    if (activeFilter === 'terfokus' && !q) {
-      if (activeThreadsCount > 0) {
-        return Boolean(p.lastMessage) || p.member.nrp === activePartnerNrp;
-      }
-      // Show initial top 12 colleagues when no active chat threads yet
-      return conversationPartners.indexOf(p) < 12;
+    // When showDirectoryPicker is true or searchQuery is non-empty, show matching contacts from all 168 members
+    if (showDirectoryPicker || q.length > 0) {
+      return true;
     }
-    return true;
+
+    // When showDirectoryPicker is false and searchQuery is empty:
+    if (activeTab === 'pinned') {
+      return pinnedNrps.includes(p.member.nrp);
+    }
+
+    // In 'Obrolan Aktif' tab: ONLY list contacts who have existing chat history OR are currently selected after clicking + Obrolan
+    const hasChatHistory = (messagesByContact[p.member.nrp]?.length || 0) > 0;
+    const isSelectedFromPicker = p.member.nrp === selectedNewChatNrp;
+    return hasChatHistory || isSelectedFromPicker;
   });
+
+  const handleOpenDirectoryPicker = () => {
+    setShowDirectoryPicker(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+  };
 
   // Filter for new chat modal
   const searchableMembers = members.filter((m) => {
@@ -339,25 +428,25 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
   });
 
   return (
-    <div className="max-w-7xl mx-auto py-2 font-sans text-slate-900 pb-20">
+    <div className="max-w-7xl mx-auto py-2 font-sans text-slate-900">
       
-      {/* 2-Column LinkedIn Messenger Layout */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[720px]">
+      {/* 2-Column LinkedIn Messenger Layout with Fixed Height & Internal Scroll */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-140px)] min-h-[540px] max-h-[760px]">
         
         {/* ============================================================ */}
         {/* LEFT COLUMN: CONVERSATION LIST (md:col-span-5 lg:col-span-4) */}
         {/* ============================================================ */}
-        <div className="md:col-span-5 lg:col-span-4 border-r border-slate-200 flex flex-col bg-white">
+        <div className="md:col-span-5 lg:col-span-4 border-r border-slate-200 flex flex-col h-full overflow-hidden bg-white">
           
           {/* Header */}
-          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
+          <div className="p-3.5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-red-800" />
               <h3 className="text-sm font-bold text-slate-900">Obrolan Leting 96</h3>
             </div>
             
             <button
-              onClick={() => setIsNewChatModalOpen(true)}
+              onClick={handleOpenDirectoryPicker}
               className="px-2.5 py-1 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-xs"
               title="Mulai obrolan dengan perwira leting lain"
             >
@@ -367,59 +456,129 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
           </div>
 
           {/* Search box */}
-          <div className="p-3 border-b border-slate-100">
+          <div className="p-3 border-b border-slate-100 flex-shrink-0">
             <div className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
+                ref={searchInputRef}
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari perwira leting, jabatan, atau satker..."
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
+                className="w-full pl-9 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
               />
+              {(searchQuery || showDirectoryPicker) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowDirectoryPicker(false);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  title="Tutup pencarian / direktori"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Tabs Filter (Terfokus, Semua) */}
-          <div className="px-3 pt-2 pb-1 border-b border-slate-100 flex items-center gap-1 text-xs">
+          {/* Tabs Filter: Obrolan Aktif, 📌 Disematkan, and Direktori Kontak */}
+          <div className="px-3 pt-2 pb-1.5 border-b border-slate-100 flex items-center gap-1 text-xs flex-wrap flex-shrink-0">
             <button
-              onClick={() => setActiveFilter('terfokus')}
-              className={`px-3 py-1 rounded-full font-bold transition-colors ${
-                activeFilter === 'terfokus' ? 'bg-red-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+              onClick={() => {
+                setActiveTab('active');
+                setShowDirectoryPicker(false);
+                setSearchQuery('');
+              }}
+              className={`px-2.5 py-1 rounded-full font-bold transition-colors whitespace-nowrap ${
+                !isDirectoryMode && activeTab === 'active'
+                  ? 'bg-red-800 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Terfokus
+              Obrolan Aktif ({activeChatCount})
             </button>
             <button
-              onClick={() => setActiveFilter('semua')}
-              className={`px-3 py-1 rounded-full font-bold transition-colors ${
-                activeFilter === 'semua' ? 'bg-red-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+              onClick={() => {
+                setActiveTab('pinned');
+                setShowDirectoryPicker(false);
+                setSearchQuery('');
+              }}
+              className={`px-2.5 py-1 rounded-full font-bold transition-colors whitespace-nowrap ${
+                !isDirectoryMode && activeTab === 'pinned'
+                  ? 'bg-red-800 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Semua ({conversationPartners.length})
+              📌 Disematkan ({pinnedCount})
             </button>
+            {isDirectoryMode && (
+              <button
+                onClick={() => {
+                  setShowDirectoryPicker(false);
+                  setSearchQuery('');
+                }}
+                className="px-2.5 py-1 rounded-full font-bold transition-colors whitespace-nowrap bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1"
+                title="Klik untuk kembali ke Obrolan Aktif"
+              >
+                <span>Direktori Kontak ({contacts.length})</span>
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
-          {/* Conversation List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+          {/* Conversation List (Scrollable inside Fixed-Height Card) */}
+          <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-100">
             {filteredPartners.length === 0 ? (
-              <div className="p-6 text-center space-y-2">
-                <p className="text-xs text-slate-500">Belum ada obrolan aktif.</p>
+              <div className="p-6 text-center space-y-3 my-auto flex flex-col items-center justify-center h-full">
+                <div className="w-12 h-12 rounded-full bg-red-50 text-red-800 flex items-center justify-center">
+                  {activeTab === 'pinned' && !isDirectoryMode ? (
+                    <Pin className="w-6 h-6" />
+                  ) : (
+                    <MessageSquare className="w-6 h-6" />
+                  )}
+                </div>
+                {activeTab === 'pinned' && !isDirectoryMode ? (
+                  <div className="space-y-1 max-w-[240px]">
+                    <p className="text-xs font-bold text-slate-800">Belum ada obrolan disematkan</p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Klik ikon pin pada obrolan aktif untuk menyematkan rekan leting prioritas Anda.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-w-[250px]">
+                    <p className="text-xs font-bold text-slate-800">Belum ada obrolan aktif</p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Daftar di samping hanya menampilkan rekan yang sedang atau pernah berbalas pesan dengan Anda.
+                    </p>
+                  </div>
+                )}
                 <button
-                  onClick={() => setIsNewChatModalOpen(true)}
-                  className="text-xs font-bold text-red-800 hover:underline inline-block"
+                  onClick={handleOpenDirectoryPicker}
+                  className="px-3.5 py-1.5 rounded-full bg-red-800 hover:bg-red-900 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-all"
                 >
-                  + Mulai Obrolan Baru
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Mulai Obrolan Baru</span>
                 </button>
               </div>
             ) : (
               filteredPartners.map(({ member, lastMessage, unread }) => {
                 const isSelected = activePartner?.nrp === member.nrp;
+                const isPinned = pinnedNrps.includes(member.nrp);
                 return (
                   <div
                     key={member.nrp}
-                    onClick={() => setActivePartnerNrp(member.nrp)}
-                    className={`p-3 cursor-pointer transition-colors flex items-start gap-3 hover:bg-slate-50 ${
+                    onClick={() => {
+                      setActivePartnerNrp(member.nrp);
+                      setSelectedNewChatNrp(member.nrp);
+                      if (showDirectoryPicker) {
+                        setShowDirectoryPicker(false);
+                        setSearchQuery('');
+                        setActiveTab('active');
+                      }
+                    }}
+                    className={`p-3 cursor-pointer transition-colors flex items-start gap-3 hover:bg-slate-50 group ${
                       isSelected ? 'bg-red-50/60 border-l-4 border-red-800' : ''
                     }`}
                   >
@@ -437,12 +596,31 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <h4 className="text-xs font-bold text-slate-900 truncate">
-                          {member.namaLengkap.split(',')[0]}
+                        <h4 className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
+                          <span className="truncate">{member.namaLengkap.split(',')[0]}</span>
+                          {isPinned && (
+                            <span title="Disematkan" className="text-[10px] text-amber-600 flex-shrink-0">
+                              📌
+                            </span>
+                          )}
                         </h4>
-                        <span className="text-[10px] text-slate-400 flex-shrink-0">
-                          {lastMessage ? lastMessage.timestamp : 'Leting'}
-                        </span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="text-[10px] text-slate-400">
+                            {lastMessage ? lastMessage.timestamp : 'Leting'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => togglePinChat(member.nrp, e)}
+                            className={`p-1 rounded hover:bg-slate-200/70 transition-colors ${
+                              isPinned
+                                ? 'text-amber-600 opacity-100'
+                                : 'text-slate-400 opacity-0 group-hover:opacity-100'
+                            }`}
+                            title={isPinned ? 'Lepas Sematan (Unpin)' : 'Sematkan Obrolan (Pin)'}
+                          >
+                            <Pin className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
 
                       <p className="text-[10px] text-slate-500 truncate font-medium">
@@ -470,7 +648,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
         {/* ============================================================ */}
         {/* RIGHT COLUMN: ACTIVE CHAT CANVAS (md:col-span-7 lg:col-span-8)*/}
         {/* ============================================================ */}
-        <div className="md:col-span-7 lg:col-span-8 flex flex-col bg-white">
+        <div className="md:col-span-7 lg:col-span-8 flex flex-col h-full overflow-hidden bg-white">
           {!activePartner ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-[#f8fafc]">
               <div className="w-16 h-16 rounded-full bg-red-100 text-red-900 flex items-center justify-center shadow-xs">
@@ -483,7 +661,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 </p>
               </div>
               <button
-                onClick={() => setIsNewChatModalOpen(true)}
+                onClick={handleOpenDirectoryPicker}
                 className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
               >
                 <UserPlus className="w-4 h-4" />
@@ -493,32 +671,52 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
           ) : (
             <>
               {/* Top Bar of Active Conversation */}
-              <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10">
-                <div className="flex items-center gap-3">
+              <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10 flex-shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getAvatarUrl(activePartner.fotoUrl)}
                     alt={activePartner.namaLengkap}
-                    className="w-10 h-10 rounded-full object-cover border border-slate-200 cursor-pointer"
+                    className="w-10 h-10 rounded-full object-cover border border-slate-200 cursor-pointer flex-shrink-0"
                     onClick={() => onSelectMember && onSelectMember(activePartner)}
                   />
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <h3 
                         onClick={() => onSelectMember && onSelectMember(activePartner)}
-                        className="text-xs sm:text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer flex items-center gap-1"
+                        className="text-xs sm:text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer flex items-center gap-1 truncate"
                       >
-                        <span>{activePartner.namaLengkap}</span>
-                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600 inline" />
+                        <span className="truncate">{activePartner.namaLengkap}</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600 inline flex-shrink-0" />
                       </h3>
                     </div>
-                    <p className="text-[10px] sm:text-xs text-slate-500">
+                    <p className="text-[10px] sm:text-xs text-slate-500 truncate">
                       {activePartner.jabatanTerakhir} &bull; {activePartner.satuanKerja} ({activePartner.polda})
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => togglePinChat(activePartner.nrp, e)}
+                    className={`px-2.5 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1 transition-colors ${
+                      pinnedNrps.includes(activePartner.nrp)
+                        ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                    title={
+                      pinnedNrps.includes(activePartner.nrp)
+                        ? 'Lepas Sematan Obrolan'
+                        : 'Sematkan Obrolan ke Tab Disematkan'
+                    }
+                  >
+                    <Pin className="w-3.5 h-3.5" />
+                    <span className="hidden lg:inline">
+                      {pinnedNrps.includes(activePartner.nrp) ? 'Disematkan' : 'Sematkan'}
+                    </span>
+                  </button>
+
                   {activePartner.noHp && (
                     <a
                       href={getWaUrl(activePartner.noHp)}
@@ -545,7 +743,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
               </div>
 
               {/* Security & Confidentiality Notice Header */}
-              <div className="bg-slate-50 px-4 py-1.5 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <div className="bg-slate-50 px-4 py-1.5 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 flex-shrink-0">
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Kanal Komunikasi Terverifikasi Personel Batalyon Wira Satya Akpol 1996</span>
@@ -553,10 +751,10 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 <span className="text-[10px] font-semibold text-red-900">#SelaluBahagia</span>
               </div>
 
-              {/* Chat Message Stream */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#f8fafc]">
+              {/* Chat Message Stream (Scrollable inside Fixed-Height Card) */}
+              <div className="flex-1 p-4 overflow-y-auto min-h-0 space-y-3 bg-[#f8fafc]">
                 {activeChatMessages.length === 0 ? (
-                  <div className="py-16 text-center space-y-3 max-w-sm mx-auto">
+                  <div className="py-12 text-center space-y-3 max-w-sm mx-auto">
                     <div className="w-14 h-14 rounded-full bg-red-100 text-red-900 flex items-center justify-center mx-auto shadow-xs">
                       <MessageSquare className="w-7 h-7" />
                     </div>
@@ -631,7 +829,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
               </div>
 
               {/* Bottom Chat Input Bar */}
-              <div className="p-3 border-t border-slate-200 bg-white">
+              <div className="p-3 border-t border-slate-200 bg-white flex-shrink-0">
                 <form onSubmit={handleSendMessage} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <input
@@ -719,6 +917,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                     <button
                       type="button"
                       onClick={() => {
+                        setSelectedNewChatNrp(newChatSearch.trim());
                         setActivePartnerNrp(newChatSearch.trim());
                         setIsNewChatModalOpen(false);
                         setNewChatSearch('');
@@ -734,6 +933,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   <div
                     key={m.nrp}
                     onClick={() => {
+                      setSelectedNewChatNrp(m.nrp);
                       setActivePartnerNrp(m.nrp);
                       setIsNewChatModalOpen(false);
                       setNewChatSearch('');

@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nrp, nama, pangkat, satker, polda, noHp, email, alasanDaftar } = body;
+    const { nrp, nama, pangkat, satker, polda, noHp, email, secondaryEmail, alasanDaftar } = body;
 
     if (!nrp || !nama || !satker || !polda) {
       return NextResponse.json(
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       polda: polda || 'MABES POLRI',
       noHp: noHp ? noHp.trim() : '-',
       email: email ? email.trim() : `${nrp.trim()}@polri.go.id`,
+      secondaryEmail: secondaryEmail ? secondaryEmail.trim() : undefined,
       alasanDaftar,
     });
 

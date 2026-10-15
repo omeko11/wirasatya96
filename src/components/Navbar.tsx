@@ -12,19 +12,13 @@ import {
   Search, 
   LogOut, 
   ChevronDown,
-  KeyRound,
   ShieldCheck,
-  ShieldAlert,
-  UserPlus,
-  FileText,
   Settings,
   LayoutGrid,
   Heart,
   Scale,
-  Building2,
   Lock,
-  Phone,
-  ExternalLink
+  Phone
 } from 'lucide-react';
 import { AuthUser, UserRole, AnggotaWiraSatya } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
@@ -38,7 +32,8 @@ export type AppTab =
   | 'form' 
   | 'bendahara' 
   | 'dashboard'
-  | 'pengaturan';
+  | 'pengaturan'
+  | 'users';
 
 interface NavbarProps {
   activeTab: AppTab;
@@ -50,6 +45,7 @@ interface NavbarProps {
   onOpenChat?: (member: AnggotaWiraSatya) => void;
   onOpenAuthModal?: () => void;
   onOpenVerificationModal?: () => void;
+  onOpenVerification?: () => void;
   pendingVerificationCount?: number;
   unreadMessagesCount?: number;
   unreadNotificationsCount?: number;
@@ -57,25 +53,25 @@ interface NavbarProps {
   onLogout?: () => void;
   onSearchChange?: (query: string) => void;
   onViewMyProfile?: () => void;
+  impersonatorUser?: AuthUser | null;
+  onStopImpersonating?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  totalMembers,
   currentUser,
   members = [],
   onSelectMember,
   onOpenChat,
-  onOpenAuthModal,
-  onOpenVerificationModal,
   pendingVerificationCount = 0,
   unreadMessagesCount = 0,
   unreadNotificationsCount = 0,
-  onOpenRegisterModal,
   onLogout,
   onSearchChange,
   onViewMyProfile,
+  impersonatorUser,
+  onStopImpersonating,
 }) => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isAppsMenuOpen, setIsAppsMenuOpen] = useState(false);
@@ -98,6 +94,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     SEKRETARIAT: 'bg-blue-100 text-blue-900 border-blue-300',
     BENDAHARA: 'bg-emerald-100 text-emerald-900 border-emerald-300',
     ANGGOTA: 'bg-slate-100 text-slate-800 border-slate-300',
+  };
+
+  const roleDisplayLabels: Record<UserRole, string> = {
+    SUPERADMIN: 'SUPERADMIN',
+    KETUA: 'KETUA',
+    SEKRETARIAT: 'Sekretaris',
+    BENDAHARA: 'BENDAHARA',
+    ANGGOTA: 'ANGGOTA',
   };
 
   const quickSearchResults = React.useMemo(() => {
@@ -136,6 +140,24 @@ export const Navbar: React.FC<NavbarProps> = ({
     <>
       {/* Top Header Bar - Bareskrim Red Accents */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+        {/* Superadmin Impersonation Banner */}
+        {impersonatorUser && (
+          <div className="bg-amber-500 text-slate-950 px-4 py-1.5 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
+            <span>
+              🎭 Mode Impersonate Superadmin: Anda sedang masuk sebagai {currentUser.nama} ({currentUser.pangkat} &bull; Role: {roleDisplayLabels[currentUser.role] || currentUser.role})
+            </span>
+            {onStopImpersonating && (
+              <button
+                type="button"
+                onClick={onStopImpersonating}
+                className="px-3 py-1 rounded-full bg-slate-950 hover:bg-slate-800 text-amber-300 text-[11px] font-extrabold transition-colors shadow-xs"
+              >
+                Kembali ke Akun {impersonatorUser.nama} (Superadmin)
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 gap-2 sm:gap-4">
             
@@ -367,22 +389,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {/* Manajemen Pengguna & Verifikasi (Admin/Sekretariat Only) */}
-              {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && onOpenVerificationModal && (
+              {/* 6. Manajemen User (Full-Page Tab for Superadmin & Sekretaris Only) */}
+              {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
                 <button
-                  onClick={onOpenVerificationModal}
-                  className="relative flex flex-col items-center justify-center px-1.5 py-1 text-slate-600 hover:text-red-900 transition-colors"
+                  onClick={() => setActiveTab('users')}
+                  className={`flex flex-col items-center justify-center px-2 py-1 min-w-[56px] text-center transition-all border-b-2 ${
+                    activeTab === 'users'
+                      ? 'border-red-900 text-red-900 font-bold'
+                      : 'border-transparent text-slate-600 hover:text-red-900'
+                  }`}
                   title="Manajemen Pengguna & Verifikasi Akun"
                 >
                   <div className="relative">
-                    <ShieldAlert className="w-5 h-5 text-red-800" />
+                    <Users className="w-5 h-5" />
                     {pendingVerificationCount > 0 && (
                       <span className="w-4 h-4 rounded-full bg-red-700 text-white text-[9px] font-extrabold flex items-center justify-center absolute -top-1 -right-2 ring-2 ring-white animate-pulse">
                         {pendingVerificationCount}
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] mt-0.5 whitespace-nowrap font-medium text-red-900">Manajemen User</span>
+                  <span className="text-[10px] mt-0.5 whitespace-nowrap">Manajemen User</span>
                 </button>
               )}
 
@@ -431,7 +457,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <p className="text-[11px] text-slate-500 truncate">{currentUser.pangkat} &bull; {currentUser.satker || 'Bareskrim Polri'}</p>
                         <span className={`inline-block text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border mt-1 ${roleBadgeColors[currentUser.role]}`}>
-                          {currentUser.role}
+                          {roleDisplayLabels[currentUser.role]}
                         </span>
                       </div>
                     </div>
@@ -470,17 +496,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-900">FIDO2</span>
                       </button>
 
-                      {/* Manajemen Pengguna & Verifikasi (Hanya Admin & Kesekretariatan) */}
-                      {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && onOpenVerificationModal && (
+                      {/* Manajemen Pengguna & Verifikasi (Hanya Admin & Sekretaris) */}
+                      {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
-                            onOpenVerificationModal();
+                            setActiveTab('users');
                           }}
                           className="w-full px-4 py-2 text-left hover:bg-red-50/80 flex items-center justify-between text-slate-700 transition-colors"
                         >
                           <span className="flex items-center gap-2">
-                            <UserPlus className="w-3.5 h-3.5 text-red-800" />
+                            <Users className="w-3.5 h-3.5 text-red-800" />
                             <span className="font-semibold text-red-950">Manajemen User (Tambah/Edit/Verifikasi)</span>
                           </span>
                           {pendingVerificationCount > 0 ? (

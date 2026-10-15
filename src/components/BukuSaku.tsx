@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, FinanceSummary, IuranAnggota } from '@/types';
+import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, FinanceSummary, IuranAnggota, KasTransaction } from '@/types';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
@@ -18,6 +18,7 @@ import {
   Briefcase,
   Search,
   ChevronRight,
+  Info,
 } from 'lucide-react';
 
 interface BukuSakuProps {
@@ -28,11 +29,16 @@ interface BukuSakuProps {
   onOpenChat?: (member: AnggotaWiraSatya) => void;
   onNavigateToJabatan?: () => void;
   onNavigateToBendahara?: () => void;
+  onNavigateToUsers?: () => void;
   financeSummary?: FinanceSummary;
+  transactions?: KasTransaction[];
   iuranList?: IuranAnggota[];
   externalPosts?: FeedPost[];
   onPostsChange?: (posts: FeedPost[]) => void;
   externalSearch?: string;
+  impersonatorUser?: AuthUser | null;
+  onStopImpersonating?: () => void;
+  onImpersonateUser?: (user: AuthUser) => void;
 }
 
 export const BukuSaku: React.FC<BukuSakuProps> = ({
@@ -43,12 +49,91 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   onNavigateToJabatan,
   onNavigateToBendahara,
   financeSummary,
+  transactions = [],
   iuranList = [],
   externalPosts,
   onPostsChange,
   externalSearch = '',
 }) => {
   const [selectedMember, setSelectedMember] = useState<AnggotaWiraSatya | null>(null);
+
+  // Cashflow & Aset widget state fetched from /api/finance
+  const [apiKasMasuk, setApiKasMasuk] = useState<number | null>(null);
+  const [apiKasKeluar, setApiKasKeluar] = useState<number | null>(null);
+  const [apiSaldoKas, setApiSaldoKas] = useState<number | null>(null);
+  const [apiNilaiAset, setApiNilaiAset] = useState<number | null>(null);
+  const [iuranWajibPerBulan, setIuranWajibPerBulan] = useState<number>(250000);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/finance')
+      .then((res) => res.json())
+      .then((res) => {
+        if (!mounted || !res) return;
+        const payload = res.data || res;
+        if (typeof payload.totalKasMasuk === 'number') {
+          setApiKasMasuk(payload.totalKasMasuk);
+        } else if (Array.isArray(payload.transactions)) {
+          const inflow = payload.transactions
+            .filter((t: KasTransaction) => t.jenis === 'MASUK')
+            .reduce((s: number, t: KasTransaction) => s + (Number(t.nominal) || 0), 0);
+          setApiKasMasuk(inflow);
+        }
+
+        if (typeof payload.totalKasKeluar === 'number') {
+          setApiKasKeluar(payload.totalKasKeluar);
+        } else if (Array.isArray(payload.transactions)) {
+          const outflow = payload.transactions
+            .filter((t: KasTransaction) => t.jenis === 'KELUAR')
+            .reduce((s: number, t: KasTransaction) => s + (Number(t.nominal) || 0), 0);
+          setApiKasKeluar(outflow);
+        }
+
+        if (payload.summary?.saldoUtama !== undefined) {
+          setApiSaldoKas(payload.summary.saldoUtama);
+        }
+        if (payload.summary?.totalValuasiAset !== undefined) {
+          setApiNilaiAset(payload.summary.totalValuasiAset);
+        } else if (typeof payload.totalValuasiAset === 'number') {
+          setApiNilaiAset(payload.totalValuasiAset);
+        }
+
+        const cfgIuran =
+          payload.financeConfig?.iuranWajibPerBulan ??
+          res.financeConfig?.iuranWajibPerBulan ??
+          payload.summary?.iuranWajibPerBulan;
+        if (typeof cfgIuran === 'number' && cfgIuran > 0) {
+          setIuranWajibPerBulan(cfgIuran);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [financeSummary, transactions.length]);
+
+  const computedKasMasuk = useMemo(() => {
+    if (transactions.length > 0) {
+      return transactions
+        .filter((t) => t.jenis === 'MASUK')
+        .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
+    }
+    if (apiKasMasuk !== null) return apiKasMasuk;
+    return financeSummary?.totalPemasukanBulanIni || 0;
+  }, [transactions, apiKasMasuk, financeSummary]);
+
+  const computedKasKeluar = useMemo(() => {
+    if (transactions.length > 0) {
+      return transactions
+        .filter((t) => t.jenis === 'KELUAR')
+        .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
+    }
+    if (apiKasKeluar !== null) return apiKasKeluar;
+    return Math.abs(financeSummary?.totalPengeluaranBulanIni || 0);
+  }, [transactions, apiKasKeluar, financeSummary]);
+
+  const displaySaldoKas = financeSummary?.saldoUtama ?? apiSaldoKas ?? 0;
+  const displayNilaiAset = financeSummary?.totalValuasiAset ?? apiNilaiAset ?? 0;
 
   // Social Feed States
   const [posts, setPosts] = useState<FeedPost[]>(() => {
@@ -366,7 +451,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </div>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Hak Akses:</span>
-                  <span className="font-bold text-slate-900">{currentUser.role}</span>
+                  <span className="font-bold text-slate-900">
+                    {currentUser.role === 'SEKRETARIAT' ? 'Sekretaris' : currentUser.role}
+                  </span>
                 </div>
                 {myIuran && (
                   <div
@@ -665,7 +752,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             )}
           </div>
 
-          {/* Widget 2: Status Arus Kas & Aset */}
+          {/* Widget 2: Status Arus Kas & Aset (Cashflow & Aset Summary) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <span className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -678,19 +765,25 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Saldo Kas Tunai:</span>
-                <span className="font-bold text-slate-900">{formatRupiah(financeSummary?.saldoUtama)}</span>
+                <span className="font-bold text-slate-900">{formatRupiah(displaySaldoKas)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Valuasi Portofolio Aset:</span>
-                <span className="font-bold text-blue-800">{formatRupiah(financeSummary?.totalValuasiAset)}</span>
+                <span className="text-slate-500">Kas Masuk (Inflow):</span>
+                <span className="font-bold text-emerald-700">+ {formatRupiah(computedKasMasuk)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Alokasi Rekan Sakit:</span>
-                <span className="font-bold text-emerald-600">{formatRupiah(financeSummary?.kasSosialKesehatan)}</span>
+                <span className="text-slate-500">Kas Keluar (Outflow):</span>
+                <span className="font-bold text-red-700">- {formatRupiah(computedKasKeluar)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Nilai Aset Berharga:</span>
+                <span className="font-bold text-blue-700">{formatRupiah(displayNilaiAset)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Iuran Wajib / Bulan:</span>
-                <span className="font-bold text-slate-800">Rp 250.000 / Perwira</span>
+                <span className="font-bold text-slate-800">
+                  Rp {(iuranWajibPerBulan || 250000).toLocaleString('id-ID')} / Perwira
+                </span>
               </div>
             </div>
 
@@ -700,11 +793,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   onClick={onNavigateToBendahara}
                   className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
                 >
-                  Buka Buku Kas &amp; Portofolio Aset &rarr;
+                  Buka Cashflow &amp; Portofolio Aset →
                 </button>
               )}
-              <span className="text-[11px] text-slate-400 block text-center">
-                Dikelola oleh Bendahara
+              <span
+                className="text-[11px] text-slate-400 flex items-center justify-center gap-1"
+                title="Pencatatan kas masuk, kas keluar, iuran wajib, dan portofolio aset dikelola secara transparan oleh Bendahara Batalyon Wira Satya 96."
+              >
+                <span>Dikelola oleh Bendahara</span>
+                <Info className="w-3 h-3 text-slate-400 inline" />
               </span>
             </div>
           </div>

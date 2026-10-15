@@ -1,23 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverStore } from '@/lib/serverStore';
+import { serverStore, getFinanceConfig, updateFinanceConfig, getFinanceSummary } from '@/lib/serverStore';
 
 export async function GET() {
   const financeData = serverStore.getFinance();
-  return NextResponse.json({ success: true, data: financeData });
+  const financeConfig = getFinanceConfig();
+  const summary = getFinanceSummary();
+  return NextResponse.json({
+    success: true,
+    data: {
+      ...financeData,
+      summary,
+      iuran: financeData.iuranList,
+      iuranList: financeData.iuranList,
+      financeConfig,
+    },
+    summary,
+    transactions: financeData.transactions,
+    iuran: financeData.iuranList,
+    iuranList: financeData.iuranList,
+    assets: financeData.assets,
+    financeConfig,
+  });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const session = serverStore.getSession();
-    const effectiveRole = body.actorRole || session?.role;
+    const effectiveRole = body.actorRole || body.role || session?.role;
 
-    // Penginputan data Kas, Iuran, & Aset murni hanya boleh dilakukan oleh BENDAHARA
-    if (effectiveRole !== 'BENDAHARA') {
+    // Penginputan data Kas, Iuran, Aset, & Konfigurasi hanya boleh dilakukan oleh BENDAHARA atau SUPERADMIN
+    if (effectiveRole !== 'BENDAHARA' && effectiveRole !== 'SUPERADMIN') {
       return NextResponse.json(
         {
           success: false,
-          message: 'Akses Ditolak: Penginputan data Kas, Iuran, & Aset hanya dapat dilakukan oleh Bendahara.',
+          message:
+            'Akses Ditolak: Penginputan data Kas, Iuran, Aset, & Pengaturan Kebendaharaan hanya dapat dilakukan oleh Bendahara atau Superadmin.',
         },
         { status: 403 }
       );
@@ -25,13 +43,58 @@ export async function POST(req: NextRequest) {
 
     const { action } = body;
 
+    if (action === 'UPDATE_FINANCE_CONFIG') {
+      const { iuranWajibPerBulan, tahunBuku, subKategoriMasuk, subKategoriKeluar, updatedBy } = body;
+      const updatedConfig = updateFinanceConfig(
+        {
+          ...(iuranWajibPerBulan !== undefined ? { iuranWajibPerBulan: Number(iuranWajibPerBulan) } : {}),
+          ...(tahunBuku !== undefined ? { tahunBuku: Number(tahunBuku) } : {}),
+          ...(Array.isArray(subKategoriMasuk) ? { subKategoriMasuk } : {}),
+          ...(Array.isArray(subKategoriKeluar) ? { subKategoriKeluar } : {}),
+        },
+        updatedBy || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara')
+      );
+      const financeData = serverStore.getFinance();
+      const summary = getFinanceSummary();
+      return NextResponse.json({
+        success: true,
+        message:
+          'Pengaturan kebendaharaan (Tarif Iuran Wajib & Kategori Cashflow) berhasil diperbarui oleh Bendahara / Superadmin',
+        data: {
+          summary,
+          iuran: financeData.iuranList,
+          iuranList: financeData.iuranList,
+          financeConfig: updatedConfig,
+        },
+        summary,
+        iuran: financeData.iuranList,
+        iuranList: financeData.iuranList,
+        financeConfig: updatedConfig,
+      });
+    }
+
     if (action === 'PAY_IURAN') {
       const { nrp, nominal, dicatatOleh } = body;
-      const updated = serverStore.recordIuranPayment(nrp, Number(nominal), dicatatOleh);
+      const updated = serverStore.recordIuranPayment(
+        nrp,
+        Number(nominal),
+        dicatatOleh || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara')
+      );
       if (!updated) {
         return NextResponse.json({ success: false, message: 'Data iuran perwira tidak ditemukan' }, { status: 404 });
       }
-      return NextResponse.json({ success: true, message: 'Pembayaran iuran berhasil dicatat oleh Bendahara', data: updated });
+      const financeData = serverStore.getFinance();
+      const summary = getFinanceSummary();
+      return NextResponse.json({
+        success: true,
+        message: 'Pembayaran iuran berhasil dicatat oleh Bendahara / Superadmin',
+        data: updated,
+        summary,
+        iuran: financeData.iuranList,
+        iuranList: financeData.iuranList,
+        transactions: financeData.transactions,
+        financeConfig: getFinanceConfig(),
+      });
     }
 
     if (action === 'ADD_ASSET') {
@@ -69,13 +132,15 @@ export async function POST(req: NextRequest) {
         nomorSeriAtauWallet: nomorSeriAtauWallet || '-',
         tanggalPerolehan: tanggalPerolehan || new Date().toISOString().split('T')[0],
         keterangan: keterangan || '',
-        dicatatOleh: dicatatOleh || session?.nama || 'Bendahara',
+        dicatatOleh: dicatatOleh || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara'),
       });
 
+      const summary = getFinanceSummary();
       return NextResponse.json({
         success: true,
-        message: 'Aset portofolio berhasil dicatat oleh Bendahara',
+        message: 'Aset portofolio berhasil dicatat oleh Bendahara / Superadmin',
         data: newAsset,
+        summary,
       });
     }
 
@@ -85,29 +150,75 @@ export async function POST(req: NextRequest) {
       if (!deleted) {
         return NextResponse.json({ success: false, message: 'Data aset tidak ditemukan' }, { status: 404 });
       }
-      return NextResponse.json({ success: true, message: 'Data aset berhasil dihapus' });
+      return NextResponse.json({
+        success: true,
+        message: 'Data aset berhasil dihapus oleh Bendahara / Superadmin',
+        summary: getFinanceSummary(),
+      });
     }
 
-    // Default: Add cash transaction
-    const { jenis, kategori, nominal, keterangan, pihakTerkait, nrpTerkait, nomorReferensi, dicatatOleh } = body;
+    // Default / ADD_TRANSACTION: Add cash transaction
+    const {
+      jenis,
+      kategori,
+      nominal,
+      keterangan,
+      pihakTerkait,
+      nrpTerkait,
+      nomorReferensi,
+      tanggal,
+      dicatatOleh,
+      jumlahBulanIuran,
+    } = body;
     if (!jenis || !nominal || !keterangan) {
       return NextResponse.json({ success: false, message: 'Jenis, nominal, dan keterangan wajib diisi' }, { status: 400 });
     }
 
+    const actorName = dicatatOleh || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara');
+    const prevTrxCount = serverStore.getFinance().transactions.length;
+
     const newTrx = serverStore.addTransaction({
       nomorReferensi: nomorReferensi || 'WS96-KAS-' + Date.now().toString().slice(-4),
-      tanggal: new Date().toISOString().split('T')[0],
+      tanggal: tanggal || new Date().toISOString().split('T')[0],
       jenis,
       kategori: kategori || 'OPERASIONAL_PAGUYUBAN',
       nominal: Number(nominal),
       keterangan,
       pihakTerkait: pihakTerkait || '-',
       nrpTerkait: nrpTerkait || '',
-      dicatatOleh: dicatatOleh || session?.nama || 'Bendahara',
+      dicatatOleh: actorName,
     });
 
-    return NextResponse.json({ success: true, message: 'Transaksi kas berhasil dicatat oleh Bendahara', data: newTrx });
+    const isNewlyInserted = serverStore.getFinance().transactions.length > prevTrxCount;
+
+    // Synchronize member iuran if IURAN_WAJIB_BULANAN with nrpTerkait and jumlahBulanIuran > 0
+    let updatedIuran = null;
+    if (
+      isNewlyInserted &&
+      jenis === 'MASUK' &&
+      kategori === 'IURAN_WAJIB_BULANAN' &&
+      nrpTerkait &&
+      Number(jumlahBulanIuran) > 0
+    ) {
+      updatedIuran = serverStore.recordIuranPayment(nrpTerkait, Number(nominal), actorName, true);
+    }
+
+    const financeData = serverStore.getFinance();
+    const summary = getFinanceSummary();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Transaksi kas berhasil dicatat oleh Bendahara / Superadmin',
+      data: newTrx,
+      updatedIuran,
+      summary,
+      iuran: financeData.iuranList,
+      iuranList: financeData.iuranList,
+      transactions: financeData.transactions,
+      financeConfig: getFinanceConfig(),
+    });
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Gagal memproses data kebendaharaan', error }, { status: 500 });
   }
 }
+

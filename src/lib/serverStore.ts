@@ -18,21 +18,61 @@ import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
-import { AKPOL_1996_REGISTRATIONS } from '@/data/akpol1996Alumni';
+import { AKPOL_1996_REGISTRATIONS, AKPOL_1996_USERS } from '@/data/akpol1996Alumni';
+
+export interface FinanceCategoryOption {
+  code: string;
+  label: string;
+}
+
+export interface FinanceConfig {
+  iuranWajibPerBulan: number; // default 250000
+  tahunBuku: number; // default 2026
+  subKategoriMasuk: FinanceCategoryOption[];
+  subKategoriKeluar: FinanceCategoryOption[];
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export const DEFAULT_FINANCE_CONFIG: FinanceConfig = {
+  iuranWajibPerBulan: 250000,
+  tahunBuku: 2026,
+  subKategoriMasuk: [
+    { code: 'IURAN_WAJIB_BULANAN', label: 'Iuran Wajib Bulanan Anggota' },
+    { code: 'SUMBANGAN_SUKARELA', label: 'Sumbangan Sukarela / Donasi Leting' },
+    { code: 'PENCAIRAN_ASET_INVESTASI', label: 'Bagi Hasil / Pencairan Aset Berharga (SBN/Valas/Crypto)' },
+    { code: 'DANA_KEGIATAN_REUNI', label: 'Sumbangan Khusus Kegiatan / Reuni' },
+    { code: 'PEMASUKAN_LAINNYA', label: 'Penerimaan Kas Lainnya' },
+  ],
+  subKategoriKeluar: [
+    { code: 'SANTUNAN_KESEHATAN', label: 'Santunan Kesehatan / Rekan Sakit' },
+    { code: 'SANTUNAN_DUKA_CITA', label: 'Santunan Duka Cita Keluarga Besar' },
+    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Bantuan Pendidikan Putra-Putri Leting' },
+    { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Pembelian Aset Berharga (SBN / Valas / Crypto / Emas)' },
+    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Operasional & Kesekretariatan Paguyuban' },
+    { code: 'KEGIATAN_REUNI_LETING', label: 'Biaya Kegiatan Reuni & Silaturahmi Leting' },
+    { code: 'PENGELUARAN_LAINNYA', label: 'Pengeluaran Kas Lainnya' },
+  ],
+  updatedAt: new Date().toISOString(),
+  updatedBy: 'Sistem Default Kebendaharaan WS96',
+};
 
 // Global server memory + local disk database (.data/local_db.json)
-interface GlobalStore {
+export interface LocalDatabaseSchema {
   members: AnggotaWiraSatya[];
   users: AuthUser[];
   transactions: KasTransaction[];
   assets: AssetPortfolioItem[];
   iuranList: IuranAnggota[];
   financeSummary: FinanceSummary;
+  financeConfig: FinanceConfig;
   activeSession: AuthUser | null;
   messages: ChatMessage[];
   registrations: PendingRegistration[];
   posts: FeedPost[];
 }
+
+type GlobalStore = LocalDatabaseSchema;
 
 const INITIAL_MESSAGES: ChatMessage[] = [];
 
@@ -45,7 +85,8 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     satker: 'Bareskrim Polri / Tim IT Developer Wira Satya 96',
     polda: 'MABES POLRI',
     noHp: '081298010710',
-    email: 'agungkrisdianto96@gmail.com',
+    email: '98010710@polri.go.id',
+    secondaryEmail: 'agungkrisdianto98@gmail.com',
     alasanDaftar: 'Superadmin & Lead Developer Sistem Informasi Batalyon Wira Satya Akpol 1996.',
     status: 'DISETUJUI_BELUM_PASSWORD',
     createdAt: new Date().toISOString(),
@@ -60,7 +101,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     satker: 'Mabes Polri / Ketua Batalyon Wira Satya 96',
     polda: 'MABES POLRI',
     noHp: '0812980107102',
-    email: 'eko2@wirasatya96.id',
+    email: '980107102@polri.go.id',
     alasanDaftar: 'Akun Testing Role KETUA Batalyon Wira Satya 96.',
     status: 'DISETUJUI_BELUM_PASSWORD',
     createdAt: new Date().toISOString(),
@@ -75,7 +116,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     satker: 'SSDM Polri / Sekretariat Wira Satya 96',
     polda: 'MABES POLRI',
     noHp: '0812980107103',
-    email: 'eko3@wirasatya96.id',
+    email: '980107103@polri.go.id',
     alasanDaftar: 'Akun Testing Role SEKRETARIAT Batalyon Wira Satya 96.',
     status: 'DISETUJUI_BELUM_PASSWORD',
     createdAt: new Date().toISOString(),
@@ -90,7 +131,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     satker: 'Puskeu Polri / Bendahara Wira Satya 96',
     polda: 'MABES POLRI',
     noHp: '0812980107104',
-    email: 'eko4@wirasatya96.id',
+    email: '980107104@polri.go.id',
     alasanDaftar: 'Akun Testing Role BENDAHARA Batalyon Wira Satya 96.',
     status: 'DISETUJUI_BELUM_PASSWORD',
     createdAt: new Date().toISOString(),
@@ -105,7 +146,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     satker: 'Ditreskrimsus Polda Metro Jaya',
     polda: 'POLDA METRO JAYA',
     noHp: '0812980107105',
-    email: 'eko5@wirasatya96.id',
+    email: '980107105@polri.go.id',
     alasanDaftar: 'Akun Testing Role ANGGOTA Batalyon Wira Satya 96.',
     status: 'DISETUJUI_BELUM_PASSWORD',
     createdAt: new Date().toISOString(),
@@ -120,7 +161,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     satker: 'Ditlantas Polda Jawa Barat',
     polda: 'POLDA JAWA BARAT',
     noHp: '0812980107106',
-    email: 'eko6@wirasatya96.id',
+    email: '980107106@polri.go.id',
     alasanDaftar: 'Akun Testing Calon Anggota Menunggu Verifikasi Superadmin / Sekretariat.',
     status: 'PENDING_VERIFIKASI',
     createdAt: new Date().toISOString(),
@@ -130,7 +171,28 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
 
 const LOCAL_DB_PATH = path.join(process.cwd(), '.data', 'local_db.json');
 
-function loadInitialStore(): GlobalStore {
+function migrateOfficialEmail(nrp: string, currentEmail?: string): string {
+  const cleanNrp = (nrp || '').trim();
+  if (cleanNrp === '98010710') {
+    return '98010710@polri.go.id';
+  }
+  if (!currentEmail || !currentEmail.trim()) {
+    return `${cleanNrp}@polri.go.id`;
+  }
+  const trimmed = currentEmail.trim();
+  if (
+    trimmed.toLowerCase().endsWith('@wirasatya96.id') ||
+    trimmed.toLowerCase().endsWith('@wirasatya96.polri.go.id')
+  ) {
+    if (/^eko\d*@wirasatya96(\.polri\.go)?\.id$/i.test(trimmed) && cleanNrp) {
+      return `${cleanNrp}@polri.go.id`;
+    }
+    return trimmed.replace(/@wirasatya96(\.polri\.go)?\.id$/i, '@polri.go.id');
+  }
+  return trimmed;
+}
+
+export function readDb(): GlobalStore {
   const defaultStore: GlobalStore = {
     members: [...INITIAL_MEMBERS],
     users: [...PRESET_USERS],
@@ -138,6 +200,7 @@ function loadInitialStore(): GlobalStore {
     assets: [...INITIAL_ASSETS],
     iuranList: [...INITIAL_IURAN_LIST],
     financeSummary: { ...INITIAL_FINANCE_SUMMARY },
+    financeConfig: { ...DEFAULT_FINANCE_CONFIG },
     activeSession: PRESET_USERS[0],
     messages: [...INITIAL_MESSAGES],
     registrations: [...INITIAL_REGISTRATIONS],
@@ -147,20 +210,112 @@ function loadInitialStore(): GlobalStore {
   try {
     if (fs.existsSync(LOCAL_DB_PATH)) {
       const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
-      const parsed = JSON.parse(raw) as Partial<GlobalStore>;
+      const parsed = JSON.parse(raw) as Partial<GlobalStore> & { iuran?: IuranAnggota[] };
+
+      const loadedFinanceConfig: FinanceConfig = {
+        ...DEFAULT_FINANCE_CONFIG,
+        ...(parsed.financeConfig || {}),
+        iuranWajibPerBulan:
+          Number(parsed.financeConfig?.iuranWajibPerBulan) || DEFAULT_FINANCE_CONFIG.iuranWajibPerBulan,
+        tahunBuku: Number(parsed.financeConfig?.tahunBuku) || DEFAULT_FINANCE_CONFIG.tahunBuku,
+        subKategoriMasuk:
+          Array.isArray(parsed.financeConfig?.subKategoriMasuk) && parsed.financeConfig!.subKategoriMasuk.length > 0
+            ? parsed.financeConfig!.subKategoriMasuk
+            : [...DEFAULT_FINANCE_CONFIG.subKategoriMasuk],
+        subKategoriKeluar:
+          Array.isArray(parsed.financeConfig?.subKategoriKeluar) && parsed.financeConfig!.subKategoriKeluar.length > 0
+            ? parsed.financeConfig!.subKategoriKeluar
+            : [...DEFAULT_FINANCE_CONFIG.subKategoriKeluar],
+      };
+
       // Ensure 164 AKPOL 96 officers are present if DB was from an older version
-      const loadedMembers = Array.isArray(parsed.members) && parsed.members.length >= 160
-        ? parsed.members
-        : defaultStore.members;
-      const loadedUsers = Array.isArray(parsed.users) && parsed.users.length >= 160
-        ? parsed.users
-        : defaultStore.users;
-      const loadedIuran = Array.isArray(parsed.iuranList) && parsed.iuranList.length >= 160
+      const loadedMembers =
+        Array.isArray(parsed.members) && parsed.members.length >= 160 ? parsed.members : defaultStore.members;
+      const loadedUsers =
+        Array.isArray(parsed.users) && parsed.users.length >= 160 ? parsed.users : defaultStore.users;
+      const rawIuranSource = Array.isArray(parsed.iuranList)
         ? parsed.iuranList
-        : defaultStore.iuranList;
-      const loadedRegs = Array.isArray(parsed.registrations) && parsed.registrations.length >= 160
-        ? parsed.registrations
-        : defaultStore.registrations;
+        : Array.isArray(parsed.iuran)
+        ? parsed.iuran
+        : [];
+      const loadedIuran = rawIuranSource.length >= 160 ? rawIuranSource : defaultStore.iuranList;
+      const loadedRegs =
+        Array.isArray(parsed.registrations) && parsed.registrations.length >= 160
+          ? parsed.registrations
+          : defaultStore.registrations;
+
+      // Build reference lookup for 164 AKPOL 1996 alumni (for Brigjen Pol promotions & canonical names)
+      const akpolRefMap = new Map(AKPOL_1996_USERS.map((u) => [u.nrp, u]));
+      const annualTagihan = (loadedFinanceConfig.iuranWajibPerBulan || 250000) * 12;
+
+      loadedUsers.forEach((u) => {
+        u.email = migrateOfficialEmail(u.nrp, u.email);
+        if (u.nrp === '98010710') {
+          u.email = '98010710@polri.go.id';
+          u.secondaryEmail = 'agungkrisdianto98@gmail.com';
+        }
+        const ref = akpolRefMap.get(u.nrp);
+        if (ref) {
+          u.pangkat = ref.pangkat;
+          u.nama = ref.nama;
+        }
+      });
+
+      loadedMembers.forEach((m) => {
+        m.email = migrateOfficialEmail(m.nrp, m.email);
+        if (m.nrp === '98010710') {
+          m.email = '98010710@polri.go.id';
+          m.secondaryEmail = 'agungkrisdianto98@gmail.com';
+        }
+        const ref = akpolRefMap.get(m.nrp);
+        if (ref) {
+          m.pangkat = ref.pangkat;
+          m.namaLengkap = ref.nama;
+        }
+      });
+
+      loadedRegs.forEach((r) => {
+        r.email = migrateOfficialEmail(r.nrp, r.email);
+        if (r.nrp === '98010710') {
+          r.email = '98010710@polri.go.id';
+          r.secondaryEmail = 'agungkrisdianto98@gmail.com';
+        }
+        const ref = akpolRefMap.get(r.nrp);
+        if (ref) {
+          r.pangkat = ref.pangkat;
+          r.nama = ref.nama;
+        }
+      });
+
+      loadedIuran.forEach((i) => {
+        const ref = akpolRefMap.get(i.nrp);
+        if (ref) {
+          i.pangkat = ref.pangkat;
+          i.namaLengkap = ref.nama;
+        }
+        i.totalTagihan = annualTagihan;
+        if (i.totalTerbayar >= annualTagihan) {
+          i.status = 'LUNAS';
+        } else if (i.totalTerbayar > 0) {
+          i.status = 'SEBAGIAN';
+        } else {
+          i.status = 'BELUM_BAYAR';
+        }
+      });
+
+      const activeSession = parsed.activeSession || defaultStore.activeSession;
+      if (activeSession) {
+        activeSession.email = migrateOfficialEmail(activeSession.nrp, activeSession.email);
+        if (activeSession.nrp === '98010710') {
+          activeSession.email = '98010710@polri.go.id';
+          activeSession.secondaryEmail = 'agungkrisdianto98@gmail.com';
+        }
+        const ref = akpolRefMap.get(activeSession.nrp);
+        if (ref) {
+          activeSession.pangkat = ref.pangkat;
+          activeSession.nama = ref.nama;
+        }
+      }
 
       return {
         members: loadedMembers,
@@ -168,8 +323,11 @@ function loadInitialStore(): GlobalStore {
         transactions: Array.isArray(parsed.transactions) ? parsed.transactions : defaultStore.transactions,
         assets: Array.isArray(parsed.assets) ? parsed.assets : defaultStore.assets,
         iuranList: loadedIuran,
-        financeSummary: parsed.financeSummary ? { ...defaultStore.financeSummary, ...parsed.financeSummary } : defaultStore.financeSummary,
-        activeSession: parsed.activeSession || defaultStore.activeSession,
+        financeSummary: parsed.financeSummary
+          ? { ...defaultStore.financeSummary, ...parsed.financeSummary }
+          : defaultStore.financeSummary,
+        financeConfig: loadedFinanceConfig,
+        activeSession,
         messages: Array.isArray(parsed.messages) ? parsed.messages : defaultStore.messages,
         registrations: loadedRegs,
         posts: Array.isArray(parsed.posts) ? parsed.posts : defaultStore.posts,
@@ -179,6 +337,10 @@ function loadInitialStore(): GlobalStore {
     // Fallback to in-memory defaultStore
   }
   return defaultStore;
+}
+
+function loadInitialStore(): GlobalStore {
+  return readDb();
 }
 
 function persistLocalStore(store: GlobalStore) {
@@ -203,6 +365,7 @@ export const serverStore = {
     globalStore.members.find((m) => m.id === idOrNrp || m.nrp === idOrNrp),
   
   saveMember: (member: AnggotaWiraSatya) => {
+    const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
     const idx = globalStore.members.findIndex((m) => m.id === member.id || m.nrp === member.nrp);
     if (idx >= 0) {
       globalStore.members[idx] = { ...member, updatedAt: new Date().toISOString() };
@@ -213,6 +376,14 @@ export const serverStore = {
         globalStore.users[uIdx].pangkat = member.pangkat;
         globalStore.users[uIdx].satker = member.satuanKerja;
         globalStore.users[uIdx].polda = member.polda;
+        if (member.email) globalStore.users[uIdx].email = member.email;
+        if (member.secondaryEmail !== undefined) globalStore.users[uIdx].secondaryEmail = member.secondaryEmail;
+      }
+      const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === member.nrp);
+      if (iIdx >= 0) {
+        globalStore.iuranList[iIdx].namaLengkap = member.namaLengkap;
+        globalStore.iuranList[iIdx].pangkat = member.pangkat;
+        globalStore.iuranList[iIdx].polda = member.polda;
       }
     } else {
       globalStore.members.unshift({ ...member, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
@@ -223,7 +394,8 @@ export const serverStore = {
           nrp: member.nrp,
           nama: member.namaLengkap,
           pangkat: member.pangkat,
-          email: member.email || `${member.nrp}@wirasatya96.id`,
+          email: member.email || `${member.nrp}@polri.go.id`,
+          secondaryEmail: member.secondaryEmail,
           role: 'ANGGOTA',
           profileId: member.id || 'ws-' + member.nrp,
           mfaEnabled: false,
@@ -244,7 +416,8 @@ export const serverStore = {
           satker: member.satuanKerja,
           polda: member.polda,
           noHp: member.noHp || '',
-          email: member.email || `${member.nrp}@wirasatya96.id`,
+          email: member.email || `${member.nrp}@polri.go.id`,
+          secondaryEmail: member.secondaryEmail,
           alasanDaftar: 'Ditambahkan oleh Admin / Kesekretariatan melalui Pendataan',
           status: 'DISETUJUI_BELUM_PASSWORD',
           createdAt: new Date().toISOString(),
@@ -260,9 +433,9 @@ export const serverStore = {
           namaLengkap: member.namaLengkap,
           pangkat: member.pangkat,
           polda: member.polda,
-          tahun: 2026,
+          tahun: globalStore.financeConfig?.tahunBuku || 2026,
           bulanTerbayar: [],
-          totalTagihan: 3000000,
+          totalTagihan: annualTagihan,
           totalTerbayar: 0,
           status: 'BELUM_BAYAR',
         });
@@ -275,6 +448,7 @@ export const serverStore = {
   getUsers: () => globalStore.users,
 
   addUser: (user: AuthUser & { noHp?: string }) => {
+    const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
     const existingIdx = globalStore.users.findIndex((u) => u.nrp === user.nrp);
     if (existingIdx >= 0) {
       globalStore.users[existingIdx] = { ...globalStore.users[existingIdx], ...user };
@@ -293,7 +467,8 @@ export const serverStore = {
         satker: user.satker || 'Mabes Polri',
         polda: user.polda || 'MABES POLRI',
         noHp: user.noHp || '',
-        email: user.email,
+        email: user.email || `${user.nrp}@polri.go.id`,
+        secondaryEmail: user.secondaryEmail,
         alasanDaftar: `Ditambahkan oleh Admin / Kesekretariatan (${user.role})`,
         status: user.status || (user.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD'),
         password: user.password,
@@ -301,8 +476,10 @@ export const serverStore = {
         verifiedAt: new Date().toISOString(),
         verifiedBy: 'Admin / Kesekretariatan',
       });
-    } else if (user.noHp) {
-      existingReg.noHp = user.noHp;
+    } else {
+      if (user.noHp) existingReg.noHp = user.noHp;
+      if (user.email) existingReg.email = user.email;
+      if (user.secondaryEmail !== undefined) existingReg.secondaryEmail = user.secondaryEmail;
     }
 
     // Ensure directory member exists
@@ -323,7 +500,8 @@ export const serverStore = {
         usia: 52,
         jenisKelamin: 'LAKI-LAKI',
         noHp: user.noHp || '',
-        email: user.email,
+        email: user.email || `${user.nrp}@polri.go.id`,
+        secondaryEmail: user.secondaryEmail,
         fotoUrl: user.fotoUrl || '/default-avatar.png',
         alamatTempatTinggal: user.polda || 'Jakarta',
         statusTempatTinggal: 'MILIK PRIBADI',
@@ -349,8 +527,10 @@ export const serverStore = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
-    } else if (user.noHp) {
-      existingMember.noHp = user.noHp;
+    } else {
+      if (user.noHp) existingMember.noHp = user.noHp;
+      if (user.email) existingMember.email = user.email;
+      if (user.secondaryEmail !== undefined) existingMember.secondaryEmail = user.secondaryEmail;
     }
 
     // Ensure iuran entry exists
@@ -362,9 +542,9 @@ export const serverStore = {
         namaLengkap: user.nama,
         pangkat: user.pangkat,
         polda: user.polda || 'MABES POLRI',
-        tahun: 2026,
+        tahun: globalStore.financeConfig?.tahunBuku || 2026,
         bulanTerbayar: [],
-        totalTagihan: 3000000,
+        totalTagihan: annualTagihan,
         totalTerbayar: 0,
         status: 'BELUM_BAYAR',
       });
@@ -380,19 +560,20 @@ export const serverStore = {
     globalStore.users[idx] = { ...globalStore.users[idx], ...updates };
     const updatedUser = globalStore.users[idx];
 
-    // Sync member name/pangkat/satker/noHp if changed
+    // Sync member name/pangkat/satker/noHp/emails if changed
     const mIdx = globalStore.members.findIndex((m) => m.nrp === nrp);
     if (mIdx >= 0) {
       if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
       if (updates.pangkat) globalStore.members[mIdx].pangkat = updates.pangkat;
       if (updates.satker) {
         globalStore.members[mIdx].satuanKerja = updates.satker;
-        globalStore.members[mIdx].satker = updates.satker;
-        globalStore.members[mIdx].jabatan = updates.satker;
+        (globalStore.members[mIdx] as unknown as Record<string, unknown>).satker = updates.satker;
+        (globalStore.members[mIdx] as unknown as Record<string, unknown>).jabatan = updates.satker;
         globalStore.members[mIdx].jabatanTerakhir = updates.satker;
       }
       if (updates.polda) globalStore.members[mIdx].polda = updates.polda;
       if (updates.email) globalStore.members[mIdx].email = updates.email;
+      if (updates.secondaryEmail !== undefined) globalStore.members[mIdx].secondaryEmail = updates.secondaryEmail;
       if (updates.noHp !== undefined) globalStore.members[mIdx].noHp = updates.noHp;
     }
 
@@ -403,7 +584,15 @@ export const serverStore = {
       if (updates.satker) globalStore.registrations[rIdx].satker = updates.satker;
       if (updates.polda) globalStore.registrations[rIdx].polda = updates.polda;
       if (updates.email) globalStore.registrations[rIdx].email = updates.email;
+      if (updates.secondaryEmail !== undefined) globalStore.registrations[rIdx].secondaryEmail = updates.secondaryEmail;
       if (updates.noHp !== undefined) globalStore.registrations[rIdx].noHp = updates.noHp;
+    }
+
+    const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === nrp);
+    if (iIdx >= 0) {
+      if (updates.nama) globalStore.iuranList[iIdx].namaLengkap = updates.nama;
+      if (updates.pangkat) globalStore.iuranList[iIdx].pangkat = updates.pangkat;
+      if (updates.polda) globalStore.iuranList[iIdx].polda = updates.polda;
     }
 
     persistLocalStore(globalStore);
@@ -475,7 +664,7 @@ export const serverStore = {
       satker: regData.satker.trim(),
       polda: regData.polda,
       noHp: regData.noHp.trim(),
-      email: regData.email.trim(),
+      email: regData.email.trim() || `${cleanNrp}@polri.go.id`,
       alasanDaftar: regData.alasanDaftar || 'Pendaftaran alumni Wira Satya Akpol 1996',
       status: 'PENDING_VERIFIKASI',
       createdAt: new Date().toISOString(),
@@ -500,6 +689,7 @@ export const serverStore = {
     if (!reg) return { success: false, message: 'Data pendaftaran tidak ditemukan.' };
 
     if (action === 'APPROVE') {
+      const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
       reg.status = 'DISETUJUI_BELUM_PASSWORD';
       reg.verifiedAt = new Date().toISOString();
       reg.verifiedBy = verifierName;
@@ -512,7 +702,8 @@ export const serverStore = {
           nrp: reg.nrp,
           nama: reg.nama,
           pangkat: reg.pangkat,
-          email: reg.email,
+          email: reg.email || `${reg.nrp}@polri.go.id`,
+          secondaryEmail: reg.secondaryEmail,
           role: assignedRole,
           profileId: 'ws-' + reg.nrp,
           mfaEnabled: false,
@@ -547,7 +738,8 @@ export const serverStore = {
           usia: 52,
           jenisKelamin: 'LAKI-LAKI',
           noHp: reg.noHp,
-          email: reg.email,
+          email: reg.email || `${reg.nrp}@polri.go.id`,
+          secondaryEmail: reg.secondaryEmail,
           alamatTempatTinggal: reg.polda,
           statusTempatTinggal: 'MILIK PRIBADI',
           statusPerkawinan: 'MENIKAH',
@@ -583,9 +775,9 @@ export const serverStore = {
           namaLengkap: reg.nama,
           pangkat: reg.pangkat,
           polda: reg.polda,
-          tahun: 2026,
+          tahun: globalStore.financeConfig?.tahunBuku || 2026,
           bulanTerbayar: [],
-          totalTagihan: 3000000,
+          totalTagihan: annualTagihan,
           totalTerbayar: 0,
           status: 'BELUM_BAYAR',
         });
@@ -632,7 +824,8 @@ export const serverStore = {
         nrp: reg.nrp,
         nama: reg.nama,
         pangkat: reg.pangkat,
-        email: reg.email,
+        email: reg.email || `${reg.nrp}@polri.go.id`,
+        secondaryEmail: reg.secondaryEmail,
         role: 'ANGGOTA',
         profileId: 'ws-' + reg.nrp,
         mfaEnabled: mfaMethod !== 'PIN',
@@ -683,7 +876,10 @@ export const serverStore = {
 
     // 1. Check registrations for pending/rejected status
     const reg = globalStore.registrations.find(
-      (r) => r.nrp === cleanId || r.email.toLowerCase() === cleanId.toLowerCase()
+      (r) =>
+        r.nrp === cleanId ||
+        r.email.toLowerCase() === cleanId.toLowerCase() ||
+        (r.secondaryEmail && r.secondaryEmail.toLowerCase() === cleanId.toLowerCase())
     );
 
     if (reg) {
@@ -710,6 +906,7 @@ export const serverStore = {
         u.nrp === cleanId ||
         u.id === cleanId ||
         u.email.toLowerCase() === cleanId.toLowerCase() ||
+        (u.secondaryEmail && u.secondaryEmail.toLowerCase() === cleanId.toLowerCase()) ||
         u.nama.toLowerCase() === cleanId.toLowerCase()
     );
 
@@ -735,6 +932,7 @@ export const serverStore = {
           reg.status = 'AKTIF';
         }
         globalStore.activeSession = user;
+        persistLocalStore(globalStore);
         return {
           success: true,
           user,
@@ -755,7 +953,7 @@ export const serverStore = {
       };
     }
 
-    // 3. Fallback: check 286 directory members if not yet in users table
+    // 3. Fallback: check directory members if not yet in users table
     if (!user && !reg) {
       const member = globalStore.members.find(
         (m) =>
@@ -821,26 +1019,132 @@ export const serverStore = {
   // ==============================================================
   // FINANCIAL & ASSET PORTFOLIO METHODS
   // ==============================================================
-  getFinance: () => {
+  getFinanceConfig: (): FinanceConfig => {
+    if (!globalStore.financeConfig) {
+      globalStore.financeConfig = { ...DEFAULT_FINANCE_CONFIG };
+    }
+    return globalStore.financeConfig;
+  },
+
+  updateFinanceConfig: (patch: Partial<FinanceConfig>, updatedBy: string): FinanceConfig => {
+    if (!globalStore.financeConfig) {
+      globalStore.financeConfig = { ...DEFAULT_FINANCE_CONFIG };
+    }
+
+    if (patch.iuranWajibPerBulan !== undefined) {
+      const nextMonthly = Math.max(0, Number(patch.iuranWajibPerBulan) || 250000);
+      globalStore.financeConfig.iuranWajibPerBulan = nextMonthly;
+      const annualTarget = nextMonthly * 12;
+
+      globalStore.iuranList.forEach((item) => {
+        item.totalTagihan = annualTarget;
+        if (patch.tahunBuku) {
+          item.tahun = Number(patch.tahunBuku);
+        }
+        if (item.totalTerbayar >= annualTarget && annualTarget > 0) {
+          item.status = 'LUNAS';
+          item.bulanTerbayar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        } else if (item.totalTerbayar > 0) {
+          item.status = 'SEBAGIAN';
+          const paidMonths = nextMonthly > 0 ? Math.min(12, Math.floor(item.totalTerbayar / nextMonthly)) : 0;
+          item.bulanTerbayar = Array.from({ length: paidMonths }, (_, idx) => idx + 1);
+        } else {
+          item.status = 'BELUM_BAYAR';
+          item.bulanTerbayar = [];
+        }
+      });
+    }
+
+    if (patch.tahunBuku !== undefined) {
+      globalStore.financeConfig.tahunBuku = Number(patch.tahunBuku) || 2026;
+      globalStore.iuranList.forEach((item) => {
+        item.tahun = globalStore.financeConfig.tahunBuku;
+      });
+    }
+
+    if (Array.isArray(patch.subKategoriMasuk) && patch.subKategoriMasuk.length > 0) {
+      globalStore.financeConfig.subKategoriMasuk = patch.subKategoriMasuk;
+    }
+
+    if (Array.isArray(patch.subKategoriKeluar) && patch.subKategoriKeluar.length > 0) {
+      globalStore.financeConfig.subKategoriKeluar = patch.subKategoriKeluar;
+    }
+
+    globalStore.financeConfig.updatedAt = new Date().toISOString();
+    globalStore.financeConfig.updatedBy = updatedBy || globalStore.activeSession?.nama || 'Bendahara';
+
+    persistLocalStore(globalStore);
+    return globalStore.financeConfig;
+  },
+
+  getFinanceSummary: () => {
+    const transactions = globalStore.transactions || [];
+    const totalKasMasuk = transactions
+      .filter((t) => t.jenis === 'MASUK')
+      .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
+    const totalKasKeluar = transactions
+      .filter((t) => t.jenis === 'KELUAR')
+      .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
     const totalValuasiAset = (globalStore.assets || []).reduce(
       (sum, item) => sum + (Number(item.estimasiNilaiIdr) || 0),
       0
     );
-    globalStore.financeSummary.totalValuasiAset = totalValuasiAset;
-    globalStore.financeSummary.danaAbadiInvestasi = totalValuasiAset;
+    const iuranWajibPerBulan = globalStore.financeConfig?.iuranWajibPerBulan || 250000;
+
+    const iuranList = globalStore.iuranList || [];
+    const totalTargetIuran = iuranList.reduce((s, i) => s + (Number(i.totalTagihan) || 0), 0);
+    const totalRealisasiIuran = iuranList.reduce((s, i) => s + (Number(i.totalTerbayar) || 0), 0);
+    const persentaseIuranTerkumpul =
+      totalTargetIuran > 0 ? Number(((totalRealisasiIuran / totalTargetIuran) * 100).toFixed(1)) : 0;
+
+    const saldoUtama =
+      transactions.length > 0 ? totalKasMasuk - totalKasKeluar : globalStore.financeSummary.saldoUtama || 0;
+
+    globalStore.financeSummary = {
+      ...globalStore.financeSummary,
+      saldoUtama,
+      totalValuasiAset,
+      danaAbadiInvestasi: totalValuasiAset,
+      totalPemasukanBulanIni: totalKasMasuk,
+      totalPengeluaranBulanIni: totalKasKeluar,
+      persentaseIuranTerkumpul,
+    };
 
     return {
-      summary: globalStore.financeSummary,
+      ...globalStore.financeSummary,
+      totalKasMasuk,
+      totalKasKeluar,
+      totalValuasiAset,
+      iuranWajibPerBulan,
+    };
+  },
+
+  getFinance: () => {
+    const summary = serverStore.getFinanceSummary();
+    const financeConfig = serverStore.getFinanceConfig();
+
+    return {
+      summary,
       transactions: globalStore.transactions,
       assets: globalStore.assets || [],
       iuranList: globalStore.iuranList,
+      iuran: globalStore.iuranList,
+      financeConfig,
     };
   },
 
   addTransaction: (trx: Omit<KasTransaction, 'id' | 'createdAt'>) => {
+    // Deduplicate if exact same nomorReferensi was just submitted
+    if (trx.nomorReferensi) {
+      const existing = globalStore.transactions.find((t) => t.nomorReferensi === trx.nomorReferensi);
+      if (existing) {
+        return existing;
+      }
+    }
+
     const newTrx: KasTransaction = {
       ...trx,
-      id: 'trx-' + Date.now(),
+      id: 'trx-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       createdAt: new Date().toISOString(),
     };
     globalStore.transactions.unshift(newTrx);
@@ -854,7 +1158,7 @@ export const serverStore = {
       }
     } else {
       globalStore.financeSummary.saldoUtama -= newTrx.nominal;
-      globalStore.financeSummary.totalPengeluaranBulanIni -= newTrx.nominal;
+      globalStore.financeSummary.totalPengeluaranBulanIni += newTrx.nominal;
       if (newTrx.kategori === 'SANTUNAN_KESEHATAN') {
         globalStore.financeSummary.kasSosialKesehatan -= newTrx.nominal;
       } else if (newTrx.kategori === 'SANTUNAN_DUKA_CITA') {
@@ -862,6 +1166,7 @@ export const serverStore = {
       }
     }
 
+    serverStore.getFinanceSummary();
     persistLocalStore(globalStore);
     return newTrx;
   },
@@ -875,13 +1180,7 @@ export const serverStore = {
     };
     globalStore.assets.unshift(newAsset);
 
-    const totalValuasiAset = globalStore.assets.reduce(
-      (sum, item) => sum + (Number(item.estimasiNilaiIdr) || 0),
-      0
-    );
-    globalStore.financeSummary.totalValuasiAset = totalValuasiAset;
-    globalStore.financeSummary.danaAbadiInvestasi = totalValuasiAset;
-
+    serverStore.getFinanceSummary();
     persistLocalStore(globalStore);
     return newAsset;
   },
@@ -890,41 +1189,55 @@ export const serverStore = {
     if (!globalStore.assets) return false;
     const prevLen = globalStore.assets.length;
     globalStore.assets = globalStore.assets.filter((a) => a.id !== id);
-    const totalValuasiAset = globalStore.assets.reduce(
-      (sum, item) => sum + (Number(item.estimasiNilaiIdr) || 0),
-      0
-    );
-    globalStore.financeSummary.totalValuasiAset = totalValuasiAset;
-    globalStore.financeSummary.danaAbadiInvestasi = totalValuasiAset;
+    serverStore.getFinanceSummary();
     persistLocalStore(globalStore);
     return globalStore.assets.length < prevLen;
   },
 
-  recordIuranPayment: (nrp: string, nominal: number, pencatat?: string) => {
+  recordIuranPayment: (nrp: string, nominal: number, pencatat?: string, skipTransaction?: boolean) => {
     const target = globalStore.iuranList.find((i) => i.nrp === nrp);
     if (target) {
+      const iuranPerBulan = globalStore.financeConfig?.iuranWajibPerBulan || 250000;
+      target.totalTagihan = iuranPerBulan * 12;
       target.totalTerbayar += nominal;
       target.terakhirBayar = new Date().toISOString().split('T')[0];
       if (target.totalTerbayar >= target.totalTagihan) {
         target.status = 'LUNAS';
         target.bulanTerbayar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-      } else {
+      } else if (target.totalTerbayar > 0) {
         target.status = 'SEBAGIAN';
+        const paidMonths = Math.min(12, Math.floor(target.totalTerbayar / iuranPerBulan));
+        target.bulanTerbayar = Array.from({ length: paidMonths }, (_, idx) => idx + 1);
+      } else {
+        target.status = 'BELUM_BAYAR';
+        target.bulanTerbayar = [];
       }
 
-      // Add corresponding cash entry
-      serverStore.addTransaction({
-        nomorReferensi: 'WS96-IUR-' + Date.now().toString().slice(-4),
-        tanggal: new Date().toISOString().split('T')[0],
-        jenis: 'MASUK',
-        kategori: 'IURAN_WAJIB_BULANAN',
-        nominal: nominal,
-        keterangan: `Pembayaran Iuran Leting oleh ${target.namaLengkap}`,
-        pihakTerkait: target.namaLengkap,
-        nrpTerkait: target.nrp,
-        dicatatOleh: pencatat || globalStore.activeSession?.nama || 'Bendahara Wira Satya 96',
-      });
+      if (!skipTransaction) {
+        // Avoid duplicate cash entry if an identical IURAN_WAJIB_BULANAN transaction was just added for this NRP
+        const recentDuplicate = globalStore.transactions.find(
+          (t) =>
+            t.nrpTerkait === target.nrp &&
+            t.kategori === 'IURAN_WAJIB_BULANAN' &&
+            t.nominal === nominal &&
+            Date.now() - new Date(t.createdAt).getTime() < 5000
+        );
+        if (!recentDuplicate) {
+          serverStore.addTransaction({
+            nomorReferensi: 'WS96-IUR-' + Date.now().toString().slice(-4),
+            tanggal: new Date().toISOString().split('T')[0],
+            jenis: 'MASUK',
+            kategori: 'IURAN_WAJIB_BULANAN',
+            nominal: nominal,
+            keterangan: `Pembayaran Iuran Leting oleh ${target.namaLengkap}`,
+            pihakTerkait: target.namaLengkap,
+            nrpTerkait: target.nrp,
+            dicatatOleh: pencatat || globalStore.activeSession?.nama || 'Bendahara Wira Satya 96',
+          });
+        }
+      }
 
+      serverStore.getFinanceSummary();
       persistLocalStore(globalStore);
       return target;
     }
@@ -1054,3 +1367,11 @@ export const serverStore = {
     return p;
   },
 };
+
+export const getFinanceConfig = () => serverStore.getFinanceConfig();
+export const updateFinanceConfig = (patch: Partial<FinanceConfig>, updatedBy: string) =>
+  serverStore.updateFinanceConfig(patch, updatedBy);
+export const getFinanceSummary = () => serverStore.getFinanceSummary();
+export const recordIuranPayment = (nrp: string, nominal: number, pencatat?: string, skipTransaction?: boolean) =>
+  serverStore.recordIuranPayment(nrp, nominal, pencatat, skipTransaction);
+

@@ -1,14 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthUser, MfaMethod, DAFTAR_PANGKAT_POLRI } from '@/types';
-import {
-  DAFTAR_38_POLDA,
-  getSatkerUtamaByWilayah,
-  getSubSatkerOptionsBySatker,
-} from '@/data/polriStructure';
 import { WSLogo } from '@/components/WSLogo';
+import {
+  SatkerBerjenjangModal,
+  SatkerSelectionResult,
+} from '@/components/SatkerBerjenjangModal';
 import { 
   Eye, 
   EyeOff, 
@@ -22,9 +21,7 @@ import {
   CheckCircle2,
   Lock,
   Building2,
-  Phone,
-  Mail,
-  ArrowLeft
+  Volume2
 } from 'lucide-react';
 
 function generateCaptchaCode(): string {
@@ -34,6 +31,397 @@ function generateCaptchaCode(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
+}
+
+function createSeededRng(seedStr: string) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < seedStr.length; i++) {
+    h ^= seedStr.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += 0x6d2b79f5;
+    let t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+interface GraphicSecurityCaptchaProps {
+  code: string;
+  seed: number;
+  inputValue: string;
+  onInputChange: (val: string) => void;
+  onRefresh: () => void;
+}
+
+const CAPTCHA_CHAR_COLORS = [
+  '#fbbf24', // Amber
+  '#38bdf8', // Sky Blue
+  '#4ade80', // Emerald Green
+  '#fb7185', // Rose Red
+  '#c084fc', // Purple
+  '#facc15', // Yellow Gold
+  '#2dd4bf', // Teal
+  '#f87171', // Coral Red
+];
+
+const CAPTCHA_FONTS = [
+  "'Courier New', Courier, monospace",
+  "Georgia, 'Times New Roman', serif",
+  "'Consolas', 'Lucida Console', monospace",
+  "'Trebuchet MS', Verdana, sans-serif",
+  "Impact, 'Arial Black', sans-serif",
+];
+
+function GraphicSecurityCaptcha({
+  code,
+  seed,
+  inputValue,
+  onInputChange,
+  onRefresh,
+}: GraphicSecurityCaptchaProps) {
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const isMatched =
+    inputValue.trim().length === code.length &&
+    inputValue.trim().toUpperCase() === code.toUpperCase();
+
+  const visualData = useMemo(() => {
+    const rng = createSeededRng(`${code}-${seed}`);
+    const chars = code.split('').map((ch, idx) => {
+      const baseX = 28 + idx * 38;
+      const jitterX = (rng() - 0.5) * 8;
+      const jitterY = 40 + (rng() - 0.5) * 10;
+      const rotate = (rng() - 0.5) * 40; // -20deg to +20deg
+      const skewX = (rng() - 0.5) * 24; // -12deg to +12deg
+      const scale = 0.96 + rng() * 0.18;
+      const color =
+        CAPTCHA_CHAR_COLORS[
+          Math.floor(rng() * CAPTCHA_CHAR_COLORS.length)
+        ];
+      const fontFamily =
+        CAPTCHA_FONTS[Math.floor(rng() * CAPTCHA_FONTS.length)];
+      return {
+        ch,
+        x: Number((baseX + jitterX).toFixed(1)),
+        y: Number(jitterY.toFixed(1)),
+        rotate: Number(rotate.toFixed(1)),
+        skewX: Number(skewX.toFixed(1)),
+        scale: Number(scale.toFixed(2)),
+        color,
+        fontFamily,
+      };
+    });
+
+    // Interference bezier curves & strike lines
+    const noiseLines = Array.from({ length: 6 }).map((_, i) => {
+      const x1 = Number((rng() * 35).toFixed(1));
+      const y1 = Number((8 + rng() * 48).toFixed(1));
+      const cx1 = Number((50 + rng() * 60).toFixed(1));
+      const cy1 = Number((rng() * 64).toFixed(1));
+      const cx2 = Number((110 + rng() * 60).toFixed(1));
+      const cy2 = Number((rng() * 64).toFixed(1));
+      const x2 = Number((180 + rng() * 35).toFixed(1));
+      const y2 = Number((8 + rng() * 48).toFixed(1));
+      const color =
+        CAPTCHA_CHAR_COLORS[(i + Math.floor(rng() * 4)) % CAPTCHA_CHAR_COLORS.length];
+      const width = Number((1.0 + rng() * 0.9).toFixed(2));
+      const opacity = Number((0.35 + rng() * 0.3).toFixed(2));
+      const dash = rng() > 0.5 ? '4 2' : undefined;
+      return {
+        d: `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`,
+        color,
+        width,
+        opacity,
+        dash,
+      };
+    });
+
+    // Guilloche background security waves
+    const waveOffset1 = Number((18 + rng() * 10).toFixed(1));
+    const waveOffset2 = Number((38 + rng() * 12).toFixed(1));
+    const waves = [
+      `M 0 ${waveOffset1} Q 54 ${waveOffset1 - 14}, 108 ${waveOffset1} T 216 ${waveOffset1}`,
+      `M 0 ${waveOffset2} Q 54 ${waveOffset2 + 14}, 108 ${waveOffset2} T 216 ${waveOffset2}`,
+    ];
+
+    // Interference dots / speckles
+    const noiseDots = Array.from({ length: 34 }).map(() => ({
+      cx: Number((6 + rng() * 204).toFixed(1)),
+      cy: Number((6 + rng() * 52).toFixed(1)),
+      r: Number((0.8 + rng() * 1.5).toFixed(2)),
+      color:
+        CAPTCHA_CHAR_COLORS[
+          Math.floor(rng() * CAPTCHA_CHAR_COLORS.length)
+        ],
+      opacity: Number((0.25 + rng() * 0.45).toFixed(2)),
+    }));
+
+    return { chars, noiseLines, waves, noiseDots };
+  }, [code, seed]);
+
+  const handleRefreshClick = () => {
+    setIsSpinning(true);
+    onRefresh();
+    setTimeout(() => setIsSpinning(false), 380);
+  };
+
+  const handleSpeakCaptcha = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const spelled = code.split('').join(' ... ');
+      const utterance = new SpeechSynthesisUtterance(
+        `Kode keamanan Captcha: ${spelled}`
+      );
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.85;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setIsSpeaking(false);
+    }
+  };
+
+  return (
+    <div
+      className={`rounded-xl border transition-all p-3 space-y-2.5 ${
+        isMatched
+          ? 'bg-[#f0fdf4] border-[#16a34a]/70 shadow-2xs'
+          : 'bg-[#f8fafc] border-slate-300/90'
+      }`}
+    >
+      {/* Top Row: Graphic SVG Captcha Box + Action Buttons (Refresh & Audio) */}
+      <div className="flex items-stretch gap-2">
+        {/* SVG Graphic Captcha Canvas */}
+        <div
+          onClick={handleRefreshClick}
+          title="Klik gambar untuk memuat ulang kode Captcha"
+          className="relative flex-1 h-[60px] rounded-lg overflow-hidden border border-slate-700 bg-[#0b1524] shadow-inner cursor-pointer select-none group"
+        >
+          <svg
+            viewBox="0 0 216 64"
+            className="w-full h-full block"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Kode Keamanan Captcha Grafis"
+          >
+            <defs>
+              <linearGradient id="casBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0b1524" />
+                <stop offset="50%" stopColor="#17253b" />
+                <stop offset="100%" stopColor="#0f172a" />
+              </linearGradient>
+              <pattern
+                id="casSecGrid"
+                width="12"
+                height="12"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 12 0 L 0 0 0 12"
+                  fill="none"
+                  stroke="#334155"
+                  strokeWidth="0.45"
+                  strokeOpacity="0.45"
+                />
+              </pattern>
+            </defs>
+
+            {/* Security Plate Gradient + Grid Mesh */}
+            <rect width="216" height="64" fill="url(#casBgGrad)" />
+            <rect width="216" height="64" fill="url(#casSecGrid)" />
+
+            {/* Micro-text Security Watermark */}
+            <text
+              x="108"
+              y="13"
+              textAnchor="middle"
+              fill="#94a3b8"
+              fillOpacity="0.13"
+              fontSize="6.5"
+              fontWeight="800"
+              letterSpacing="2.5"
+              fontFamily="monospace"
+            >
+              CAS • BDB • POLRI SECURITY
+            </text>
+            <text
+              x="108"
+              y="58"
+              textAnchor="middle"
+              fill="#94a3b8"
+              fillOpacity="0.11"
+              fontSize="6"
+              fontWeight="700"
+              letterSpacing="2"
+              fontFamily="monospace"
+            >
+              WIRA SATYA 96 VERIFICATION
+            </text>
+
+            {/* Guilloche Background Waves */}
+            {visualData.waves.map((d, i) => (
+              <path
+                key={`wave-${i}`}
+                d={d}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth="0.9"
+                strokeOpacity="0.22"
+              />
+            ))}
+
+            {/* Interference Speckles / Dots */}
+            {visualData.noiseDots.map((dot, idx) => (
+              <circle
+                key={`dot-${idx}`}
+                cx={dot.cx}
+                cy={dot.cy}
+                r={dot.r}
+                fill={dot.color}
+                fillOpacity={dot.opacity}
+              />
+            ))}
+
+            {/* Background Interference Lines */}
+            {visualData.noiseLines.slice(0, 3).map((line, idx) => (
+              <path
+                key={`bline-${idx}`}
+                d={line.d}
+                fill="none"
+                stroke={line.color}
+                strokeWidth={line.width}
+                strokeOpacity={line.opacity}
+                strokeDasharray={line.dash}
+              />
+            ))}
+
+            {/* Distorted Multi-Color / Rotated / Skewed Captcha Characters */}
+            {visualData.chars.map((item, idx) => (
+              <g
+                key={`char-${idx}`}
+                transform={`translate(${item.x}, ${item.y}) rotate(${item.rotate}) skewX(${item.skewX}) scale(${item.scale})`}
+              >
+                <text
+                  x="0"
+                  y="0"
+                  textAnchor="middle"
+                  fill={item.color}
+                  stroke="#020617"
+                  strokeWidth="1.2"
+                  paintOrder="stroke"
+                  fontSize="26"
+                  fontWeight="900"
+                  fontFamily={item.fontFamily}
+                  style={{
+                    filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.65))',
+                    userSelect: 'none',
+                  }}
+                >
+                  {item.ch}
+                </text>
+              </g>
+            ))}
+
+            {/* Foreground Interference Strike Curves */}
+            {visualData.noiseLines.slice(3).map((line, idx) => (
+              <path
+                key={`fline-${idx}`}
+                d={line.d}
+                fill="none"
+                stroke={line.color}
+                strokeWidth={line.width}
+                strokeOpacity={line.opacity}
+                strokeDasharray={line.dash}
+              />
+            ))}
+          </svg>
+
+          {/* Subtle corner badge inside graphic box */}
+          <span className="absolute bottom-1 right-1.5 text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-black/50 text-slate-300 border border-white/10 pointer-events-none">
+            SVG CAPTCHA
+          </span>
+        </div>
+
+        {/* Action Buttons: Reload (↻) & Audio Readability (🔊) */}
+        <div className="flex flex-col gap-1.5 justify-between">
+          <button
+            type="button"
+            onClick={handleRefreshClick}
+            className="flex-1 px-3 rounded-lg bg-white hover:bg-slate-100 active:scale-95 text-slate-700 hover:text-red-800 border border-slate-300 shadow-2xs flex items-center justify-center transition-all"
+            title="Ganti Kode Captcha (Muat Ulang ↻)"
+            aria-label="Ganti Kode Captcha"
+          >
+            <RotateCw
+              className={`w-4 h-4 transition-transform duration-300 ${
+                isSpinning ? 'rotate-180 text-red-700' : ''
+              }`}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={handleSpeakCaptcha}
+            className={`flex-1 px-3 rounded-lg border shadow-2xs flex items-center justify-center transition-all ${
+              isSpeaking
+                ? 'bg-amber-50 border-amber-400 text-amber-700'
+                : 'bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-300'
+            }`}
+            title="Dengarkan Audio Kode Captcha"
+            aria-label="Dengarkan Audio Kode Captcha"
+          >
+            <Volume2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Bottom Row: Input Field + Live Verification Indicator */}
+      <div className="relative flex items-center">
+        <input
+          type="text"
+          required
+          maxLength={5}
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value.toUpperCase())}
+          placeholder="Masukkan kode captcha..."
+          autoComplete="off"
+          spellCheck={false}
+          className={`w-full pl-3.5 pr-28 py-2.5 rounded-lg border bg-white text-slate-900 text-xs font-mono font-extrabold uppercase tracking-[0.22em] placeholder:font-sans placeholder:font-medium placeholder:tracking-normal placeholder:normal-case placeholder:text-slate-400 focus:outline-none transition-all ${
+            isMatched
+              ? 'border-[#16a34a] ring-2 ring-[#16a34a]/20 text-emerald-950'
+              : 'border-slate-300 focus:ring-2 focus:ring-red-800/20 focus:border-red-800'
+          }`}
+        />
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
+          {isMatched ? (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold tracking-normal">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              <span>Terverifikasi</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+              {inputValue.trim().length}/5 Karakter
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* CAS / BDB Style Footer Metadata */}
+      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-red-800 shrink-0" />
+          <span>Proteksi Keamanan Grafis CAS / Polri</span>
+        </div>
+        <span className="text-[9px] text-slate-400 font-medium">
+          Privasi &amp; Ketentuan
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function LoginPage() {
@@ -47,21 +435,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [captchaCode, setCaptchaCode] = useState('WS96A');
+  const [captchaSeed, setCaptchaSeed] = useState(1);
   const [captchaInput, setCaptchaInput] = useState('');
 
   // Optional 2FA Challenge Modal (only shown if user enabled 2FA in their settings)
   const [pending2FAUser, setPending2FAUser] = useState<AuthUser | null>(null);
   const [otpInput, setOtpInput] = useState('');
 
-  // Register form inputs (with Cascading Master Satker Dropdown)
+  // Register form inputs (with SatkerBerjenjangModal & Email Dinas + Email Sekunder)
   const [regNrp, setRegNrp] = useState('');
   const [regNama, setRegNama] = useState('');
   const [regPangkat, setRegPangkat] = useState('Kombes Pol');
   const [regPolda, setRegPolda] = useState('MABES POLRI');
   const [regSatkerUtama, setRegSatkerUtama] = useState('BARESKRIM POLRI');
-  const [regSubSatker, setRegSubSatker] = useState('Pimpinan / Staf Utama Satker');
+  const [regSubSatker, setRegSubSatker] = useState('');
+  const [regComposedSatker, setRegComposedSatker] = useState('BARESKRIM POLRI');
+  const [regKodeSatker, setRegKodeSatker] = useState('060.01.00.01');
+  const [showSatkerModal, setShowSatkerModal] = useState(false);
   const [regNoHp, setRegNoHp] = useState('');
   const [regEmail, setRegEmail] = useState('');
+  const [regSecondaryEmail, setRegSecondaryEmail] = useState('');
   const [regAlasan, setRegAlasan] = useState('');
   const [regSuccess, setRegSuccess] = useState(false);
 
@@ -89,10 +482,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     setCaptchaCode(generateCaptchaCode());
+    setCaptchaSeed((s) => s + 1);
   }, []);
 
   const refreshCaptcha = () => {
     setCaptchaCode(generateCaptchaCode());
+    setCaptchaSeed((s) => s + 1);
     setCaptchaInput('');
   };
 
@@ -197,9 +592,15 @@ export default function LoginPage() {
     }
 
     const composedSatker =
-      regSubSatker && regSubSatker !== 'Pimpinan / Staf Utama Satker'
+      regComposedSatker.trim() ||
+      (regSubSatker && regSubSatker !== 'Pimpinan / Staf Utama Satker'
         ? `${regSubSatker} - ${regSatkerUtama}`
-        : regSatkerUtama;
+        : regSatkerUtama);
+
+    if (!composedSatker) {
+      setErrorMessage('Harap pilih Satker Melekat terlebih dahulu.');
+      return;
+    }
 
     setLoading(true);
 
@@ -213,8 +614,10 @@ export default function LoginPage() {
           pangkat: regPangkat,
           satker: composedSatker,
           polda: regPolda,
+          kodeSatker: regKodeSatker,
           noHp: regNoHp.trim(),
           email: regEmail.trim() || `${regNrp.trim()}@polri.go.id`,
+          secondaryEmail: regSecondaryEmail.trim() || undefined,
           alasanDaftar: regAlasan.trim(),
         }),
       });
@@ -661,34 +1064,20 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Input 3: Security Captcha (Default Mandatory) */}
+                {/* Input 3: Security Captcha (Graphic SVG/Canvas Captcha ala CAS/BDB) */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Kode Keamanan (Captcha) <span className="text-red-700">*</span>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Verifikasi Keamanan (Captcha) <span className="text-red-700">*</span>
                   </label>
-                  <div className="flex items-center gap-2">
-                    <div className="px-4 py-2 rounded-xl bg-slate-900 text-amber-400 font-mono text-sm font-black tracking-[0.28em] select-none border border-slate-700 shadow-inner flex items-center justify-between gap-2">
-                      <span className="line-through decoration-red-500/50">{captchaCode}</span>
-                      <button
-                        type="button"
-                        onClick={refreshCaptcha}
-                        className="text-slate-400 hover:text-white transition-colors"
-                        title="Ganti Kode Captcha"
-                      >
-                        <RotateCw className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={captchaInput}
-                      onChange={(e) => setCaptchaInput(e.target.value.toUpperCase())}
-                      placeholder="Ketik kode di samping"
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs font-mono font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-red-800"
-                    />
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Standar keamanan wajib: Kata Sandi &amp; Captcha. Proteksi 2FA dapat diatur mandiri di menu Pengaturan.
+                  <GraphicSecurityCaptcha
+                    code={captchaCode}
+                    seed={captchaSeed}
+                    inputValue={captchaInput}
+                    onInputChange={setCaptchaInput}
+                    onRefresh={refreshCaptcha}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    Standar keamanan wajib: Kata Sandi &amp; Captcha Grafis. Proteksi 2FA dapat diatur mandiri di menu Pengaturan.
                   </p>
                 </div>
 
@@ -749,10 +1138,11 @@ export default function LoginPage() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 text-left space-y-1">
                     <p>Nama: <strong>{regNama}</strong></p>
                     <p>NRP: <strong>{regNrp}</strong> ({regPangkat})</p>
-                    <p>Status: <span className="text-amber-800 font-bold">Menunggu Verifikasi Admin / Kesekretariatan</span></p>
+                    <p>Satker: <strong>{regComposedSatker}</strong> ({regPolda})</p>
+                    <p>Status: <span className="text-amber-800 font-bold">Menunggu Verifikasi Admin / Sekretaris</span></p>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Setelah diverifikasi oleh Admin / Kesekretariatan WS96, Anda dapat masuk ke portal menggunakan NRP dan membuat kata sandi pertama kali.
+                    Setelah diverifikasi oleh Admin / Sekretaris WS96, Anda dapat masuk ke portal menggunakan NRP dan membuat kata sandi pertama kali.
                   </p>
                   <button
                     type="button"
@@ -815,69 +1205,65 @@ export default function LoginPage() {
                     />
                   </div>
 
-                  {/* Cascading Master Satker Dropdown */}
-                  <div className="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        1. Wilayah Induk (Mabes / 38 Polda / Luar Struktur) <span className="text-red-700">*</span>
-                      </label>
-                      <select
-                        value={regPolda}
-                        onChange={(e) => {
-                          const w = e.target.value;
-                          setRegPolda(w);
-                          const satkers = getSatkerUtamaByWilayah(w);
-                          const firstS = satkers[0] || w;
-                          setRegSatkerUtama(firstS);
-                          const subs = getSubSatkerOptionsBySatker(w, firstS);
-                          setRegSubSatker(subs[0] || 'Pimpinan / Staf Utama Satker');
-                        }}
-                        className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
+                  {/* Satker Melekat (with SatkerBerjenjangModal) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Satker Melekat <span className="text-red-700">*</span>
+                    </label>
+                    <div className="flex items-stretch gap-2">
+                      <div
+                        onClick={() => setShowSatkerModal(true)}
+                        className={`flex-1 px-3 py-2.5 rounded-xl border cursor-pointer flex items-center gap-2 transition-colors ${
+                          regComposedSatker
+                            ? 'bg-slate-50 border-slate-200 hover:border-red-400'
+                            : 'bg-slate-50 border-dashed border-slate-300 hover:border-red-400'
+                        }`}
                       >
-                        {DAFTAR_38_POLDA.map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        2. Master Satker Utama (Satker / Polres) <span className="text-red-700">*</span>
-                      </label>
-                      <select
-                        value={regSatkerUtama}
-                        onChange={(e) => {
-                          const s = e.target.value;
-                          setRegSatkerUtama(s);
-                          const subs = getSubSatkerOptionsBySatker(regPolda, s);
-                          setRegSubSatker(subs[0] || 'Pimpinan / Staf Utama Satker');
-                        }}
-                        className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
+                        {regComposedSatker ? (
+                          <>
+                            <Building2 className="w-4 h-4 text-red-800 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-bold text-slate-900 block truncate text-[11px]">
+                                {regComposedSatker}
+                              </span>
+                              <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                                <span>{regPolda}</span>
+                                {regKodeSatker && (
+                                  <span className="font-mono text-slate-400">({regKodeSatker})</span>
+                                )}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1.5">
+                            <span>🔒 — Belum Memilih Satker —</span>
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowSatkerModal(true)}
+                        className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-800 font-bold text-[11px] whitespace-nowrap transition-colors"
                       >
-                        {getSatkerUtamaByWilayah(regPolda).map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        3. Sub-Satker / Direktorat / Bagian / ADC
-                      </label>
-                      <select
-                        value={regSubSatker}
-                        onChange={(e) => setRegSubSatker(e.target.value)}
-                        className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      >
-                        {getSubSatkerOptionsBySatker(regPolda, regSatkerUtama).map((sub) => (
-                          <option key={sub} value={sub}>{sub}</option>
-                        ))}
-                      </select>
+                        Pilih Satker Berjenjang
+                      </button>
                     </div>
                   </div>
 
-                  {/* No HP & Email */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Email Dinas & No WhatsApp */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Email Dinas (@polri.go.id)
+                      </label>
+                      <input
+                        type="email"
+                        placeholder={regNrp ? `${regNrp}@polri.go.id` : 'nrp@polri.go.id'}
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      />
+                    </div>
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
                         No WhatsApp
@@ -890,18 +1276,20 @@ export default function LoginPage() {
                         className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Email Dinas
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="nama@polri.go.id"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      />
-                    </div>
+                  </div>
+
+                  {/* Email Sekunder / Pribadi (Opsional — misal Gmail) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Email Sekunder / Pribadi <span className="text-slate-400 font-normal">(Opsional — misal Gmail)</span>
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="Contoh: nama.alumni96@gmail.com"
+                      value={regSecondaryEmail}
+                      onChange={(e) => setRegSecondaryEmail(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                    />
                   </div>
 
                   {/* Keterangan */}
@@ -957,6 +1345,22 @@ export default function LoginPage() {
 
         </div>
       </main>
+
+      {/* MODAL PILIH SATKER BERJENJANG (UNTUK TAB PENDAFTARAN) */}
+      <SatkerBerjenjangModal
+        isOpen={showSatkerModal}
+        onClose={() => setShowSatkerModal(false)}
+        initialPolda={regPolda}
+        initialSatker={regSatkerUtama}
+        initialSubSatker={regSubSatker}
+        onApply={(result: SatkerSelectionResult) => {
+          setRegPolda(result.polda);
+          setRegSatkerUtama(result.satkerUtama);
+          setRegSubSatker(result.subSatker);
+          setRegComposedSatker(result.composedSatker);
+          setRegKodeSatker(result.kodeSatker);
+        }}
+      />
 
       {/* 5. FOOTER */}
       <footer className="py-4 px-6 text-center text-xs text-slate-500 border-t border-slate-200 bg-white">
