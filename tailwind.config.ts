@@ -9,8 +9,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        polri: {
+          navy: "#0A2540",
+          navyDark: "#06182B",
+          navyLight: "#143A61",
+          gold: "#D4AF37",
+          goldLight: "#F6E05E",
+          goldDark: "#AA8C2C",
+        },
       },
     },
   },
