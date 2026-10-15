@@ -1,9 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AuthUser, PendingRegistration, UserAccountStatus, UserRole } from '@/types';
+import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
-import { DAFTAR_38_POLDA as POLDA_LIST } from '@/data/polriStructure';
+import {
+  DAFTAR_38_POLDA as POLDA_LIST,
+  getSatkerUtamaByWilayah,
+  getSubSatkerOptionsBySatker,
+} from '@/data/polriStructure';
 import { 
   ShieldCheck, 
   X, 
@@ -34,22 +38,14 @@ interface AdminVerificationModalProps {
 }
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
-  { value: 'ANGGOTA', label: 'Anggota (Alumni Wira Satya 96)' },
+  { value: 'ANGGOTA', label: 'Anggota (Alumni Wira Satya 96 / ADC)' },
   { value: 'SEKRETARIAT', label: 'Kesekretariatan (Admin Data & User)' },
-  { value: 'BENDAHARA', label: 'Bendahara (Pengelola Kas & Iuran)' },
+  { value: 'BENDAHARA', label: 'Bendahara (Pengelola Kas & Aset)' },
   { value: 'KETUA', label: 'Ketua Paguyuban (Pengurus Pusat)' },
   { value: 'SUPERADMIN', label: 'Superadmin (Administrator Sistem)' },
 ];
 
-const PANGKAT_OPTIONS = [
-  'Kombes Pol',
-  'Brigjen Pol',
-  'Irjen Pol',
-  'Komjen Pol',
-  'Jenderal Pol',
-  'AKBP',
-  'Purnawirawan Polri',
-];
+const PANGKAT_OPTIONS = [...DAFTAR_PANGKAT_POLRI];
 
 export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   isOpen,
@@ -75,13 +71,14 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedApproveRoles, setSelectedApproveRoles] = useState<Record<string, UserRole>>({});
 
-  // Add User Form state
+  // Add User Form state (with Cascading Master Satker Dropdown)
   const [newNrp, setNewNrp] = useState('');
   const [newNama, setNewNama] = useState('');
   const [newPangkat, setNewPangkat] = useState('Kombes Pol');
   const [newRole, setNewRole] = useState<UserRole>('ANGGOTA');
-  const [newSatker, setNewSatker] = useState('');
   const [newPolda, setNewPolda] = useState('MABES POLRI');
+  const [newSatkerUtama, setNewSatkerUtama] = useState('BARESKRIM POLRI');
+  const [newSubSatker, setNewSubSatker] = useState('Pimpinan / Staf Utama Satker');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
@@ -215,6 +212,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       showToast('NRP dan Nama Lengkap wajib diisi.', 'error');
       return;
     }
+    const composedSatker =
+      newSubSatker && newSubSatker !== 'Pimpinan / Staf Utama Satker'
+        ? `${newSubSatker} - ${newSatkerUtama}`
+        : newSatkerUtama;
+
     setCreatingUser(true);
     try {
       const res = await fetch('/api/users', {
@@ -225,7 +227,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           nama: newNama.trim(),
           pangkat: newPangkat,
           role: newRole,
-          satker: newSatker.trim() || 'Mabes Polri',
+          satker: composedSatker || 'Mabes Polri',
           polda: newPolda,
           email: newEmail.trim() || `${newNrp.trim()}@wirasatya96.id`,
           password: newPassword.trim() || undefined,
@@ -236,7 +238,6 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         showToast(data.message || 'Pengguna baru berhasil ditambahkan!', 'success');
         setNewNrp('');
         setNewNama('');
-        setNewSatker('');
         setNewEmail('');
         setNewPassword('');
         setNewRole('ANGGOTA');
@@ -789,30 +790,63 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Satuan Kerja / Jabatan
-                    </label>
-                    <input
-                      type="text"
-                      value={newSatker}
-                      onChange={(e) => setNewSatker(e.target.value)}
-                      placeholder="Contoh: Ditreskrimum Polda Jatim"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Wilayah Polda / Mabes
+                      1. Wilayah Induk (Mabes / 38 Polda / Luar Struktur)
                     </label>
                     <select
                       value={newPolda}
-                      onChange={(e) => setNewPolda(e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      onChange={(e) => {
+                        const selectedWilayah = e.target.value;
+                        setNewPolda(selectedWilayah);
+                        const satkerOpts = getSatkerUtamaByWilayah(selectedWilayah);
+                        const firstSatker = satkerOpts[0] || selectedWilayah;
+                        setNewSatkerUtama(firstSatker);
+                        const subOpts = getSubSatkerOptionsBySatker(selectedWilayah, firstSatker);
+                        setNewSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
                     >
                       {POLDA_LIST.map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      2. Master Satker Utama (Satker / Direktorat / Polres)
+                    </label>
+                    <select
+                      value={newSatkerUtama}
+                      onChange={(e) => {
+                        const selectedSatker = e.target.value;
+                        setNewSatkerUtama(selectedSatker);
+                        const subOpts = getSubSatkerOptionsBySatker(newPolda, selectedSatker);
+                        setNewSubSatker(subOpts[0] || 'Pimpinan / Staf Utama Satker');
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
+                    >
+                      {getSatkerUtamaByWilayah(newPolda).map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      3. Sub-Satker / Direktorat / Bagian / Penugasan ADC (Dropdown)
+                    </label>
+                    <select
+                      value={newSubSatker}
+                      onChange={(e) => setNewSubSatker(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-red-800 focus:outline-none"
+                    >
+                      {getSubSatkerOptionsBySatker(newPolda, newSatkerUtama).map((sub) => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Hasil Satker Tersimpan: <strong className="text-red-900">{newSubSatker && newSubSatker !== 'Pimpinan / Staf Utama Satker' ? `${newSubSatker} - ${newSatkerUtama}` : newSatkerUtama} ({newPolda})</strong>
+                    </p>
                   </div>
 
                   <div>

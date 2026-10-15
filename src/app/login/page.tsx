@@ -3,7 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthUser, MfaMethod, DAFTAR_PANGKAT_POLRI } from '@/types';
-import { DAFTAR_38_POLDA } from '@/data/polriStructure';
+import {
+  DAFTAR_38_POLDA,
+  getSatkerUtamaByWilayah,
+  getSubSatkerOptionsBySatker,
+} from '@/data/polriStructure';
 import { WSLogo } from '@/components/WSLogo';
 import { 
   Eye, 
@@ -23,23 +27,39 @@ import {
   ArrowLeft
 } from 'lucide-react';
 
+function generateCaptchaCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
   // Active view: 'login' | 'register'
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
-  // Login form inputs
+  // Login form inputs (Default: Password + Captcha)
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaCode, setCaptchaCode] = useState('WS96A');
+  const [captchaInput, setCaptchaInput] = useState('');
 
-  // Register form inputs
+  // Optional 2FA Challenge Modal (only shown if user enabled 2FA in their settings)
+  const [pending2FAUser, setPending2FAUser] = useState<AuthUser | null>(null);
+  const [otpInput, setOtpInput] = useState('');
+
+  // Register form inputs (with Cascading Master Satker Dropdown)
   const [regNrp, setRegNrp] = useState('');
   const [regNama, setRegNama] = useState('');
   const [regPangkat, setRegPangkat] = useState('Kombes Pol');
-  const [regSatker, setRegSatker] = useState('');
-  const [regPolda, setRegPolda] = useState('POLDA METRO JAYA');
+  const [regPolda, setRegPolda] = useState('MABES POLRI');
+  const [regSatkerUtama, setRegSatkerUtama] = useState('BARESKRIM POLRI');
+  const [regSubSatker, setRegSubSatker] = useState('Pimpinan / Staf Utama Satker');
   const [regNoHp, setRegNoHp] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regAlasan, setRegAlasan] = useState('');
@@ -61,11 +81,20 @@ export default function LoginPage() {
 
   // FIDO2 / Passkey Browser Modal Simulation State
   const [showPasskeyModal, setShowPasskeyModal] = useState(false);
-  const [passkeyAccount, setPasskeyAccount] = useState('superadmin@wirasatya96.polri.go.id');
+  const [passkeyAccount] = useState('superadmin@wirasatya96.polri.go.id');
 
   // Status & feedback
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    setCaptchaCode(generateCaptchaCode());
+  }, []);
+
+  const refreshCaptcha = () => {
+    setCaptchaCode(generateCaptchaCode());
+    setCaptchaInput('');
+  };
 
   const handleLoginSuccess = (user: AuthUser, mfaMethod?: MfaMethod) => {
     localStorage.setItem('ws96_active_user', JSON.stringify(user));
@@ -82,6 +111,12 @@ export default function LoginPage() {
 
     if (!username.trim()) {
       setErrorMessage('Harap masukkan NRP atau Email dinas Anda.');
+      return;
+    }
+
+    if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
+      setErrorMessage('Kode Keamanan (Captcha) tidak sesuai. Silakan ketik ulang kode yang tampil.');
+      refreshCaptcha();
       return;
     }
 
@@ -112,9 +147,26 @@ export default function LoginPage() {
 
       // Case 2: Login success
       if (data.success && data.user) {
-        handleLoginSuccess(data.user, 'PIN');
+        // Check if this user has self-enabled 2FA in their settings
+        let is2FAEnabled = Boolean(data.user.mfaEnabled);
+        try {
+          const local2FA = localStorage.getItem(`ws96_2fa_${data.user.nrp}`);
+          if (local2FA !== null) {
+            is2FAEnabled = local2FA === 'true';
+          }
+        } catch {
+          // ignore
+        }
+
+        if (is2FAEnabled) {
+          setPending2FAUser(data.user);
+          setOtpInput('');
+        } else {
+          handleLoginSuccess(data.user, 'PIN');
+        }
       } else {
         setErrorMessage(data.message || 'NRP atau kata sandi tidak cocok. Silakan periksa kembali.');
+        refreshCaptcha();
       }
     } catch {
       setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
@@ -123,14 +175,31 @@ export default function LoginPage() {
     }
   };
 
+  const handleVerify2FASubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pending2FAUser) return;
+    if (otpInput.trim().length < 4) {
+      setErrorMessage('Masukkan kode OTP / PIN 2FA minimal 4 digit.');
+      return;
+    }
+    const userToLogin = pending2FAUser;
+    setPending2FAUser(null);
+    handleLoginSuccess(userToLogin, userToLogin.mfaMethod || 'EMAIL_OTP');
+  };
+
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!regNrp.trim() || !regNama.trim() || !regSatker.trim()) {
-      setErrorMessage('Harap lengkapi NRP, Nama Lengkap, dan Satuan Kerja Anda.');
+    if (!regNrp.trim() || !regNama.trim()) {
+      setErrorMessage('Harap lengkapi NRP dan Nama Lengkap Anda.');
       return;
     }
+
+    const composedSatker =
+      regSubSatker && regSubSatker !== 'Pimpinan / Staf Utama Satker'
+        ? `${regSubSatker} - ${regSatkerUtama}`
+        : regSatkerUtama;
 
     setLoading(true);
 
@@ -142,7 +211,7 @@ export default function LoginPage() {
           nrp: regNrp.trim(),
           nama: regNama.trim(),
           pangkat: regPangkat,
-          satker: regSatker.trim(),
+          satker: composedSatker,
           polda: regPolda,
           noHp: regNoHp.trim(),
           email: regEmail.trim() || `${regNrp.trim()}@polri.go.id`,
@@ -436,6 +505,59 @@ export default function LoginPage() {
         </div>
       )}
 
+      {/* 3B. OPTIONAL 2FA MODAL (ONLY WHEN USER SELF-ENABLED 2FA IN SETTINGS) */}
+      {pending2FAUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4 text-slate-900">
+            <div className="text-center space-y-1">
+              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-200 text-red-800 flex items-center justify-center mx-auto mb-2">
+                <Lock className="w-6 h-6" />
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-900 text-[10px] font-extrabold uppercase">
+                Verifikasi 2FA Aktif
+              </span>
+              <h3 className="font-extrabold text-lg text-slate-900">
+                Autentikasi Dua Faktor (2FA)
+              </h3>
+              <p className="text-xs text-slate-600">
+                Akun <strong>{pending2FAUser.nama}</strong> mengaktifkan proteksi 2FA tambahan. Masukkan kode OTP / Authenticator Anda (contoh simulasi: <strong>199696</strong>).
+              </p>
+            </div>
+
+            <form onSubmit={handleVerify2FASubmit} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Kode Verifikasi 2FA / OTP
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={otpInput}
+                  onChange={(e) => setOtpInput(e.target.value)}
+                  placeholder="Masukkan kode 6 digit (contoh: 199696)"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-center font-mono text-sm font-extrabold tracking-widest focus:outline-none focus:ring-2 focus:ring-red-800"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setPending2FAUser(null)}
+                  className="w-1/3 py-2.5 px-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs shadow-md"
+                >
+                  Verifikasi &amp; Masuk
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 4. MAIN AUTH CARD (MASUK / PENDAFTARAN TAB) */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-[440px] bg-white p-6 sm:p-8 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 space-y-5">
@@ -492,7 +614,7 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                 {/* Input 1: NRP / Email */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -502,7 +624,7 @@ export default function LoginPage() {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="NRP (contoh: 74080123) atau email"
+                    placeholder="NRP (contoh: 98010710) atau email"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-800 transition-all"
                   />
                 </div>
@@ -511,7 +633,7 @@ export default function LoginPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-slate-700">
-                      Kata Sandi / PIN
+                      Kata Sandi
                     </label>
                     <button
                       type="button"
@@ -537,8 +659,36 @@ export default function LoginPage() {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    *Alumni yang baru disetujui dapat mengosongkan sandi untuk diarahkan ke aktivasi mandiri.
+                </div>
+
+                {/* Input 3: Security Captcha (Default Mandatory) */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Kode Keamanan (Captcha) <span className="text-red-700">*</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="px-4 py-2 rounded-xl bg-slate-900 text-amber-400 font-mono text-sm font-black tracking-[0.28em] select-none border border-slate-700 shadow-inner flex items-center justify-between gap-2">
+                      <span className="line-through decoration-red-500/50">{captchaCode}</span>
+                      <button
+                        type="button"
+                        onClick={refreshCaptcha}
+                        className="text-slate-400 hover:text-white transition-colors"
+                        title="Ganti Kode Captcha"
+                      >
+                        <RotateCw className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={captchaInput}
+                      onChange={(e) => setCaptchaInput(e.target.value.toUpperCase())}
+                      placeholder="Ketik kode di samping"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs font-mono font-bold uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-red-800"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Standar keamanan wajib: Kata Sandi &amp; Captcha. Proteksi 2FA dapat diatur mandiri di menu Pengaturan.
                   </p>
                 </div>
 
@@ -556,24 +706,6 @@ export default function LoginPage() {
                   ) : (
                     <span>Masuk ke Akun</span>
                   )}
-                </button>
-
-                {/* Divider: atau */}
-                <div className="relative my-3 flex items-center justify-center">
-                  <div className="border-t border-slate-200 w-full" />
-                  <span className="bg-white px-3 text-[11px] text-slate-400 font-medium absolute">
-                    atau
-                  </span>
-                </div>
-
-                {/* FIDO2 / Passkey Button */}
-                <button
-                  type="button"
-                  onClick={() => setShowPasskeyModal(true)}
-                  className="w-full py-2.5 px-4 border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-2xs"
-                >
-                  <Fingerprint className="w-4 h-4 text-red-800" />
-                  <span>Masuk dengan Kunci Sandi / FIDO2</span>
                 </button>
               </form>
 
@@ -599,10 +731,10 @@ export default function LoginPage() {
             <div className="space-y-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Pendaftaran Alumni
+                  Pendaftaran Alumni &amp; Personel
                 </h1>
                 <p className="text-xs text-slate-600 mt-1">
-                  Khusus Perwira Alumni Batalyon Wira Satya Akpol 1996
+                  Pendaftaran akun Batalyon Wira Satya Akpol 1996 (termasuk ADC)
                 </p>
               </div>
 
@@ -617,10 +749,10 @@ export default function LoginPage() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 text-left space-y-1">
                     <p>Nama: <strong>{regNama}</strong></p>
                     <p>NRP: <strong>{regNrp}</strong> ({regPangkat})</p>
-                    <p>Status: <span className="text-amber-800 font-bold">Menunggu Verifikasi Superadmin</span></p>
+                    <p>Status: <span className="text-amber-800 font-bold">Menunggu Verifikasi Admin / Kesekretariatan</span></p>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    Setelah diverifikasi oleh Superadmin / Sekretariat WS96, Anda dapat masuk ke portal menggunakan NRP dan membuat kata sandi pertama kali.
+                    Setelah diverifikasi oleh Admin / Kesekretariatan WS96, Anda dapat masuk ke portal menggunakan NRP dan membuat kata sandi pertama kali.
                   </p>
                   <button
                     type="button"
@@ -683,33 +815,62 @@ export default function LoginPage() {
                     />
                   </div>
 
-                  {/* Satker & Polda */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Cascading Master Satker Dropdown */}
+                  <div className="space-y-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Satuan Kerja <span className="text-red-700">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Bareskrim / Ditreskrimsus"
-                        value={regSatker}
-                        onChange={(e) => setRegSatker(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Polda <span className="text-red-700">*</span>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        1. Wilayah Induk (Mabes / 38 Polda / Luar Struktur) <span className="text-red-700">*</span>
                       </label>
                       <select
                         value={regPolda}
-                        onChange={(e) => setRegPolda(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                        onChange={(e) => {
+                          const w = e.target.value;
+                          setRegPolda(w);
+                          const satkers = getSatkerUtamaByWilayah(w);
+                          const firstS = satkers[0] || w;
+                          setRegSatkerUtama(firstS);
+                          const subs = getSubSatkerOptionsBySatker(w, firstS);
+                          setRegSubSatker(subs[0] || 'Pimpinan / Staf Utama Satker');
+                        }}
+                        className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
                       >
-                        <option value="MABES POLRI">MABES POLRI</option>
                         {DAFTAR_38_POLDA.map((p) => (
                           <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        2. Master Satker Utama (Satker / Polres) <span className="text-red-700">*</span>
+                      </label>
+                      <select
+                        value={regSatkerUtama}
+                        onChange={(e) => {
+                          const s = e.target.value;
+                          setRegSatkerUtama(s);
+                          const subs = getSubSatkerOptionsBySatker(regPolda, s);
+                          setRegSubSatker(subs[0] || 'Pimpinan / Staf Utama Satker');
+                        }}
+                        className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      >
+                        {getSatkerUtamaByWilayah(regPolda).map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        3. Sub-Satker / Direktorat / Bagian / ADC
+                      </label>
+                      <select
+                        value={regSubSatker}
+                        onChange={(e) => setRegSubSatker(e.target.value)}
+                        className="w-full px-3 py-2 bg-white rounded-xl border border-slate-300 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      >
+                        {getSubSatkerOptionsBySatker(regPolda, regSatkerUtama).map((sub) => (
+                          <option key={sub} value={sub}>{sub}</option>
                         ))}
                       </select>
                     </div>

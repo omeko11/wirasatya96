@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       email: body.email || `${cleanNrp}@wirasatya96.polri.go.id`,
       role: (body.role as UserRole) || 'ANGGOTA',
       profileId: 'ws-' + cleanNrp,
-      mfaEnabled: true,
+      mfaEnabled: body.mfaEnabled ?? false,
       mfaMethod: body.mfaMethod || 'PIN',
       satker: body.satker || 'Mabes Polri',
       polda: body.polda || 'Mabes Polri',
@@ -51,18 +51,24 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const session = serverStore.getSession();
-    if (session && session.role !== 'SUPERADMIN' && session.role !== 'SEKRETARIAT') {
-      return NextResponse.json(
-        { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang dapat mengubah data pengguna.' },
-        { status: 403 }
-      );
-    }
-
     const body = await req.json();
     const { nrp, ...updates } = body;
     if (!nrp) {
       return NextResponse.json({ success: false, message: 'NRP wajib disertakan' }, { status: 400 });
+    }
+
+    const session = serverStore.getSession();
+    const isAdminOrSekretariat = !session || session.role === 'SUPERADMIN' || session.role === 'SEKRETARIAT';
+    const isSelfSecurityUpdate =
+      session &&
+      session.nrp === nrp &&
+      updates.role === undefined;
+
+    if (!isAdminOrSekretariat && !isSelfSecurityUpdate) {
+      return NextResponse.json(
+        { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang dapat mengubah role atau data pengguna lain.' },
+        { status: 403 }
+      );
     }
 
     const updated = serverStore.updateUser(nrp, updates);

@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { 
   AnggotaWiraSatya, 
   AuthUser, 
@@ -7,18 +9,20 @@ import {
   ChatMessage, 
   PendingRegistration,
   UserAccountStatus,
-  MfaMethod
+  MfaMethod,
+  AssetPortfolioItem
 } from '@/types';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
-import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY } from '@/data/mockFinance';
+import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
 import { AKPOL_1996_REGISTRATIONS } from '@/data/akpol1996Alumni';
 
-// Global server memory to simulate persistent database across API calls
+// Global server memory + local disk database (.data/local_db.json)
 interface GlobalStore {
   members: AnggotaWiraSatya[];
   users: AuthUser[];
   transactions: KasTransaction[];
+  assets: AssetPortfolioItem[];
   iuranList: IuranAnggota[];
   financeSummary: FinanceSummary;
   activeSession: AuthUser | null;
@@ -120,16 +124,71 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
   ...AKPOL_1996_REGISTRATIONS,
 ];
 
-const globalStore: GlobalStore = {
-  members: [...INITIAL_MEMBERS],
-  users: [...PRESET_USERS],
-  transactions: [...INITIAL_TRANSACTIONS],
-  iuranList: [...INITIAL_IURAN_LIST],
-  financeSummary: { ...INITIAL_FINANCE_SUMMARY },
-  activeSession: PRESET_USERS[0], // default Superadmin
-  messages: [...INITIAL_MESSAGES],
-  registrations: [...INITIAL_REGISTRATIONS],
-};
+const LOCAL_DB_PATH = path.join(process.cwd(), '.data', 'local_db.json');
+
+function loadInitialStore(): GlobalStore {
+  const defaultStore: GlobalStore = {
+    members: [...INITIAL_MEMBERS],
+    users: [...PRESET_USERS],
+    transactions: [...INITIAL_TRANSACTIONS],
+    assets: [...INITIAL_ASSETS],
+    iuranList: [...INITIAL_IURAN_LIST],
+    financeSummary: { ...INITIAL_FINANCE_SUMMARY },
+    activeSession: PRESET_USERS[0],
+    messages: [...INITIAL_MESSAGES],
+    registrations: [...INITIAL_REGISTRATIONS],
+  };
+
+  try {
+    if (fs.existsSync(LOCAL_DB_PATH)) {
+      const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<GlobalStore>;
+      // Ensure 164 AKPOL 96 officers are present if DB was from an older version
+      const loadedMembers = Array.isArray(parsed.members) && parsed.members.length >= 160
+        ? parsed.members
+        : defaultStore.members;
+      const loadedUsers = Array.isArray(parsed.users) && parsed.users.length >= 160
+        ? parsed.users
+        : defaultStore.users;
+      const loadedIuran = Array.isArray(parsed.iuranList) && parsed.iuranList.length >= 160
+        ? parsed.iuranList
+        : defaultStore.iuranList;
+      const loadedRegs = Array.isArray(parsed.registrations) && parsed.registrations.length >= 160
+        ? parsed.registrations
+        : defaultStore.registrations;
+
+      return {
+        members: loadedMembers,
+        users: loadedUsers,
+        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : defaultStore.transactions,
+        assets: Array.isArray(parsed.assets) ? parsed.assets : defaultStore.assets,
+        iuranList: loadedIuran,
+        financeSummary: parsed.financeSummary ? { ...defaultStore.financeSummary, ...parsed.financeSummary } : defaultStore.financeSummary,
+        activeSession: parsed.activeSession || defaultStore.activeSession,
+        messages: Array.isArray(parsed.messages) ? parsed.messages : defaultStore.messages,
+        registrations: loadedRegs,
+      };
+    }
+  } catch {
+    // Fallback to in-memory defaultStore
+  }
+  return defaultStore;
+}
+
+function persistLocalStore(store: GlobalStore) {
+  try {
+    const dir = path.dirname(LOCAL_DB_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(store, null, 2), 'utf-8');
+  } catch {
+    // Ignore write errors in read-only serverless environments
+  }
+}
+
+const globalStore: GlobalStore = loadInitialStore();
+persistLocalStore(globalStore);
 
 export const serverStore = {
   getMembers: () => globalStore.members,
@@ -203,6 +262,7 @@ export const serverStore = {
         });
       }
     }
+    persistLocalStore(globalStore);
     return member;
   },
 
@@ -300,6 +360,7 @@ export const serverStore = {
       });
     }
 
+    persistLocalStore(globalStore);
     return user;
   },
 
@@ -318,6 +379,7 @@ export const serverStore = {
       if (updates.polda) globalStore.members[mIdx].polda = updates.polda;
     }
 
+    persistLocalStore(globalStore);
     return updatedUser;
   },
 
@@ -327,6 +389,7 @@ export const serverStore = {
     globalStore.registrations = globalStore.registrations.filter((r) => r.nrp !== nrp);
     globalStore.members = globalStore.members.filter((m) => m.nrp !== nrp);
     globalStore.iuranList = globalStore.iuranList.filter((i) => i.nrp !== nrp);
+    persistLocalStore(globalStore);
     return true;
   },
 
@@ -334,6 +397,7 @@ export const serverStore = {
 
   setSession: (user: AuthUser | null) => {
     globalStore.activeSession = user;
+    persistLocalStore(globalStore);
     return globalStore.activeSession;
   },
 
@@ -389,6 +453,7 @@ export const serverStore = {
     };
 
     globalStore.registrations.unshift(newReg);
+    persistLocalStore(globalStore);
     return {
       success: true,
       message: 'Pendaftaran berhasil diajukan. Akun Anda akan diverifikasi oleh Superadmin / Sekretariat WS96.',
@@ -497,6 +562,7 @@ export const serverStore = {
         });
       }
 
+      persistLocalStore(globalStore);
       return {
         success: true,
         message: `Pendaftaran ${reg.nama} berhasil disetujui. Akun siap diaktivasi oleh personel bersangkutan.`,
@@ -506,6 +572,7 @@ export const serverStore = {
       reg.status = 'DITOLAK';
       reg.verifiedAt = new Date().toISOString();
       reg.verifiedBy = verifierName;
+      persistLocalStore(globalStore);
       return {
         success: true,
         message: `Pendaftaran ${reg.nama} telah ditolak.`,
@@ -559,6 +626,7 @@ export const serverStore = {
       globalStore.activeSession = user;
     }
 
+    persistLocalStore(globalStore);
     return {
       success: true,
       user,
@@ -713,6 +781,7 @@ export const serverStore = {
 
     user.status = 'AKTIF';
     globalStore.activeSession = user;
+    persistLocalStore(globalStore);
     return {
       success: true,
       user,
@@ -721,13 +790,23 @@ export const serverStore = {
   },
 
   // ==============================================================
-  // FINANCIAL METHODS
+  // FINANCIAL & ASSET PORTFOLIO METHODS
   // ==============================================================
-  getFinance: () => ({
-    summary: globalStore.financeSummary,
-    transactions: globalStore.transactions,
-    iuranList: globalStore.iuranList,
-  }),
+  getFinance: () => {
+    const totalValuasiAset = (globalStore.assets || []).reduce(
+      (sum, item) => sum + (Number(item.estimasiNilaiIdr) || 0),
+      0
+    );
+    globalStore.financeSummary.totalValuasiAset = totalValuasiAset;
+    globalStore.financeSummary.danaAbadiInvestasi = totalValuasiAset;
+
+    return {
+      summary: globalStore.financeSummary,
+      transactions: globalStore.transactions,
+      assets: globalStore.assets || [],
+      iuranList: globalStore.iuranList,
+    };
+  },
 
   addTransaction: (trx: Omit<KasTransaction, 'id' | 'createdAt'>) => {
     const newTrx: KasTransaction = {
@@ -754,10 +833,45 @@ export const serverStore = {
       }
     }
 
+    persistLocalStore(globalStore);
     return newTrx;
   },
 
-  recordIuranPayment: (nrp: string, nominal: number) => {
+  addAsset: (asset: Omit<AssetPortfolioItem, 'id' | 'updatedAt'>) => {
+    if (!globalStore.assets) globalStore.assets = [];
+    const newAsset: AssetPortfolioItem = {
+      ...asset,
+      id: 'ast-' + Date.now(),
+      updatedAt: new Date().toISOString(),
+    };
+    globalStore.assets.unshift(newAsset);
+
+    const totalValuasiAset = globalStore.assets.reduce(
+      (sum, item) => sum + (Number(item.estimasiNilaiIdr) || 0),
+      0
+    );
+    globalStore.financeSummary.totalValuasiAset = totalValuasiAset;
+    globalStore.financeSummary.danaAbadiInvestasi = totalValuasiAset;
+
+    persistLocalStore(globalStore);
+    return newAsset;
+  },
+
+  deleteAsset: (id: string) => {
+    if (!globalStore.assets) return false;
+    const prevLen = globalStore.assets.length;
+    globalStore.assets = globalStore.assets.filter((a) => a.id !== id);
+    const totalValuasiAset = globalStore.assets.reduce(
+      (sum, item) => sum + (Number(item.estimasiNilaiIdr) || 0),
+      0
+    );
+    globalStore.financeSummary.totalValuasiAset = totalValuasiAset;
+    globalStore.financeSummary.danaAbadiInvestasi = totalValuasiAset;
+    persistLocalStore(globalStore);
+    return globalStore.assets.length < prevLen;
+  },
+
+  recordIuranPayment: (nrp: string, nominal: number, pencatat?: string) => {
     const target = globalStore.iuranList.find((i) => i.nrp === nrp);
     if (target) {
       target.totalTerbayar += nominal;
@@ -779,9 +893,10 @@ export const serverStore = {
         keterangan: `Pembayaran Iuran Leting oleh ${target.namaLengkap}`,
         pihakTerkait: target.namaLengkap,
         nrpTerkait: target.nrp,
-        dicatatOleh: 'Kombes Pol. Yudhi Sulistyo (Bendahara)',
+        dicatatOleh: pencatat || globalStore.activeSession?.nama || 'Bendahara Wira Satya 96',
       });
 
+      persistLocalStore(globalStore);
       return target;
     }
     return null;
@@ -837,6 +952,7 @@ export const serverStore = {
     };
 
     globalStore.messages.push(newMsg);
+    persistLocalStore(globalStore);
     return newMsg;
   },
 
@@ -846,5 +962,6 @@ export const serverStore = {
         m.isRead = true;
       }
     });
+    persistLocalStore(globalStore);
   },
 };

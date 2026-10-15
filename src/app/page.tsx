@@ -17,11 +17,11 @@ import { LinkedInSettingsPage } from '@/components/LinkedInSettingsPage';
 import { LinkedInProfileView } from '@/components/LinkedInProfileView';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
-import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } from '@/data/mockFinance';
-import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
+import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_ASSETS } from '@/data/mockFinance';
+import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem } from '@/types';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v7';
+const STORAGE_VERSION = 'ws96_akpol96_real_v8';
 
 export default function Home() {
   const router = useRouter();
@@ -36,9 +36,10 @@ export default function Home() {
   const [editingMember, setEditingMember] = useState<AnggotaWiraSatya | null | 'NEW'>(null);
   const [messagingTargetMember, setMessagingTargetMember] = useState<AnggotaWiraSatya | null>(null);
 
-  // Financial State
+  // Financial & Asset Portfolio State
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(INITIAL_FINANCE_SUMMARY);
   const [transactions, setTransactions] = useState<KasTransaction[]>(INITIAL_TRANSACTIONS);
+  const [assets, setAssets] = useState<AssetPortfolioItem[]>(INITIAL_ASSETS);
   const [iuranList, setIuranList] = useState<IuranAnggota[]>(INITIAL_IURAN_LIST);
 
   // Load from localStorage or API on initial mount
@@ -73,12 +74,12 @@ export default function Home() {
       }
     }
 
-    // Load Members
+    // Load Members (only use cache if it already has all 164+ AKPOL 96 officers)
     const savedMembers = localStorage.getItem('wirasatya96_members');
     if (savedMembers) {
       try {
         const parsed = JSON.parse(savedMembers);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length >= 160) {
           const sanitizedMembers = parsed.map((m: AnggotaWiraSatya) => ({
             ...m,
             fotoUrl: getAvatarUrl(m.fotoUrl),
@@ -97,7 +98,8 @@ export default function Home() {
         const parsed = JSON.parse(savedFinance);
         if (parsed.summary) setFinanceSummary(parsed.summary);
         if (parsed.transactions) setTransactions(parsed.transactions);
-        if (parsed.iuranList) setIuranList(parsed.iuranList);
+        if (parsed.assets) setAssets(parsed.assets);
+        if (parsed.iuranList && parsed.iuranList.length >= 160) setIuranList(parsed.iuranList);
       } catch (err) {
         console.error('Failed to parse saved finance data', err);
       }
@@ -115,6 +117,21 @@ export default function Home() {
           }));
           setMembers(sanitizedMembers);
           localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
+        }
+      })
+      .catch(() => {});
+
+    // Refresh finance & assets from API store
+    fetch('/api/finance')
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          if (res.data.summary) setFinanceSummary(res.data.summary);
+          if (Array.isArray(res.data.transactions)) setTransactions(res.data.transactions);
+          if (Array.isArray(res.data.assets)) setAssets(res.data.assets);
+          if (Array.isArray(res.data.iuranList) && res.data.iuranList.length > 0) {
+            setIuranList(res.data.iuranList);
+          }
         }
       })
       .catch(() => {});
@@ -214,8 +231,10 @@ export default function Home() {
     }
   };
 
-  // Add new cash transaction
+  // Add new cash transaction (Strictly BENDAHARA only)
   const handleAddTransaction = async (trxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
+    if (currentUser.role !== 'BENDAHARA') return;
+
     const newTrx: KasTransaction = {
       ...trxData,
       id: 'trx-' + Date.now(),
@@ -247,24 +266,96 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(
         'wirasatya96_finance',
-        JSON.stringify({ summary: updatedSummary, transactions: updatedTrxList, iuranList })
+        JSON.stringify({ summary: updatedSummary, transactions: updatedTrxList, assets, iuranList })
       );
     }
 
-    // Try sync with API
     try {
       await fetch('/api/finance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(trxData),
+        body: JSON.stringify({ ...trxData, actorRole: currentUser.role }),
       });
     } catch (err) {
       console.log('Saved to local storage, API sync skipped', err);
     }
   };
 
-  // Pay membership dues
+  // Add new portfolio asset (Strictly BENDAHARA only)
+  const handleAddAsset = async (assetData: Omit<AssetPortfolioItem, 'id' | 'updatedAt'>) => {
+    if (currentUser.role !== 'BENDAHARA') return;
+
+    const newAsset: AssetPortfolioItem = {
+      ...assetData,
+      id: 'ast-' + Date.now(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updatedAssets = [newAsset, ...assets];
+    setAssets(updatedAssets);
+
+    const totalValuasiAset = updatedAssets.reduce((sum, a) => sum + (Number(a.estimasiNilaiIdr) || 0), 0);
+    const updatedSummary: FinanceSummary = {
+      ...financeSummary,
+      totalValuasiAset,
+      danaAbadiInvestasi: totalValuasiAset,
+    };
+    setFinanceSummary(updatedSummary);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'wirasatya96_finance',
+        JSON.stringify({ summary: updatedSummary, transactions, assets: updatedAssets, iuranList })
+      );
+    }
+
+    try {
+      await fetch('/api/finance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ADD_ASSET', actorRole: currentUser.role, ...assetData }),
+      });
+    } catch (err) {
+      console.log('Saved asset to local storage, API sync skipped', err);
+    }
+  };
+
+  // Delete portfolio asset (Strictly BENDAHARA only)
+  const handleDeleteAsset = async (id: string) => {
+    if (currentUser.role !== 'BENDAHARA') return;
+
+    const updatedAssets = assets.filter((a) => a.id !== id);
+    setAssets(updatedAssets);
+
+    const totalValuasiAset = updatedAssets.reduce((sum, a) => sum + (Number(a.estimasiNilaiIdr) || 0), 0);
+    const updatedSummary: FinanceSummary = {
+      ...financeSummary,
+      totalValuasiAset,
+      danaAbadiInvestasi: totalValuasiAset,
+    };
+    setFinanceSummary(updatedSummary);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        'wirasatya96_finance',
+        JSON.stringify({ summary: updatedSummary, transactions, assets: updatedAssets, iuranList })
+      );
+    }
+
+    try {
+      await fetch('/api/finance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'DELETE_ASSET', actorRole: currentUser.role, id }),
+      });
+    } catch (err) {
+      console.log('Deleted asset in local storage', err);
+    }
+  };
+
+  // Pay membership dues (Strictly BENDAHARA only)
   const handlePayIuran = async (nrp: string, nominal: number) => {
+    if (currentUser.role !== 'BENDAHARA') return;
+
     const updatedList = iuranList.map((i) => {
       if (i.nrp === nrp) {
         const nextTerbayar = i.totalTerbayar + nominal;
@@ -280,7 +371,6 @@ export default function Home() {
     });
     setIuranList(updatedList);
 
-    // Also record transaction
     const target = iuranList.find((i) => i.nrp === nrp);
     handleAddTransaction({
       nomorReferensi: 'WS96-IUR-' + Date.now().toString().slice(-4),
@@ -298,7 +388,7 @@ export default function Home() {
       await fetch('/api/finance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'PAY_IURAN', nrp, nominal }),
+        body: JSON.stringify({ action: 'PAY_IURAN', actorRole: currentUser.role, nrp, nominal, dicatatOleh: currentUser.nama }),
       });
     } catch (err) {
       console.log('Saved to local storage, API sync skipped', err);
@@ -406,7 +496,7 @@ export default function Home() {
           />
         ) : (
           <>
-            {/* TAB 1: BUKU SAKU & FEED BERANDA */}
+            {/* TAB 1: FEED BERANDA */}
             {activeTab === 'direktori' && (
               <BukuSaku
                 members={members}
@@ -414,6 +504,8 @@ export default function Home() {
                 currentUser={currentUser}
                 onEditMember={handleStartEditMember}
                 onOpenChat={handleOpenChatWithMember}
+                onNavigateToJabatan={() => setActiveTab('purnaTugas')}
+                financeSummary={financeSummary}
                 externalSearch={navbarSearchQuery}
               />
             )}
@@ -471,16 +563,19 @@ export default function Home() {
               />
             )}
 
-            {/* TAB 7: PORTAL KEBENDAHARAAN */}
+            {/* TAB 7: PORTAL KEBENDAHARAAN & PORTOFOLIO ASET */}
             {activeTab === 'bendahara' && (
               <BendaharaPortal
                 currentUser={currentUser}
                 members={members}
                 financeSummary={financeSummary}
                 transactions={transactions}
+                assets={assets}
                 iuranList={iuranList}
                 onAddTransaction={handleAddTransaction}
                 onPayIuran={handlePayIuran}
+                onAddAsset={handleAddAsset}
+                onDeleteAsset={handleDeleteAsset}
               />
             )}
 

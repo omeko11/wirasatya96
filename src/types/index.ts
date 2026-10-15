@@ -150,9 +150,16 @@ export const DAFTAR_PANGKAT_POLRI = [
   'AKP',
   'Iptu',
   'Ipda',
+  // Bintara (Pendukung Staf / ADC / Operator)
+  'Aiptu',
+  'Aipda',
+  'Bripka',
+  'Brigpol',
+  'Briptu',
+  'Bripda',
 ] as const;
 
-// Modul Kebendaharaan Paguyuban Wira Satya 1996
+// Modul Kebendaharaan & Portofolio Aset Paguyuban Wira Satya 1996
 export type TransactionType = 'MASUK' | 'KELUAR';
 
 export type TransactionCategory = 
@@ -162,7 +169,32 @@ export type TransactionCategory =
   | 'SANTUNAN_DUKA_CITA' 
   | 'BANTUAN_PENDIDIKAN_ANAK' 
   | 'OPERASIONAL_PAGUYUBAN' 
-  | 'KEGIATAN_REUNI_LETING';
+  | 'KEGIATAN_REUNI_LETING'
+  | 'PEMBELIAN_ASET_INVESTASI'
+  | 'PENCAIRAN_ASET_INVESTASI';
+
+export type AssetCategory =
+  | 'SURAT_BERHARGA'
+  | 'VALUTA_ASING'
+  | 'CRYPTO'
+  | 'LOGAM_MULIA_ASET';
+
+export interface AssetPortfolioItem {
+  id: string;
+  kodeAset: string;
+  namaAset: string;
+  kategori: AssetCategory;
+  satuan: string; // 'Unit/Lembar' | 'USD' | 'SGD' | 'EUR' | 'BTC' | 'ETH' | 'USDT' | 'Gram'
+  jumlahUnit: number;
+  nilaiPerolehanIdr: number;
+  estimasiNilaiIdr: number;
+  kustodianLokasi: string; // Bank / Sekuritas / Wallet / Brankas
+  nomorSeriAtauWallet?: string;
+  tanggalPerolehan: string;
+  keterangan?: string;
+  dicatatOleh: string;
+  updatedAt: string;
+}
 
 export interface KasTransaction {
   id: string;
@@ -197,6 +229,7 @@ export interface FinanceSummary {
   kasSosialKesehatan: number;
   kasDukaCita: number;
   danaAbadiInvestasi: number;
+  totalValuasiAset?: number;
   totalPemasukanBulanIni: number;
   totalPengeluaranBulanIni: number;
   persentaseIuranTerkumpul: number;

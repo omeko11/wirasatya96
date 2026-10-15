@@ -38,10 +38,18 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
   const [activeSection, setActiveSection] = useState<SettingsSection>('security');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Settings states
+  // Settings states (Default: Password + Captcha; 2FA is optional and self-managed per user)
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isPasskeyActive, setIsPasskeyActive] = useState(true);
-  const [isTwoFactorActive, setIsTwoFactorActive] = useState(true);
+  const [isPasskeyActive, setIsPasskeyActive] = useState<boolean>(() => {
+    return currentUser.mfaMethod === 'BIOMETRIC';
+  });
+  const [isTwoFactorActive, setIsTwoFactorActive] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`ws96_2fa_${currentUser.nrp}`);
+      if (saved !== null) return saved === 'true';
+    }
+    return Boolean(currentUser.mfaEnabled);
+  });
   const [isAutoPlayVideo, setIsAutoPlayVideo] = useState(true);
   const [isSoundEffects, setIsSoundEffects] = useState(true);
   const [activeStatusVisible, setActiveStatusVisible] = useState(true);
@@ -52,6 +60,47 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleToggle2FA = async () => {
+    const nextVal = !isTwoFactorActive;
+    setIsTwoFactorActive(nextVal);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`ws96_2fa_${currentUser.nrp}`, String(nextVal));
+      const updatedUser = { ...currentUser, mfaEnabled: nextVal };
+      localStorage.setItem('ws96_active_user', JSON.stringify(updatedUser));
+      localStorage.setItem('wirasatya96_current_user', JSON.stringify(updatedUser));
+    }
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nrp: currentUser.nrp, mfaEnabled: nextVal }),
+      });
+    } catch {
+      // ignore
+    }
+    showToast(
+      nextVal
+        ? 'Proteksi 2FA diaktifkan untuk akun Anda. Saat login berikutnya akan meminta kode 2FA.'
+        : 'Proteksi 2FA dinonaktifkan. Login cukup menggunakan Kata Sandi & Captcha.'
+    );
+  };
+
+  const handleTogglePasskey = async () => {
+    const nextVal = !isPasskeyActive;
+    setIsPasskeyActive(nextVal);
+    const nextMethod = nextVal ? 'BIOMETRIC' : 'PIN';
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nrp: currentUser.nrp, mfaMethod: nextMethod }),
+      });
+    } catch {
+      // ignore
+    }
+    showToast(nextVal ? 'Passkey FIDO2 Biometrik berhasil diaktifkan!' : 'Passkey FIDO2 dinonaktifkan.');
   };
 
   const handleDownloadData = () => {
@@ -364,10 +413,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        setIsPasskeyActive(!isPasskeyActive);
-                        showToast(isPasskeyActive ? 'Passkey FIDO2 dinonaktifkan.' : 'Passkey FIDO2 Bareskrim berhasil diaktifkan!');
-                      }}
+                      onClick={handleTogglePasskey}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                         isPasskeyActive
                           ? 'bg-red-800 text-white'
@@ -396,21 +442,18 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     <div>
                       <div className="font-semibold text-slate-800">Autentikasi dua faktor (2FA)</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Verifikasi tambahan via Email OTP & Biometrik saat login dari perangkat baru
+                        Default login cukup Password &amp; Captcha. Aktifkan 2FA jika Anda ingin proteksi OTP tambahan saat login.
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        setIsTwoFactorActive(!isTwoFactorActive);
-                        showToast(isTwoFactorActive ? '2FA dinonaktifkan.' : '2FA Keamanan Tinggi diaktifkan.');
-                      }}
+                      onClick={handleToggle2FA}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                         isTwoFactorActive
                           ? 'bg-red-800 text-white'
                           : 'bg-slate-200 text-slate-600'
                       }`}
                     >
-                      {isTwoFactorActive ? 'Aktif' : 'Nonaktif'}
+                      {isTwoFactorActive ? 'Aktif (2FA ON)' : 'Nonaktif (Default)'}
                     </button>
                   </div>
                 </div>

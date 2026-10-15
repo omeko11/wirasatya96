@@ -10,8 +10,8 @@ export const PRESET_USERS: AuthUser[] = [
     email: 'agungkrisdianto96@gmail.com',
     role: 'SUPERADMIN',
     profileId: 'ws-98010710',
-    mfaEnabled: true,
-    mfaMethod: 'BIOMETRIC',
+    mfaEnabled: false,
+    mfaMethod: 'PIN',
     fotoUrl: '/default-avatar.png',
     satker: 'Bareskrim Polri / Tim IT Developer Wira Satya 96',
     polda: 'MABES POLRI',
@@ -89,6 +89,7 @@ export const ROLE_PERMISSIONS: Record<
     canEditAllMembers: boolean;
     canManageUsers: boolean;
     canManageFinance: boolean;
+    canRekapFinance: boolean;
     canViewExecutiveAnalytics: boolean;
   }
 > = {
@@ -98,7 +99,8 @@ export const ROLE_PERMISSIONS: Record<
     badgeColor: 'bg-red-900 text-amber-300 border border-amber-500/40',
     canEditAllMembers: true,
     canManageUsers: true,
-    canManageFinance: true,
+    canManageFinance: false,
+    canRekapFinance: false,
     canViewExecutiveAnalytics: true,
   },
   SEKRETARIAT: {
@@ -108,33 +110,38 @@ export const ROLE_PERMISSIONS: Record<
     canEditAllMembers: true,
     canManageUsers: true,
     canManageFinance: false,
+    canRekapFinance: false,
     canViewExecutiveAnalytics: true,
   },
   KETUA: {
     label: 'Ketua Paguyuban',
-    description: 'Pimpinan paguyuban, akses dashboard eksekutif & pemantauan anev leting.',
+    description: 'Pimpinan paguyuban, rekap laporan kas & aset, serta pemantauan anev leting.',
     badgeColor: 'bg-amber-600 text-white',
     canEditAllMembers: false,
     canManageUsers: false,
     canManageFinance: false,
+    canRekapFinance: true,
     canViewExecutiveAnalytics: true,
   },
   BENDAHARA: {
     label: 'Bendahara',
-    description: 'Pengelola arus kas, pencatatan transaksi keluar/masuk, dan iuran leting.',
+    description: 'Pengelola penginputan arus kas, portofolio aset, pencatatan iuran, dan rekap laporan.',
     badgeColor: 'bg-emerald-700 text-white',
     canEditAllMembers: false,
     canManageUsers: false,
     canManageFinance: true,
+    canRekapFinance: true,
     canViewExecutiveAnalytics: true,
   },
   ANGGOTA: {
     label: 'Anggota',
-    description: 'Perwira alumni batalyon, akses direktori, profil pribadi, dan obrolan.',
+    description: 'Perwira alumni batalyon (termasuk fungsi pengawasan terbuka kas & direktori).',
     badgeColor: 'bg-slate-700 text-white',
     canEditAllMembers: false,
     canManageUsers: false,
     canManageFinance: false,
+    canRekapFinance: false,
     canViewExecutiveAnalytics: false,
   },
 };
+

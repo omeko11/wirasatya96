@@ -3,6 +3,11 @@
 import React, { useState, useMemo } from 'react';
 import { AuthUser, AnggotaWiraSatya, RiwayatJabatanLeting, FungsiPolri } from '@/types';
 import { INITIAL_RIWAYAT_JABATAN } from '@/data/mockJabatan';
+import {
+  DAFTAR_38_POLDA,
+  getSatkerUtamaByWilayah,
+  getSubSatkerOptionsBySatker,
+} from '@/data/polriStructure';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { 
   Briefcase, 
@@ -24,6 +29,29 @@ interface LinkedInJobsPageProps {
   onSelectMember?: (member: AnggotaWiraSatya) => void;
 }
 
+function inferFungsiPolri(jabatan: string, satker: string, polda: string): FungsiPolri {
+  const text = `${jabatan} ${satker} ${polda}`.toUpperCase();
+  if (text.includes('RESKRIM') || text.includes('BARESKRIM') || text.includes('NARKOBA') || text.includes('DITTIPID') || text.includes('SIBER')) {
+    return 'RESERSE';
+  }
+  if (text.includes('INTEL') || text.includes('BAINTELKAM') || text.includes('DENSUS')) {
+    return 'INTELKAM';
+  }
+  if (text.includes('LANTAS') || text.includes('KORLANTAS')) {
+    return 'LANTAS';
+  }
+  if (text.includes('BRIMOB') || text.includes('SAMAPTA') || text.includes('SABHARA') || text.includes('BAHARKAM') || text.includes('POLAIR')) {
+    return 'BRIMOB_SABHARA';
+  }
+  if (text.includes('LEMDIKLAT') || text.includes('SESPIM') || text.includes('AKPOL') || text.includes('STIK') || text.includes('WIDYAISWARA') || text.includes('SPN')) {
+    return 'LEMDIKLAT';
+  }
+  if (text.includes('KEMENTERIAN') || text.includes('BNN') || text.includes('KPK') || text.includes('BNPT') || text.includes('DIVHUMAS') || text.includes('PURNA')) {
+    return 'LUAR_STRUKTUR';
+  }
+  return 'KEWILAYAHAN';
+}
+
 export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   currentUser,
   members,
@@ -32,9 +60,9 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 }) => {
   const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
-  const [jabatanList, setJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
+  const [customJabatanList, setCustomJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('wirasatya96_riwayat_jabatan');
+      const saved = localStorage.getItem('wirasatya96_riwayat_jabatan_v3');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -52,13 +80,33 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
     return INITIAL_RIWAYAT_JABATAN;
   });
 
+  const jabatanList = useMemo(() => {
+    const memberEntries: RiwayatJabatanLeting[] = members.map((m) => ({
+      id: `jab-member-${m.nrp}`,
+      perwiraNrp: m.nrp,
+      namaPerwira: m.namaLengkap,
+      pangkat: m.pangkat,
+      avatarUrl: getAvatarUrl(m.fotoUrl),
+      jabatan: m.jabatan || 'Perwira Polri',
+      satker: m.satker || 'Mabes Polri',
+      polda: m.polda || 'MABES POLRI',
+      fungsiPolri: inferFungsiPolri(m.jabatan || '', m.satker || '', m.polda || ''),
+      tahunMulai: 2024,
+      isCurrent: m.statusDinas !== 'PURNA_TUGAS',
+      uraianTugas: `Penugasan aktif pada ${m.satker || 'Polri'} (${m.polda || 'MABES POLRI'}).`,
+      dasarTR: 'Data Direktori Personel Wira Satya 96',
+    }));
+    return [...customJabatanList, ...memberEntries];
+  }, [customJabatanList, members]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newJabatan, setNewJabatan] = useState({
     jabatan: '',
-    satker: '',
-    polda: 'POLDA METRO JAYA',
+    polda: 'MABES POLRI',
+    satkerUtama: 'BARESKRIM POLRI',
+    subSatker: 'Pimpinan / Staf Utama Satker',
     fungsiPolri: 'RESERSE' as FungsiPolri,
-    tahunMulai: 2024,
+    tahunMulai: 2025,
     uraianTugas: '',
     prestasiOperasional: '',
     dasarTR: '',
@@ -66,12 +114,14 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
   const filteredJabatan = useMemo(() => {
     return jabatanList.filter((item) => {
+      const q = searchQuery.toLowerCase();
       const matchesSearch = 
-        item.jabatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.namaPerwira.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.satker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.polda.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.dasarTR && item.dasarTR.toLowerCase().includes(searchQuery.toLowerCase()));
+        item.jabatan.toLowerCase().includes(q) ||
+        item.namaPerwira.toLowerCase().includes(q) ||
+        item.perwiraNrp.toLowerCase().includes(q) ||
+        item.satker.toLowerCase().includes(q) ||
+        item.polda.toLowerCase().includes(q) ||
+        (item.dasarTR && item.dasarTR.toLowerCase().includes(q));
 
       const matchesFungsi = selectedFungsi === 'SEMUA' || item.fungsiPolri === selectedFungsi;
       return matchesSearch && matchesFungsi;
@@ -80,7 +130,12 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
   const handleAddJabatanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newJabatan.jabatan || !newJabatan.satker) return;
+    if (!newJabatan.jabatan) return;
+
+    const composedSatker =
+      newJabatan.subSatker && newJabatan.subSatker !== 'Pimpinan / Staf Utama Satker'
+        ? `${newJabatan.subSatker} - ${newJabatan.satkerUtama}`
+        : newJabatan.satkerUtama;
 
     const entry: RiwayatJabatanLeting = {
       id: `jab-${Date.now()}`,
@@ -89,28 +144,29 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       pangkat: currentUser.pangkat,
       avatarUrl: getAvatarUrl(currentUser.fotoUrl),
       jabatan: newJabatan.jabatan,
-      satker: newJabatan.satker,
+      satker: composedSatker,
       polda: newJabatan.polda,
       fungsiPolri: newJabatan.fungsiPolri,
       tahunMulai: Number(newJabatan.tahunMulai),
       isCurrent: true,
       uraianTugas: newJabatan.uraianTugas,
       prestasiOperasional: newJabatan.prestasiOperasional,
-      dasarTR: newJabatan.dasarTR || `ST/${Math.floor(1000 + Math.random() * 9000)}/X/KEP./2024`,
+      dasarTR: newJabatan.dasarTR || `ST/${Math.floor(1000 + Math.random() * 9000)}/X/KEP./2025`,
     };
 
-    const updated = [entry, ...jabatanList];
-    setJabatanList(updated);
+    const updated = [entry, ...customJabatanList];
+    setCustomJabatanList(updated);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_riwayat_jabatan', JSON.stringify(updated));
+      localStorage.setItem('wirasatya96_riwayat_jabatan_v3', JSON.stringify(updated));
     }
     setIsAddModalOpen(false);
     setNewJabatan({
       jabatan: '',
-      satker: '',
-      polda: 'POLDA METRO JAYA',
+      polda: 'MABES POLRI',
+      satkerUtama: 'BARESKRIM POLRI',
+      subSatker: 'Pimpinan / Staf Utama Satker',
       fungsiPolri: 'RESERSE',
-      tahunMulai: 2024,
+      tahunMulai: 2025,
       uraianTugas: '',
       prestasiOperasional: '',
       dasarTR: '',
@@ -470,26 +526,59 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Satuan Kerja (Satker) *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Misal: Ditreskrimum / Bareskrim Polri"
-                    value={newJabatan.satker}
-                    onChange={(e) => setNewJabatan({ ...newJabatan, satker: e.target.value })}
+                  <label className="block font-bold text-slate-700 mb-1">1. Wilayah Induk (Mabes / 38 Polda) *</label>
+                  <select
+                    value={newJabatan.polda}
+                    onChange={(e) => {
+                      const w = e.target.value;
+                      const satkers = getSatkerUtamaByWilayah(w);
+                      const firstS = satkers[0] || w;
+                      const subs = getSubSatkerOptionsBySatker(w, firstS);
+                      setNewJabatan({
+                        ...newJabatan,
+                        polda: w,
+                        satkerUtama: firstS,
+                        subSatker: subs[0] || 'Pimpinan / Staf Utama Satker',
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
-                  />
+                  >
+                    {DAFTAR_38_POLDA.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Polda / Mabes *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Misal: POLDA METRO JAYA / MABES POLRI"
-                    value={newJabatan.polda}
-                    onChange={(e) => setNewJabatan({ ...newJabatan, polda: e.target.value })}
+                  <label className="block font-bold text-slate-700 mb-1">2. Master Satker Utama (Satker / Polres) *</label>
+                  <select
+                    value={newJabatan.satkerUtama}
+                    onChange={(e) => {
+                      const s = e.target.value;
+                      const subs = getSubSatkerOptionsBySatker(newJabatan.polda, s);
+                      setNewJabatan({
+                        ...newJabatan,
+                        satkerUtama: s,
+                        subSatker: subs[0] || 'Pimpinan / Staf Utama Satker',
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
-                  />
+                  >
+                    {getSatkerUtamaByWilayah(newJabatan.polda).map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">3. Sub-Satker / Direktorat / Bagian / ADC</label>
+                  <select
+                    value={newJabatan.subSatker}
+                    onChange={(e) => setNewJabatan({ ...newJabatan, subSatker: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                  >
+                    {getSubSatkerOptionsBySatker(newJabatan.polda, newJabatan.satkerUtama).map((sub) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

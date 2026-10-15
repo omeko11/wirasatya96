@@ -383,3 +383,101 @@ export const JENIS_ANGGOTA_LIST = [
 ] as const;
 
 export type JenisAnggota = (typeof JENIS_ANGGOTA_LIST)[number];
+
+/**
+ * Helper Master Satker Berjenjang (Cascading Dropdown):
+ * Nivel 1: Wilayah / Induk ('MABES POLRI' | 38 Polda | 'KEMEN/LEMBAGA' | 'PURNA TUGAS')
+ * Nivel 2: Satker Utama (Bareskrim, SSDM, Ditreskrimum, Polres Jajaran, BIN, BNN, dll.)
+ * Nivel 3: Sub-Satker / Direktorat / Bagian / ADC Pimpinan
+ */
+export function getSatkerUtamaByWilayah(wilayah: string): string[] {
+  const clean = (wilayah || '').toUpperCase().trim();
+  if (clean === 'MABES POLRI' || clean === 'MABES') {
+    return [...SATKER_MABES_LIST];
+  }
+  if (clean === 'KEMEN/LEMBAGA' || clean === 'KEMENTERIAN / LEMBAGA') {
+    return [...DAFTAR_KEMEN_LEMBAGA];
+  }
+  if (clean === 'PURNA TUGAS') {
+    return [...STATUS_PURNA_TUGAS_LIST];
+  }
+  // Untuk 38 Polda: gabungkan Satker Tingkat Polda + Opsi Polrestabes/Polresta/Polres Jajaran + Spripim/ADC
+  return [
+    ...SUB_SATKER_POLDA_LIST.filter((s) => s !== 'LAINNYA'),
+    'POLRESTABES / POLRES METRO / POLRESTA / POLRES JAJARAN',
+    'ADC / SPRIPIM PIMPINAN POLDA',
+  ];
+}
+
+export function getSubSatkerOptionsBySatker(wilayah: string, satkerUtama: string): string[] {
+  const cleanWilayah = (wilayah || '').toUpperCase().trim();
+  const cleanSatker = (satkerUtama || '').toUpperCase().trim();
+
+  if (cleanWilayah === 'MABES POLRI' || cleanWilayah === 'MABES') {
+    const specific = getSubSatkerForMabes(cleanSatker);
+    if (specific.length > 0) {
+      return [
+        ...specific,
+        'UNSUR PIMPINAN / PATI SATKER',
+        'PAMEN / ANALIS KEBIJAKAN MADYA',
+        'ADC / STAF PRIBADI PIMPINAN',
+      ];
+    }
+    return [
+      'UNSUR PIMPINAN / PATI SATKER',
+      'BIRO / DIREKTORAT / BAGIAN UTAMA',
+      'PAMEN / ANALIS KEBIJAKAN MADYA',
+      'ADC / STAF PRIBADI PIMPINAN',
+    ];
+  }
+
+  if (cleanWilayah === 'KEMEN/LEMBAGA' || cleanWilayah === 'KEMENTERIAN / LEMBAGA') {
+    return [
+      'PIMPINAN TINGGI MADYA (ESELON I / DEPUTI / IRJEN)',
+      'PIMPINAN TINGGI PRATAMA (ESELON II / DIREKTUR / KARO)',
+      'FUNGSIONAL AHLI UTAMA / MADYA (PENYIDIK / ANALIS)',
+      'ADC / STAF KHUSUS PIMPINAN',
+    ];
+  }
+
+  if (cleanWilayah === 'PURNA TUGAS') {
+    return [
+      'PURNAWIRAWAN PATI POLRI',
+      'PURNAWIRAWAN PAMEN POLRI',
+      'DEWAN KOMISARIS / DIREKSI',
+      'PENGURUS PAGUYUBAN WIRA SATYA 96',
+    ];
+  }
+
+  // Tingkat Polda / Polres
+  if (cleanSatker.includes('POLRES')) {
+    return [
+      ...SUB_SATKER_POLRES_LIST.filter((s) => s !== 'LAINNYA'),
+      'ADC / AJUDAN KAPOLRES',
+    ];
+  }
+
+  if (cleanSatker.includes('PIMPINAN POLDA') || cleanSatker.includes('SPRIPIM') || cleanSatker.includes('ADC')) {
+    return [
+      'KAPOLDA',
+      'WAKAPOLDA',
+      'KOORSPRIPIM POLDA',
+      'KASUBBAG BUNGKOL / PROTOKOL',
+      'ADC KAPOLDA',
+      'ADC WAKAPOLDA',
+    ];
+  }
+
+  return [
+    'DIR / KARO / KABID / DANSAT / KA SPN (KEPALA SATKER)',
+    'WADIR / WADANSAT (WAKIL KEPALA SATKER)',
+    'KASUBDIT I / KABAG I',
+    'KASUBDIT II / KABAG II',
+    'KASUBDIT III / KABAG III',
+    'KASUBDIT IV / KABAG IV',
+    'AUDITOR / PENGAWAS MADYA TK. III',
+    'PAMEN / ANALIS KEBIJAKAN MUDA',
+    'ADC / STAF PIMPINAN SATKER',
+  ];
+}
+

@@ -49,6 +49,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Docker & Local Data Persistence (Keep directory structures via .gitkeep)
+.data/
 /data_aplikasi/postgres/*
 !/data_aplikasi/postgres/.gitkeep
 /data_aplikasi/minio/*

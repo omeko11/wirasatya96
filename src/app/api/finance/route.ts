@@ -8,29 +8,88 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const body = await req.json();
     const session = serverStore.getSession();
-    // Verification: only BENDAHARA, KETUA, and SUPERADMIN can record transactions
-    if (session && session.role === 'ANGGOTA') {
+    const effectiveRole = body.actorRole || session?.role;
+
+    // Penginputan data Kas, Iuran, & Aset murni hanya boleh dilakukan oleh BENDAHARA
+    if (effectiveRole !== 'BENDAHARA') {
       return NextResponse.json(
-        { success: false, message: 'Akses Ditolak: Hanya Bendahara, Ketua, dan Superadmin yang dapat mengelola kas.' },
+        {
+          success: false,
+          message: 'Akses Ditolak: Penginputan data Kas, Iuran, & Aset hanya dapat dilakukan oleh Bendahara.',
+        },
         { status: 403 }
       );
     }
 
-    const body = await req.json();
     const { action } = body;
 
     if (action === 'PAY_IURAN') {
-      const { nrp, nominal } = body;
-      const updated = serverStore.recordIuranPayment(nrp, Number(nominal));
+      const { nrp, nominal, dicatatOleh } = body;
+      const updated = serverStore.recordIuranPayment(nrp, Number(nominal), dicatatOleh);
       if (!updated) {
         return NextResponse.json({ success: false, message: 'Data iuran perwira tidak ditemukan' }, { status: 404 });
       }
-      return NextResponse.json({ success: true, message: 'Pembayaran iuran berhasil dicatat', data: updated });
+      return NextResponse.json({ success: true, message: 'Pembayaran iuran berhasil dicatat oleh Bendahara', data: updated });
+    }
+
+    if (action === 'ADD_ASSET') {
+      const {
+        kodeAset,
+        namaAset,
+        kategori,
+        satuan,
+        jumlahUnit,
+        nilaiPerolehanIdr,
+        estimasiNilaiIdr,
+        kustodianLokasi,
+        nomorSeriAtauWallet,
+        tanggalPerolehan,
+        keterangan,
+        dicatatOleh,
+      } = body;
+
+      if (!namaAset || !kategori || !estimasiNilaiIdr) {
+        return NextResponse.json(
+          { success: false, message: 'Nama aset, kategori, dan estimasi nilai IDR wajib diisi.' },
+          { status: 400 }
+        );
+      }
+
+      const newAsset = serverStore.addAsset({
+        kodeAset: kodeAset || 'WS96-AST-' + Date.now().toString().slice(-4),
+        namaAset,
+        kategori,
+        satuan: satuan || 'Unit',
+        jumlahUnit: Number(jumlahUnit) || 1,
+        nilaiPerolehanIdr: Number(nilaiPerolehanIdr) || Number(estimasiNilaiIdr),
+        estimasiNilaiIdr: Number(estimasiNilaiIdr),
+        kustodianLokasi: kustodianLokasi || 'Bendahara Paguyuban',
+        nomorSeriAtauWallet: nomorSeriAtauWallet || '-',
+        tanggalPerolehan: tanggalPerolehan || new Date().toISOString().split('T')[0],
+        keterangan: keterangan || '',
+        dicatatOleh: dicatatOleh || session?.nama || 'Bendahara',
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Aset portofolio berhasil dicatat oleh Bendahara',
+        data: newAsset,
+      });
+    }
+
+    if (action === 'DELETE_ASSET') {
+      const { id } = body;
+      const deleted = serverStore.deleteAsset(id);
+      if (!deleted) {
+        return NextResponse.json({ success: false, message: 'Data aset tidak ditemukan' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, message: 'Data aset berhasil dihapus' });
     }
 
     // Default: Add cash transaction
-    const { jenis, kategori, nominal, keterangan, pihakTerkait, nrpTerkait, nomorReferensi } = body;
+    const { jenis, kategori, nominal, keterangan, pihakTerkait, nrpTerkait, nomorReferensi, dicatatOleh } = body;
     if (!jenis || !nominal || !keterangan) {
       return NextResponse.json({ success: false, message: 'Jenis, nominal, dan keterangan wajib diisi' }, { status: 400 });
     }
@@ -44,11 +103,11 @@ export async function POST(req: NextRequest) {
       keterangan,
       pihakTerkait: pihakTerkait || '-',
       nrpTerkait: nrpTerkait || '',
-      dicatatOleh: session?.nama || 'Bendahara Paguyuban',
+      dicatatOleh: dicatatOleh || session?.nama || 'Bendahara',
     });
 
-    return NextResponse.json({ success: true, message: 'Transaksi kas berhasil dicatat', data: newTrx });
+    return NextResponse.json({ success: true, message: 'Transaksi kas berhasil dicatat oleh Bendahara', data: newTrx });
   } catch (error) {
-    return NextResponse.json({ success: false, message: 'Gagal mencatat transaksi kas', error }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Gagal memproses data kebendaharaan', error }, { status: 500 });
   }
 }
