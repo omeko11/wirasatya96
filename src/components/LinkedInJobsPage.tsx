@@ -1,376 +1,558 @@
 'use client';
 
-import React, { useState } from 'react';
-import { AuthUser, AnggotaWiraSatya } from '@/types';
+import React, { useState, useMemo } from 'react';
+import { AuthUser, AnggotaWiraSatya, RiwayatJabatanLeting, FungsiPolri } from '@/types';
+import { INITIAL_RIWAYAT_JABATAN } from '@/data/mockJabatan';
 import { 
   Briefcase, 
   Building2, 
   MapPin, 
-  Bookmark, 
-  CheckCircle2, 
   Search, 
-  Users, 
-  Send
+  PlusCircle,
+  Award,
+  ChevronRight,
+  CheckCircle2,
+  ExternalLink,
+  X
 } from 'lucide-react';
 
 interface LinkedInJobsPageProps {
   currentUser: AuthUser;
   members: AnggotaWiraSatya[];
   onOpenFormWizard?: () => void;
-}
-
-interface JobOpportunity {
-  id: string;
-  title: string;
-  company: string;
-  location: string;
-  type: string;
-  salaryRange: string;
-  postedTime: string;
-  alumniCount: number;
-  description: string;
-  category: 'SECURITY' | 'TENAGA_AHLI' | 'WIRAUSAHA' | 'LEGAL';
-  contactPerson: string;
+  onSelectMember?: (member: AnggotaWiraSatya) => void;
 }
 
 export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   currentUser,
   members,
   onOpenFormWizard,
+  onSelectMember,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('SEMUA');
+  const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
-  const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
-  const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
-
-  const sampleJobs: JobOpportunity[] = [
-    {
-      id: 'job-1',
-      title: 'Chief Security Officer (CSO) / Kepala Pengamanan Korporasi',
-      company: 'PT Bank Mandiri (Persero) Tbk',
-      location: 'Jakarta Selatan (Kantor Pusat)',
-      type: 'Purna Tugas / Kontrak Eksekutif',
-      salaryRange: 'Rp 45.000.000 - Rp 65.000.000 / bln',
-      postedTime: '3 hari yang lalu',
-      alumniCount: 3,
-      description: 'Memimpin arsitektur pengamanan fisik, aset digital perbankan, kepatuhan intelijen bisnis, dan koordinasi terpadu dengan aparat penegak hukum se-Indonesia.',
-      category: 'SECURITY',
-      contactPerson: 'Kombes Pol (Purn) Dr. Ruslan',
-    },
-    {
-      id: 'job-2',
-      title: 'Tenaga Ahli Madya / Konsultan Intelijen Strategis',
-      company: 'Kementerian Koordinator Bidang Politik & Keamanan',
-      location: 'Jakarta Pusat',
-      type: 'Konsultan Ahli Kebijakan',
-      salaryRange: 'Standar Remunerasi Eselon I/II',
-      postedTime: '1 minggu yang lalu',
-      alumniCount: 5,
-      description: 'Penyusunan analisis strategis pencegahan radikalisme, stabilitas keamanan nasional, dan rekomendasi operasional lintas sektoral.',
-      category: 'TENAGA_AHLI',
-      contactPerson: 'Brigjen Pol. Eko Agung',
-    },
-    {
-      id: 'job-3',
-      title: 'Managing Partner & Konsultan Hukum Investigasi',
-      company: 'Wira Satya Law & Risk Advisory Partners',
-      location: 'Jakarta & Surabaya',
-      type: 'Kemitraan Sinergi Alumni 96',
-      salaryRange: 'Profit Sharing / Kemitraan',
-      postedTime: '2 minggu yang lalu',
-      alumniCount: 8,
-      description: 'Firma hukum & penanganan investigasi fraud korporasi yang diinisiasi oleh alumni Akpol 1996 untuk wadah pengabdian purna tugas profesional.',
-      category: 'LEGAL',
-      contactPerson: 'Kombes Pol. Bambang Prasetyo',
-    },
-    {
-      id: 'job-4',
-      title: 'Direktur Operasional Logistik & Pengamanan Rantai Pasok',
-      company: 'PT Samudera Logistik Nusantara',
-      location: 'Tanjung Priok, Jakarta Utara',
-      type: 'Direksi Purna Tugas',
-      salaryRange: 'Rp 50.000.000 - Rp 70.000.000 / bln',
-      postedTime: '4 hari yang lalu',
-      alumniCount: 2,
-      description: 'Manajemen proteksi logistik pelabuhan, mitigasi penyelundupan, dan koordinasi dengan Ditpolairud dan Bea Cukai.',
-      category: 'SECURITY',
-      contactPerson: 'AKBP (Purn) Suryanto',
-    },
-    {
-      id: 'job-5',
-      title: 'Kemitraan Usaha Agrobisnis & Ketahanan Pangan Alumni 96',
-      company: 'Koperasi Bhayangkara Wira Satya 96',
-      location: 'Jawa Barat & Lampung',
-      type: 'Wirausaha Mandiri Bersama',
-      salaryRange: 'Bagi Hasil Usaha Tani & Ternak',
-      postedTime: 'Baru saja',
-      alumniCount: 14,
-      description: 'Unit usaha mandiri leting 96 di bidang perkebunan kopi, jagung, dan peternakan modern sebagai persiapan masa purna tugas produktif.',
-      category: 'WIRAUSAHA',
-      contactPerson: 'Kombes Pol. Hadi Wicaksono',
+  const [jabatanList, setJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('wirasatya96_riwayat_jabatan');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
     }
-  ];
-
-  const handleToggleSave = (jobId: string) => {
-    setSavedJobIds((prev) => 
-      prev.includes(jobId) ? prev.filter((id) => id !== jobId) : [...prev, jobId]
-    );
-  };
-
-  const handleApply = (jobId: string) => {
-    if (!appliedJobIds.includes(jobId)) {
-      setAppliedJobIds((prev) => [...prev, jobId]);
-      alert('Peminatan sinergi purna tugas berhasil dikirimkan ke koordinator alumni!');
-    }
-  };
-
-  const filteredJobs = sampleJobs.filter((job) => {
-    const matchSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchCategory = selectedCategory === 'SEMUA' || job.category === selectedCategory;
-    return matchSearch && matchCategory;
+    return INITIAL_RIWAYAT_JABATAN;
   });
 
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newJabatan, setNewJabatan] = useState({
+    jabatan: '',
+    satker: '',
+    polda: 'POLDA METRO JAYA',
+    fungsiPolri: 'RESERSE' as FungsiPolri,
+    tahunMulai: 2024,
+    uraianTugas: '',
+    prestasiOperasional: '',
+    dasarTR: '',
+  });
+
+  const filteredJabatan = useMemo(() => {
+    return jabatanList.filter((item) => {
+      const matchesSearch = 
+        item.jabatan.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.namaPerwira.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.satker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.polda.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.dasarTR && item.dasarTR.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      const matchesFungsi = selectedFungsi === 'SEMUA' || item.fungsiPolri === selectedFungsi;
+      return matchesSearch && matchesFungsi;
+    });
+  }, [jabatanList, searchQuery, selectedFungsi]);
+
+  const handleAddJabatanSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newJabatan.jabatan || !newJabatan.satker) return;
+
+    const entry: RiwayatJabatanLeting = {
+      id: `jab-${Date.now()}`,
+      perwiraNrp: currentUser.nrp,
+      namaPerwira: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
+      pangkat: currentUser.pangkat,
+      avatarUrl: currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop&crop=face',
+      jabatan: newJabatan.jabatan,
+      satker: newJabatan.satker,
+      polda: newJabatan.polda,
+      fungsiPolri: newJabatan.fungsiPolri,
+      tahunMulai: Number(newJabatan.tahunMulai),
+      isCurrent: true,
+      uraianTugas: newJabatan.uraianTugas,
+      prestasiOperasional: newJabatan.prestasiOperasional,
+      dasarTR: newJabatan.dasarTR || `ST/${Math.floor(1000 + Math.random() * 9000)}/X/KEP./2024`,
+    };
+
+    const updated = [entry, ...jabatanList];
+    setJabatanList(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('wirasatya96_riwayat_jabatan', JSON.stringify(updated));
+    }
+    setIsAddModalOpen(false);
+    setNewJabatan({
+      jabatan: '',
+      satker: '',
+      polda: 'POLDA METRO JAYA',
+      fungsiPolri: 'RESERSE',
+      tahunMulai: 2024,
+      uraianTugas: '',
+      prestasiOperasional: '',
+      dasarTR: '',
+    });
+  };
+
+  const getFungsiBadge = (fungsi: FungsiPolri) => {
+    switch (fungsi) {
+      case 'RESERSE':
+        return { label: 'Bareskrim / Reserse', bg: 'bg-red-50 text-red-800 border-red-200' };
+      case 'INTELKAM':
+        return { label: 'Intelkam', bg: 'bg-amber-50 text-amber-800 border-amber-200' };
+      case 'LANTAS':
+        return { label: 'Lalu Lintas', bg: 'bg-blue-50 text-blue-800 border-blue-200' };
+      case 'BRIMOB_SABHARA':
+        return { label: 'Brimob / Sabhara', bg: 'bg-slate-100 text-slate-800 border-slate-300' };
+      case 'KEWILAYAHAN':
+        return { label: 'Kewilayahan (Polda/Polres)', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+      case 'LEMDIKLAT':
+        return { label: 'Lemdiklat / Sespim', bg: 'bg-purple-50 text-purple-800 border-purple-200' };
+      case 'LUAR_STRUKTUR':
+        return { label: 'Luar Struktur / Humas', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
+      default:
+        return { label: 'Polri', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+    }
+  };
+
   return (
-    <div className="max-w-7xl mx-auto py-2 font-sans text-slate-900 pb-20">
-      
-      {/* 2-Column LinkedIn Jobs Layout (Matching user screenshot 2) */}
+    <div className="font-sans text-slate-900 pb-20">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* ============================================================ */}
-        {/* LEFT RAIL (lg:col-span-4): USER PROFILE CARD & PREFERENCES */}
+        {/* LEFT RAIL (lg:col-span-4): PROFIL & STATISTIK PENUGASAN     */}
         {/* ============================================================ */}
         <div className="lg:col-span-4 space-y-4">
           
-          {/* Mini Profile Card */}
+          {/* User Career Card */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            <div className="h-16 bg-gradient-to-r from-polri-navy via-slate-800 to-amber-700" />
-            <div className="px-4 pb-4 relative">
-              <div className="w-16 h-16 rounded-full border-2 border-white shadow mx-auto -mt-8 overflow-hidden bg-slate-100">
+            {/* Bareskrim Red & Gold Header */}
+            <div className="h-16 bg-gradient-to-r from-red-950 via-red-900 to-amber-900 relative" />
+
+            <div className="px-5 pb-5 relative">
+              <div className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face'}
+                  src={currentUser.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover"
                 />
               </div>
 
-              <h3 className="text-sm font-bold text-slate-900 mt-2">
-                {currentUser.nama.split('(')[0].trim()}
+              <h3 className="text-sm font-bold text-slate-900 mt-2 leading-tight">
+                {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
               </h3>
-              <p className="text-[11px] text-slate-500">
-                {currentUser.pangkat} &bull; Alumni Akpol 1996
+              <p className="text-xs font-semibold text-red-800 mt-0.5">
+                {currentUser.pangkat} &bull; {currentUser.satker || 'Bareskrim Polri'}
               </p>
-              <p className="text-[11px] font-semibold text-blue-700 mt-0.5">
-                Kepolisian Negara Republik Indonesia
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Alumni Batalyon Wira Satya Akpol 1996
               </p>
 
-              <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-2 text-xs">
-                <div className="flex items-center justify-between text-slate-600">
-                  <span>Purna Tugas:</span>
-                  <span className="font-bold text-slate-800">Tahun 2032 (6 Thn Lagi)</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-600">
-                  <span>Jaringan Alumni:</span>
-                  <span className="font-bold text-[#0a66c2]">{members.length} Perwira</span>
-                </div>
-                <div className="flex items-center justify-between text-slate-600">
-                  <span>Kesiapan Purna:</span>
-                  <span className="font-bold text-emerald-600">Siap & Optimis</span>
-                </div>
+              {/* Action: Tambah Jabatan Baru */}
+              <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="w-full mt-4 py-2 px-3 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>+ Catat Riwayat Jabatan Baru</span>
+              </button>
+
+              <button
+                onClick={onOpenFormWizard}
+                className="w-full mt-2 py-1.5 px-3 rounded-lg border border-red-800/40 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
+              >
+                Perbarui Data Kedinasan
+              </button>
+            </div>
+          </div>
+
+          {/* Statistik Penugasan Letting 96 */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
+            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 pb-2 border-b border-slate-100">
+              <Building2 className="w-4 h-4 text-red-800" />
+              Statistik Tour of Duty Letting 96
+            </h4>
+
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
+                <span className="text-slate-600">Total Perwira Aktif:</span>
+                <span className="font-bold text-slate-900">286 Perwira</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-red-50">
+                <span className="text-red-900 font-medium">Bareskrim & Reserse:</span>
+                <span className="font-bold text-red-900">84 Perwira</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50">
+                <span className="text-amber-900 font-medium">Intelijen Keamanan:</span>
+                <span className="font-bold text-amber-900">38 Perwira</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50">
+                <span className="text-blue-900 font-medium">Korlantas / Lalu Lintas:</span>
+                <span className="font-bold text-blue-900">46 Perwira</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50">
+                <span className="text-emerald-900 font-medium">Kapolres & Pimpinan Wilayah:</span>
+                <span className="font-bold text-emerald-900">72 Perwira</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50">
+                <span className="text-purple-900 font-medium">Lemdiklat & Sespim:</span>
+                <span className="font-bold text-purple-900">46 Perwira</span>
               </div>
             </div>
-          </div>
 
-          {/* Quick Nav Card */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2 text-xs font-semibold text-slate-700">
-            <div className="pb-2 border-b border-slate-100 font-bold text-slate-900 flex items-center gap-1.5">
-              <Briefcase className="w-4 h-4 text-[#0a66c2]" />
-              <span>Persiapan Purna Tugas</span>
+            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+              Sumber: Surat Telegram Kapolri (TR Mutasi Pati/Pamen Polri) & Data Mandiri Letting 96.
             </div>
-            <button 
-              onClick={() => onOpenFormWizard && onOpenFormWizard()}
-              className="w-full text-left py-2 px-2.5 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors"
-            >
-              <span>Preferensi Modul 3 (Purna Tugas)</span>
-              <span className="text-[10px] text-blue-600 font-bold">Edit →</span>
-            </button>
-            <button 
-              onClick={() => setSelectedCategory('WIRAUSAHA')}
-              className="w-full text-left py-2 px-2.5 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors"
-            >
-              <span>Sinergi Usaha Leting ({sampleJobs.filter(j => j.category === 'WIRAUSAHA').length})</span>
-            </button>
-            <button 
-              onClick={() => setSelectedCategory('SECURITY')}
-              className="w-full text-left py-2 px-2.5 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors"
-            >
-              <span>Konsultan Keamanan Korporasi</span>
-            </button>
           </div>
-
-          {/* Slogan Card */}
-          <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-center">
-            <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
-              WADAH PURNA TUGAS WIRA SATYA
-            </span>
-            <p className="text-[10px] text-amber-800 mt-1">
-              Menghubungkan rekan satu angkatan dengan peluang kemitraan profesional menjelang dan pasca purna dinas Polri.
-            </p>
-          </div>
-
         </div>
 
         {/* ============================================================ */}
-        {/* CENTER / MAIN CONTENT (lg:col-span-8): JOBS LISTINGS        */}
+        {/* CENTER / MAIN FEED (lg:col-span-8): RIWAYAT JABATAN STREAM   */}
         {/* ============================================================ */}
         <div className="lg:col-span-8 space-y-4">
           
-          {/* Header Card */}
+          {/* Top Search & Filter Bar */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                  Peluang Purna Tugas & Kemitraan Leting 96
-                </h2>
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-red-800" />
+                  Riwayat Jabatan & Penugasan Alumni Wira Satya 96
+                </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Lowongan strategis, konsultan korporasi, dan sinergi usaha mandiri Batalyon Wira Satya.
+                  Arsip tour of duty, jabatan strategis kewilayahan, dan promosi 286 perwira leting Akpol 1996
                 </p>
               </div>
-              <span className="px-3 py-1 bg-blue-50 text-blue-800 border border-blue-200 rounded-full text-xs font-bold self-start">
-                {filteredJobs.length} Peluang Aktif
-              </span>
+
+              <div className="relative min-w-[240px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari jabatan, satker, nama, TR..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800/30 focus:border-red-800"
+                />
+              </div>
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Cari posisi, bidang keahlian, atau nama instansi/mitra..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
-              />
-            </div>
-
-            {/* Filter Chips */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pt-1 text-xs">
+            {/* Filter Pills based on Police Functions */}
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold pt-1 pb-1">
               {[
-                { key: 'SEMUA', label: 'Semua Bidang' },
-                { key: 'SECURITY', label: '🛡️ CSO / Pengamanan Korporasi' },
-                { key: 'TENAGA_AHLI', label: '🏛️ Tenaga Ahli Kebijakan' },
-                { key: 'WIRAUSAHA', label: '🌾 Sinergi Usaha Leting' },
-                { key: 'LEGAL', label: '⚖️ Legal & Investigasi' },
-              ].map((c) => (
+                { key: 'SEMUA', label: 'Semua Fungsi' },
+                { key: 'RESERSE', label: '🔍 Reserse / Bareskrim' },
+                { key: 'INTELKAM', label: '🛡️ Intelkam' },
+                { key: 'LANTAS', label: '🚦 Lalu Lintas' },
+                { key: 'BRIMOB_SABHARA', label: '⚡ Brimob & Sabhara' },
+                { key: 'KEWILAYAHAN', label: '🏛️ Kewilayahan (Polda/Polres)' },
+                { key: 'LEMDIKLAT', label: '🎓 Lemdiklat / Sespim' },
+                { key: 'LUAR_STRUKTUR', label: '🇮🇩 Luar Struktur / Humas' },
+              ].map((f) => (
                 <button
-                  key={c.key}
-                  onClick={() => setSelectedCategory(c.key)}
-                  className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
-                    selectedCategory === c.key
-                      ? 'bg-[#0a66c2] text-white shadow-xs'
+                  key={f.key}
+                  onClick={() => setSelectedFungsi(f.key)}
+                  className={`px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
+                    selectedFungsi === f.key
+                      ? 'bg-red-800 text-white font-bold shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {c.label}
+                  {f.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Job Listings Stream */}
-          <div className="space-y-3.5">
-            {filteredJobs.map((job) => {
-              const isSaved = savedJobIds.includes(job.id);
-              const isApplied = appliedJobIds.includes(job.id);
-              return (
-                <div
-                  key={job.id}
-                  className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 hover:shadow-md transition-all space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center font-bold flex-shrink-0 shadow-sm">
-                        <Building2 className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm sm:text-base font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer">
-                          {job.title}
-                        </h3>
-                        <p className="text-xs font-semibold text-slate-700 mt-0.5">
-                          {job.company}
-                        </p>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-1 flex-wrap">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-slate-400" />
-                            {job.location}
-                          </span>
-                          <span>&bull;</span>
-                          <span className="font-semibold text-emerald-700">
-                            {job.salaryRange}
-                          </span>
-                          <span>&bull;</span>
-                          <span>{job.postedTime}</span>
+          {/* Jabatan Cards Stream */}
+          <div className="space-y-3">
+            {filteredJabatan.length === 0 ? (
+              <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500 text-xs">
+                Tidak ditemukan riwayat jabatan yang sesuai kriteria pencarian.
+              </div>
+            ) : (
+              filteredJabatan.map((item) => {
+                const badge = getFungsiBadge(item.fungsiPolri);
+                const matchedMember = members.find((m) => m.nrp === item.perwiraNrp);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 hover:border-red-800/40 transition-all hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3.5">
+                        {/* Perwira Avatar */}
+                        <div 
+                          onClick={() => matchedMember && onSelectMember && onSelectMember(matchedMember)}
+                          className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-200 flex-shrink-0 cursor-pointer hover:border-red-800 transition-colors"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'}
+                            alt={item.namaPerwira}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+
+                        <div>
+                          {/* Jabatan Title */}
+                          <h2 className="text-sm sm:text-base font-bold text-slate-900 hover:text-red-800 transition-colors">
+                            {item.jabatan}
+                          </h2>
+
+                          {/* Perwira Name & Rank */}
+                          <div 
+                            onClick={() => matchedMember && onSelectMember && onSelectMember(matchedMember)}
+                            className="text-xs font-semibold text-red-900 hover:underline cursor-pointer flex items-center gap-1.5 mt-0.5"
+                          >
+                            <span>{item.namaPerwira}</span>
+                            <span className="text-slate-400 font-normal">&bull;</span>
+                            <span className="text-slate-600 font-normal">NRP {item.perwiraNrp}</span>
+                          </div>
+
+                          {/* Satker & Polda */}
+                          <div className="flex items-center gap-2 text-xs text-slate-500 mt-1 flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                              {item.satker}
+                            </span>
+                            <span>&bull;</span>
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                              {item.polda}
+                            </span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Status Badge */}
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        {item.isCurrent ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Menjabat Sekarang
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                            {item.tahunMulai} - {item.tahunSelesai || 'Selesai'}
+                          </span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badge.bg}`}>
+                          {badge.label}
+                        </span>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => handleToggleSave(job.id)}
-                      className={`p-2 rounded-full border transition-colors ${
-                        isSaved ? 'text-amber-500 border-amber-300 bg-amber-50' : 'text-slate-400 border-slate-200 hover:bg-slate-50'
-                      }`}
-                      title={isSaved ? 'Hapus Simpanan' : 'Simpan Peluang'}
-                    >
-                      <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-amber-500' : ''}`} />
-                    </button>
-                  </div>
+                    {/* Uraian Tugas */}
+                    {item.uraianTugas && (
+                      <p className="text-xs text-slate-700 mt-3 pl-0 sm:pl-[62px] leading-relaxed">
+                        {item.uraianTugas}
+                      </p>
+                    )}
 
-                  <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                    {job.description}
-                  </p>
+                    {/* Prestasi Operasional / Inovasi */}
+                    {item.prestasiOperasional && (
+                      <div className="mt-2.5 sm:ml-[62px] p-2.5 rounded-lg bg-amber-50/60 border border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
+                        <Award className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-bold">Prestasi Operasional / Inovasi: </span>
+                          <span>{item.prestasiOperasional}</span>
+                        </div>
+                      </div>
+                    )}
 
-                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-600">
-                      <Users className="w-4 h-4 text-[#0a66c2]" />
-                      <span><b>{job.alumniCount} perwira leting 96</b> terhubung di sektor ini</span>
+                    {/* Footer / TR & Actions */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs sm:ml-[62px] flex-wrap gap-2">
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        Dasar: <span className="text-slate-600 font-semibold">{item.dasarTR || '-'}</span>
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        {matchedMember && (
+                          <button
+                            onClick={() => onSelectMember && onSelectMember(matchedMember)}
+                            className="px-3 py-1.5 rounded-lg border border-red-800/40 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors flex items-center gap-1"
+                          >
+                            <span>Lihat Profil Perwira</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {matchedMember?.noHp && (
+                          <a
+                            href={`https://wa.me/${matchedMember.noHp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20Komandan%20${encodeURIComponent(item.namaPerwira)}%2C%20salam%20Wira%20Satya%2096`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1"
+                          >
+                            <span>Hubungi Rekan</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-[11px] text-slate-500 font-medium">Narahubung: {job.contactPerson}</span>
                   </div>
-
-                  <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
-                    <button
-                      onClick={() => handleApply(job.id)}
-                      disabled={isApplied}
-                      className={`px-5 py-2 rounded-full font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm ${
-                        isApplied
-                          ? 'bg-emerald-600 text-white cursor-default'
-                          : 'bg-[#0a66c2] hover:bg-[#004182] text-white'
-                      }`}
-                    >
-                      {isApplied ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Peminatan Terkirim</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          <span>Hubungi Mitra / Lamar</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
-
         </div>
 
       </div>
 
+      {/* ============================================================== */}
+      {/* MODAL: TAMBAH RIWAYAT JABATAN BARU (MUTASI / PROMOSI)          */}
+      {/* ============================================================== */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-red-900 text-white">
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-amber-300" />
+                <h3 className="font-bold text-base">Catat Riwayat Jabatan / Mutasi Baru</h3>
+              </div>
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-white/80 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddJabatanSubmit} className="p-6 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Nama Jabatan *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Misal: Dirreskrimum Polda Metro Jaya / Kapolrestabes..."
+                  value={newJabatan.jabatan}
+                  onChange={(e) => setNewJabatan({ ...newJabatan, jabatan: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Satuan Kerja (Satker) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Misal: Ditreskrimum / Bareskrim Polri"
+                    value={newJabatan.satker}
+                    onChange={(e) => setNewJabatan({ ...newJabatan, satker: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Polda / Mabes *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Misal: POLDA METRO JAYA / MABES POLRI"
+                    value={newJabatan.polda}
+                    onChange={(e) => setNewJabatan({ ...newJabatan, polda: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Fungsi Kepolisian</label>
+                  <select
+                    value={newJabatan.fungsiPolri}
+                    onChange={(e) => setNewJabatan({ ...newJabatan, fungsiPolri: e.target.value as FungsiPolri })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                  >
+                    <option value="RESERSE">Reserse / Bareskrim</option>
+                    <option value="INTELKAM">Intelijen Keamanan</option>
+                    <option value="LANTAS">Lalu Lintas</option>
+                    <option value="BRIMOB_SABHARA">Brimob & Sabhara</option>
+                    <option value="KEWILAYAHAN">Kewilayahan (Polda/Polres)</option>
+                    <option value="LEMDIKLAT">Lemdiklat / Sespim</option>
+                    <option value="LUAR_STRUKTUR">Luar Struktur / Humas</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tahun Mulai Menjabat</label>
+                  <input
+                    type="number"
+                    value={newJabatan.tahunMulai}
+                    onChange={(e) => setNewJabatan({ ...newJabatan, tahunMulai: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Dasar Surat Telegram Kapolri (TR)</label>
+                <input
+                  type="text"
+                  placeholder="Misal: ST/1422/VI/KEP./2024"
+                  value={newJabatan.dasarTR}
+                  onChange={(e) => setNewJabatan({ ...newJabatan, dasarTR: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Uraian Tugas Pokok</label>
+                <textarea
+                  rows={2}
+                  placeholder="Ringkasan tanggung jawab operasional dan pembinaan..."
+                  value={newJabatan.uraianTugas}
+                  onChange={(e) => setNewJabatan({ ...newJabatan, uraianTugas: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Prestasi Operasional / Kasus Menonjol</label>
+                <textarea
+                  rows={2}
+                  placeholder="Pengungkapan kasus menonjol, inovasi pelayanan, atau penghargaan pimpinan..."
+                  value={newJabatan.prestasiOperasional}
+                  onChange={(e) => setNewJabatan({ ...newJabatan, prestasiOperasional: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold shadow-md"
+                >
+                  Simpan Riwayat Penugasan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

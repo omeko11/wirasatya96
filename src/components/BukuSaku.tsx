@@ -248,11 +248,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         <div className="lg:col-span-3 space-y-4">
           
-          {/* User Mini Profile Card (Exact LinkedIn Left Rail) */}
+          {/* User Mini Profile Card (Exact User Screenshot media_1792053907699_1addcb0f.png) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
             
-            {/* Header cover background */}
-            <div className="h-16 bg-gradient-to-r from-polri-navy via-slate-800 to-polri-goldDark relative" />
+            {/* Header cover background - Bareskrim Red / Gold */}
+            <div className="h-16 bg-gradient-to-r from-red-950 via-red-900 to-amber-900 relative" />
 
             {/* Avatar overlapping */}
             <div className="px-4 pb-4 relative">
@@ -262,7 +262,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentMemberObj?.fotoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face'}
+                  src={currentUser.fotoUrl || currentMemberObj?.fotoUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -270,34 +270,36 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
               <h3 
                 onClick={() => setSelectedMember(currentMemberObj)}
-                className="text-sm font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer mt-2 leading-tight"
+                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight"
               >
-                {currentUser.nama.split('(')[0].trim()}
+                {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                {currentUser.pangkat} &bull; Alumni Akpol 1996
+                {currentUser.nrp === '00000001' ? 'Briptu • Developer' : `${currentUser.pangkat} • Alumni Akpol 1996`}
               </p>
 
-              {/* Metrics */}
+              {/* Metrics (Exact screenshot match) */}
               <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Rekan Letting:</span>
-                  <span className="font-bold text-[#0a66c2]">286 Perwira</span>
+                  <span className="font-bold text-red-900">286 Perwira</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Status Iuran 2026:</span>
-                  <span className="font-bold text-emerald-600">Lunas</span>
+                  <span className="font-bold text-slate-700">
+                    {currentUser.role === 'SUPERADMIN' ? '-' : 'Lunas'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Hak Akses:</span>
-                  <span className="font-bold text-slate-800">{currentUser.role}</span>
+                  <span className="font-bold text-slate-900">{currentUser.role}</span>
                 </div>
               </div>
 
               {/* Action Button */}
               <button
                 onClick={() => setSelectedMember(currentMemberObj)}
-                className="w-full mt-3 py-1.5 px-3 rounded-lg border border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 font-bold text-xs transition-colors"
+                className="w-full mt-3 py-1.5 px-3 rounded-lg border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
                 Lihat Profil Saya
               </button>
@@ -333,7 +335,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <select
                 value={selectedPolda}
                 onChange={(e) => setSelectedPolda(e.target.value)}
-                className="w-full py-1.5 px-2.5 rounded-lg border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
+                className="w-full py-1.5 px-2.5 rounded-lg border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-red-800"
               >
                 {poldaList.map((p) => (
                   <option key={p} value={p}>
@@ -351,7 +353,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <select
                 value={selectedPangkat}
                 onChange={(e) => setSelectedPangkat(e.target.value)}
-                className="w-full py-1.5 px-2.5 rounded-lg border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
+                className="w-full py-1.5 px-2.5 rounded-lg border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:ring-1 focus:ring-red-800"
               >
                 <option value="SEMUA">⭐ Semua Pangkat Perwira</option>
                 {DAFTAR_PANGKAT_POLRI.map((p) => (
@@ -400,9 +402,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs font-semibold text-slate-600 px-1 sm:px-2">
               <button 
                 onClick={() => setIsCreatePostModalOpen(true)}
-                className="flex items-center gap-2 hover:text-[#0a66c2] transition-colors p-1"
+                className="flex items-center gap-2 hover:text-red-900 transition-colors p-1"
               >
-                <ImageIcon className="w-4 h-4 text-[#0a66c2]" />
+                <ImageIcon className="w-4 h-4 text-red-800" />
                 <span>Foto</span>
               </button>
               <button 
@@ -435,7 +437,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               onClick={() => setActiveCenterTab('feed')}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                 activeCenterTab === 'feed'
-                  ? 'bg-[#0a66c2] text-white shadow-xs'
+                  ? 'bg-red-800 text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -446,7 +448,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               onClick={() => setActiveCenterTab('direktori')}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                 activeCenterTab === 'direktori'
-                  ? 'bg-[#0a66c2] text-white shadow-xs'
+                  ? 'bg-red-800 text-white shadow-xs'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
@@ -472,7 +474,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     onClick={() => setFeedCategoryFilter(cat.key)}
                     className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
                       feedCategoryFilter === cat.key
-                        ? 'bg-[#0a66c2] text-white shadow-xs'
+                        ? 'bg-red-800 text-white shadow-xs'
                         : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
                     }`}
                   >
@@ -501,7 +503,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   <p className="text-slate-600 text-xs">Belum ada postingan pada kategori ini.</p>
                   <button
                     onClick={() => setIsCreatePostModalOpen(true)}
-                    className="text-xs font-bold text-[#0a66c2] hover:underline"
+                    className="text-xs font-bold text-red-900 hover:underline"
                   >
                     + Buat Postingan Baru
                   </button>
@@ -523,7 +525,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 placeholder="Cari nama perwira, jabatan, atau satuan kerja..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
+                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
               />
             </div>
             <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
@@ -539,7 +541,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
               >
                 {/* Mini card cover */}
-                <div className="h-16 bg-gradient-to-r from-slate-900 via-polri-navy to-slate-800 relative">
+                <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 relative">
                   <span className="absolute top-2 right-3 px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur text-[10px] font-bold text-amber-300 border border-white/20">
                     {member.pangkat}
                   </span>
@@ -557,12 +559,12 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                         className="w-16 h-16 rounded-full object-cover border-4 border-white shadow bg-slate-100 cursor-pointer"
                         onClick={() => setSelectedMember(member)}
                       />
-                      <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center absolute bottom-0 right-0 border border-white text-[9px] font-bold">
+                      <span className="w-4 h-4 rounded-full bg-red-800 text-white flex items-center justify-center absolute bottom-0 right-0 border border-white text-[9px] font-bold">
                         ✓
                       </span>
                     </div>
 
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 mt-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-50 text-red-900 border border-red-200 mt-2">
                       {member.polda}
                     </span>
                   </div>
@@ -571,7 +573,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   <div className="space-y-1">
                     <h3 
                       onClick={() => setSelectedMember(member)}
-                      className="text-base font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer"
+                      className="text-base font-bold text-slate-900 hover:text-red-900 cursor-pointer"
                     >
                       {member.namaLengkap}
                     </h3>
@@ -589,13 +591,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     <span>Alumni Batalyon Wira Satya 1996 &bull; Purna {member.tahunPurnaTugas}</span>
                   </div>
 
-                  {/* Action Buttons (matching LinkedIn Connect / Message buttons) */}
+                  {/* Action Buttons */}
                   <div className="mt-3.5 flex items-center gap-2 pt-1">
                     <a
                       href={formatWaUrl(member.noHp)}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex-1 py-1.5 px-3 rounded-full bg-[#0a66c2] hover:bg-[#004182] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                      className="flex-1 py-1.5 px-3 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                     >
                       <Phone className="w-3.5 h-3.5" />
                       <span>Kirim Pesan WA</span>
@@ -666,7 +668,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <span 
                         onClick={() => setSelectedMember(m)}
-                        className="text-xs font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer truncate max-w-[140px]"
+                        className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px]"
                         title={m.namaLengkap}
                       >
                         {m.namaLengkap.split(',')[0]}
@@ -697,7 +699,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                       </a>
                       <button
                         onClick={() => setSelectedMember(m)}
-                        className="text-[10px] font-bold text-[#0a66c2] hover:underline"
+                        className="text-[10px] font-bold text-red-900 hover:underline"
                       >
                         Detail Medis →
                       </button>

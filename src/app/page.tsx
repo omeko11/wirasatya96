@@ -13,6 +13,7 @@ import { LinkedInMessagingPage } from '@/components/LinkedInMessagingPage';
 import { LinkedInJobsPage } from '@/components/LinkedInJobsPage';
 import { LinkedInNetworkPage } from '@/components/LinkedInNetworkPage';
 import { LinkedInNotificationsPage } from '@/components/LinkedInNotificationsPage';
+import { LinkedInSettingsPage } from '@/components/LinkedInSettingsPage';
 import { LinkedInProfileView } from '@/components/LinkedInProfileView';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
@@ -223,7 +224,7 @@ export default function Home() {
   const currentMemberProfile = members.find((m) => m.nrp === currentUser.nrp);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f3f2ef] selection:bg-[#0a66c2] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#f4f2ee] selection:bg-red-800 selection:text-white">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -242,18 +243,18 @@ export default function Home() {
         }}
       />
 
-      {/* Role Banner Notification Bar */}
-      <div className="bg-slate-900/95 border-b border-slate-800 text-slate-300 text-xs py-2 px-4 relative z-20">
+      {/* Role Banner Notification Bar - Bareskrim Red Theme */}
+      <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/50 text-slate-300 text-xs py-2 px-4 relative z-20">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center gap-1 text-polri-gold font-bold flex-shrink-0 text-[11px]">
+            <span className="inline-flex items-center gap-1 text-amber-400 font-bold flex-shrink-0 text-[11px]">
               <UserCheck className="w-3.5 h-3.5" />
               Sesi:
             </span>
-            <span className="text-slate-200 text-xs truncate font-medium">
+            <span className="text-slate-100 text-xs truncate font-semibold">
               {currentUser.nama.replace(/\(.*?\)/g, '').split(',')[0].trim()} ({currentUser.pangkat})
             </span>
-            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-white/10 text-polri-gold border border-polri-gold/30 flex-shrink-0">
+            <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-red-900/60 text-amber-300 border border-amber-500/40 flex-shrink-0">
               {currentUser.role}
             </span>
           </div>
@@ -261,15 +262,15 @@ export default function Home() {
           <div className="flex items-center gap-2 flex-shrink-0 text-xs">
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="text-polri-gold hover:text-yellow-300 text-[11px] font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
+              className="text-amber-300 hover:text-amber-200 text-[11px] font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 transition-colors"
             >
               <KeyRound className="w-3 h-3" />
               <span>Ganti Role</span>
             </button>
-            <span className="text-slate-700 hidden sm:inline">•</span>
+            <span className="text-red-800 hidden sm:inline">•</span>
             <button
               onClick={() => router.push('/login')}
-              className="text-slate-400 hover:text-white text-[11px] font-medium hidden sm:flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
+              className="text-slate-300 hover:text-white text-[11px] font-medium hidden sm:flex items-center gap-1 px-2 py-1 rounded hover:bg-white/5 transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               <span>Portal Login</span>
@@ -315,12 +316,13 @@ export default function Home() {
               />
             )}
 
-            {/* TAB 3: PEKERJAAN & PURNA TUGAS (JOBS - USER SCREENSHOT 2) */}
+            {/* TAB 3: RIWAYAT JABATAN & PENUGASAN LETING 96 */}
             {activeTab === 'purnaTugas' && (
               <LinkedInJobsPage
                 currentUser={currentUser}
                 members={members}
                 onOpenFormWizard={() => setActiveTab('form')}
+                onSelectMember={(m) => setViewingMember(m)}
               />
             )}
 
@@ -372,6 +374,18 @@ export default function Home() {
               <ExecutiveDashboard
                 members={members}
                 currentUser={currentUser}
+              />
+            )}
+
+            {/* TAB 9: PENGATURAN & PRIVASI (FIDO2 / PASSKEY / KEAMANAN) */}
+            {activeTab === 'pengaturan' && (
+              <LinkedInSettingsPage
+                currentUser={currentUser}
+                onClose={() => setActiveTab('direktori')}
+                onNavigateToTab={(t) => {
+                  setViewingMember(null);
+                  setActiveTab(t as AppTab);
+                }}
               />
             )}
           </>

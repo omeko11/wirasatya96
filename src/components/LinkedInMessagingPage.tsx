@@ -231,7 +231,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 placeholder="Cari pesan atau rekan leting..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-[#edf3f8] border-none rounded-lg text-xs placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-100 border-none rounded-lg text-xs placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-red-800"
               />
             </div>
           </div>
@@ -241,7 +241,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
             <button
               onClick={() => setActiveFilter('terfokus')}
               className={`px-3 py-1 rounded-full whitespace-nowrap transition-colors ${
-                activeFilter === 'terfokus' ? 'bg-[#01754f] text-white font-bold' : 'hover:bg-slate-100'
+                activeFilter === 'terfokus' ? 'bg-red-900 text-white font-bold' : 'hover:bg-slate-100'
               }`}
             >
               Terfokus
@@ -257,7 +257,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
             <button
               onClick={() => setActiveFilter('unread')}
               className={`px-3 py-1 rounded-full whitespace-nowrap transition-colors ${
-                activeFilter === 'unread' ? 'bg-blue-600 text-white font-bold' : 'hover:bg-slate-100'
+                activeFilter === 'unread' ? 'bg-red-800 text-white font-bold' : 'hover:bg-slate-100'
               }`}
             >
               Belum Dibaca
@@ -281,7 +281,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   key={conv.id}
                   onClick={() => setSelectedConvId(conv.id)}
                   className={`p-3 flex items-start gap-3 cursor-pointer transition-colors ${
-                    isSelected ? 'bg-[#edf3f8] border-l-4 border-l-[#0a66c2]' : 'hover:bg-slate-50'
+                    isSelected ? 'bg-red-50/60 border-l-4 border-l-red-800' : 'hover:bg-slate-50'
                   }`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -305,7 +305,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                     </p>
                   </div>
                   {conv.unreadCount > 0 && (
-                    <span className="w-4 h-4 rounded-full bg-[#0a66c2] text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="w-4 h-4 rounded-full bg-red-800 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0 mt-1">
                       {conv.unreadCount}
                     </span>
                   )}
@@ -379,12 +379,12 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   <div
                     className={`max-w-[78%] rounded-2xl p-3 text-xs sm:text-sm leading-relaxed shadow-xs ${
                       m.isMe
-                        ? 'bg-[#0a66c2] text-white rounded-br-xs'
+                        ? 'bg-red-800 text-white rounded-br-xs'
                         : 'bg-white text-slate-800 border border-slate-200 rounded-bl-xs'
                     }`}
                   >
                     <p className="whitespace-pre-line">{m.text}</p>
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${m.isMe ? 'text-blue-100' : 'text-slate-400'}`}>
+                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${m.isMe ? 'text-red-200' : 'text-slate-400'}`}>
                       <span>{m.timestamp}</span>
                       {m.isMe && <CheckCheck className="w-3 h-3 text-white" />}
                     </div>
@@ -401,14 +401,14 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   placeholder="Ketik pesan atau koordinasi untuk rekan leting..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-300 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
+                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-300 rounded-full text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
                 />
                 <button
                   type="submit"
                   disabled={!inputText.trim()}
                   className={`p-2.5 rounded-full transition-colors ${
                     inputText.trim()
-                      ? 'bg-[#0a66c2] text-white hover:bg-[#004182]'
+                      ? 'bg-red-800 text-white hover:bg-red-900'
                       : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
                 >
@@ -417,7 +417,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
               </div>
 
               <div className="flex items-center gap-2 px-1 text-slate-500 text-xs">
-                <button type="button" className="p-1 hover:text-[#0a66c2] transition-colors" title="Lampirkan Dokumen">
+                <button type="button" className="p-1 hover:text-red-900 transition-colors" title="Lampirkan Dokumen">
                   <Paperclip className="w-4 h-4" />
                 </button>
                 <button type="button" className="p-1 hover:text-emerald-600 transition-colors" title="Kirim Foto">

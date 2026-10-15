@@ -209,5 +209,46 @@ export interface FeedPost {
   impressionsCount?: number;
   category?: 'MOTIVASI' | 'KENAIKAN_PANGKAT' | 'BAKSOS' | 'REUNI' | 'KABAR_LETING' | 'UMUM';
   pinned?: boolean;
+  userReaction?: 'like' | 'celebrate' | 'support' | 'love' | 'insightful' | 'funny';
+  reactionCounts?: {
+    like: number;
+    celebrate: number;
+    support: number;
+    love: number;
+    insightful: number;
+    funny: number;
+  };
+}
+
+export type ReactionType = 'like' | 'celebrate' | 'support' | 'love' | 'insightful' | 'funny';
+
+// ==============================================================
+// MODUL RIWAYAT JABATAN & PENUGASAN INTERNAL LETING 96
+// ==============================================================
+export type FungsiPolri = 
+  | 'RESERSE' 
+  | 'INTELKAM' 
+  | 'LANTAS' 
+  | 'BRIMOB_SABHARA' 
+  | 'LEMDIKLAT' 
+  | 'KEWILAYAHAN' 
+  | 'LUAR_STRUKTUR';
+
+export interface RiwayatJabatanLeting {
+  id: string;
+  perwiraNrp: string;
+  namaPerwira: string;
+  pangkat: string;
+  avatarUrl: string;
+  jabatan: string;
+  satker: string;
+  polda: string;
+  fungsiPolri: FungsiPolri;
+  tahunMulai: number;
+  tahunSelesai?: number;
+  isCurrent: boolean;
+  uraianTugas: string;
+  prestasiOperasional?: string;
+  dasarTR?: string;
 }
 

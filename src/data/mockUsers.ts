@@ -4,13 +4,15 @@ export const PRESET_USERS: AuthUser[] = [
   {
     id: 'u-superadmin',
     nrp: '00000001',
-    nama: 'Eko Agung (Superadmin / Developer)',
-    pangkat: 'Jenderal Polisi',
-    email: 'eko.agung@wirasatya96.polri.go.id',
+    nama: 'Eko Agung',
+    pangkat: 'Briptu',
+    email: 'agungkrisdianto96@gmail.com',
     role: 'SUPERADMIN',
     profileId: 'ws-dev',
     mfaEnabled: true,
     mfaMethod: 'BIOMETRIC',
+    fotoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    satker: 'Bareskrim Polri / Tim IT Developer Wira Satya 96',
   },
   {
     id: 'u-ketua',

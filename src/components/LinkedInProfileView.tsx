@@ -154,12 +154,12 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span>{member.polda} • NRP {member.nrp}</span>
                     <span>&bull;</span>
-                    <span className="text-[#0a66c2] font-semibold hover:underline cursor-pointer">
+                    <span className="text-red-900 font-semibold hover:underline cursor-pointer">
                       Info Kontak Leting
                     </span>
                   </p>
 
-                  <p className="text-xs text-[#0a66c2] font-bold hover:underline cursor-pointer pt-0.5">
+                  <p className="text-xs text-red-900 font-bold hover:underline cursor-pointer pt-0.5">
                     286 rekan leting terhubung (Akpol 1996)
                   </p>
                 </div>
@@ -167,13 +167,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 {/* Right Side Institution Logos (matching LinkedIn profile) */}
                 <div className="space-y-2 flex-shrink-0 text-xs">
                   <div className="flex items-center gap-2 text-slate-800 font-bold">
-                    <div className="w-7 h-7 rounded bg-polri-navy text-amber-400 flex items-center justify-center font-black text-[11px] shadow-sm">
+                    <div className="w-7 h-7 rounded bg-red-950 text-amber-400 flex items-center justify-center font-black text-[11px] shadow-sm">
                       <Shield className="w-4 h-4" />
                     </div>
                     <span className="text-xs">Kepolisian Negara Republik Indonesia</span>
                   </div>
                   <div className="flex items-center gap-2 text-slate-700 font-medium">
-                    <div className="w-7 h-7 rounded bg-amber-500/20 text-amber-700 flex items-center justify-center font-black text-[10px] border border-amber-300">
+                    <div className="w-7 h-7 rounded bg-amber-500/20 text-amber-800 flex items-center justify-center font-black text-[10px] border border-amber-300">
                       AKPOL
                     </div>
                     <span className="text-xs">Batalyon Wira Satya 1996</span>
@@ -181,13 +181,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 </div>
               </div>
 
-              {/* Action Buttons (matching LinkedIn: Primary Blue Pill + Secondary Pills) */}
+              {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2.5 pt-4 mt-2 border-t border-slate-100">
                 <a
                   href={getWaUrl(member.noHp)}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-5 py-2 rounded-full bg-[#0a66c2] hover:bg-[#004182] text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                  className="px-5 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
                 >
                   <Phone className="w-4 h-4" />
                   <span>Kirim Pesan WhatsApp</span>
@@ -196,7 +196,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 {isOwner ? (
                   <button
                     onClick={onEditProfile}
-                    className="px-4 py-2 rounded-full border border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 font-bold text-xs sm:text-sm transition-colors"
+                    className="px-4 py-2 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs sm:text-sm transition-colors"
                   >
                     Perbarui Data Profil Saya
                   </button>
@@ -298,7 +298,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   Aktivitas & Postingan Leting
                 </h2>
-                <p className="text-xs text-[#0a66c2] font-semibold mt-0.5">
+                <p className="text-xs text-red-900 font-semibold mt-0.5">
                   286 Rekan Leting Terhubung
                 </p>
               </div>
@@ -308,7 +308,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   onClick={() => {
                     if (onClose) onClose();
                   }}
-                  className="px-4 py-1.5 rounded-full border border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 font-bold text-xs transition-colors flex items-center gap-1.5"
+                  className="px-4 py-1.5 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors flex items-center gap-1.5"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Buat Postingan di Feed</span>
@@ -340,7 +340,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
               <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
                 <span className="font-semibold text-slate-700">👍 94 leting menyukai &bull; 8 komentar</span>
-                <span className="text-[#0a66c2] font-semibold">149 tayangan leting</span>
+                <span className="text-red-900 font-semibold">149 tayangan leting</span>
               </div>
             </div>
           </div>
@@ -575,7 +575,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     <div className="min-w-0 flex-1">
                       <p 
                         onClick={() => onSelectMember && onSelectMember(peer)}
-                        className="text-xs font-bold text-slate-900 truncate hover:text-[#0a66c2] cursor-pointer"
+                        className="text-xs font-bold text-slate-900 truncate hover:text-red-900 cursor-pointer"
                       >
                         {peer.namaLengkap.split(',')[0]}
                       </p>
@@ -584,7 +584,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                         href={getWaUrl(peer.noHp)}
                         target="_blank"
                         rel="noreferrer"
-                        className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-[#0a66c2] hover:underline"
+                        className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-red-900 hover:underline"
                       >
                         <Phone className="w-2.5 h-2.5" /> Hubungi WA
                       </a>

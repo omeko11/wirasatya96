@@ -159,7 +159,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
                 <div
                   className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${
                     msg.sender === 'me'
-                      ? 'bg-[#0a66c2] text-white rounded-br-none shadow-sm'
+                      ? 'bg-red-800 text-white rounded-br-none shadow-sm'
                       : 'bg-white text-slate-800 rounded-bl-none border border-slate-200 shadow-sm'
                   }`}
                 >
@@ -205,13 +205,13 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
                   placeholder="Tulis pesan internal..."
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  className="w-full pl-3 pr-2 py-1.5 bg-slate-100 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0a66c2] border border-slate-200"
+                  className="w-full pl-3 pr-2 py-1.5 bg-slate-100 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-800 border border-slate-200"
                 />
               </div>
               <button
                 type="submit"
                 disabled={!inputText.trim()}
-                className="p-1.5 bg-[#0a66c2] hover:bg-[#004182] text-white rounded-lg disabled:opacity-40 transition-colors"
+                className="p-1.5 bg-red-800 hover:bg-red-900 text-white rounded-lg disabled:opacity-40 transition-colors"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>
@@ -247,7 +247,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
           </div>
 
           <div className="flex items-center gap-1 text-slate-400">
-            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-[#0a66c2] text-white text-[10px] font-bold">
+            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-red-800 text-white text-[10px] font-bold">
               {Object.keys(conversations).length}
             </span>
             <button type="button" className="p-1 hover:text-slate-700">
@@ -269,7 +269,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({ members, cur
                   placeholder="Cari rekan leting..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0a66c2]"
+                  className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
                 />
               </div>
             </div>

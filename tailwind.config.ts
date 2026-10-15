@@ -9,6 +9,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        bareskrim: {
+          DEFAULT: "#8B0000", // Merah Tua Bareskrim
+          dark: "#660000",
+          crimson: "#991B1B",
+          maroon: "#800020",
+          light: "#B91C1C",
+          subtle: "#FEF2F2",
+          border: "#FECACA",
+          gold: "#C5A059",
+          goldDark: "#92400E",
+        },
         polri: {
           navy: "#0A2540",
           navyDark: "#06182B",

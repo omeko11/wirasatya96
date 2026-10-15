@@ -94,7 +94,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
               <h3 className="text-sm font-bold text-slate-900">
                 Kelola Jaringan Leting
               </h3>
-              <span className="text-[10px] font-bold text-[#0a66c2] bg-blue-50 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-bold text-red-900 bg-red-50 px-2 py-0.5 rounded">
                 {currentUser.role}
               </span>
             </div>
@@ -105,7 +105,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                 className="w-full py-2 px-2.5 rounded-lg hover:bg-slate-100 flex items-center justify-between transition-colors text-slate-700"
               >
                 <div className="flex items-center gap-2.5">
-                  <Users className="w-4 h-4 text-[#0a66c2]" />
+                  <Users className="w-4 h-4 text-red-800" />
                   <span>Koneksi Rekan Leting</span>
                 </div>
                 <span className="font-bold text-slate-900">{members.length}</span>
@@ -203,7 +203,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                 <h3 className="text-sm font-bold text-slate-900">
                   Undangan & Koordinasi Angkatan ({invitations.length})
                 </h3>
-                <span className="text-xs text-[#0a66c2] font-semibold hover:underline cursor-pointer">
+                <span className="text-xs text-red-900 font-semibold hover:underline cursor-pointer">
                   Tampilkan semua
                 </span>
               </div>
@@ -236,7 +236,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                       </button>
                       <button
                         onClick={() => handleAcceptInvite(inv.id)}
-                        className="px-4 py-1.5 rounded-full border border-[#0a66c2] bg-white hover:bg-blue-50 text-xs font-bold text-[#0a66c2] transition-colors"
+                        className="px-4 py-1.5 rounded-full border border-red-800 bg-white hover:bg-red-50 text-xs font-bold text-red-900 transition-colors"
                       >
                         Terima
                       </button>
@@ -277,7 +277,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow flex flex-col text-center"
                 >
                   {/* Top Cover */}
-                  <div className="h-14 bg-gradient-to-r from-polri-navy to-slate-800 relative">
+                  <div className="h-14 bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 relative">
                     <span className="absolute top-1.5 right-2 px-2 py-0.2 rounded-full bg-black/40 text-[9px] font-bold text-amber-300">
                       {member.pangkat}
                     </span>
@@ -301,7 +301,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
 
                       <h4 
                         onClick={() => onSelectMember(member)}
-                        className="text-xs font-bold text-slate-900 hover:text-[#0a66c2] cursor-pointer mt-2 line-clamp-1"
+                        className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 line-clamp-1"
                         title={member.namaLengkap}
                       >
                         {member.namaLengkap.split(',')[0]}
@@ -309,7 +309,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                       <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
                         {member.jabatanTerakhir}
                       </p>
-                      <p className="text-[10px] font-semibold text-blue-700 mt-0.5">
+                      <p className="text-[10px] font-semibold text-red-900 mt-0.5">
                         {member.polda}
                       </p>
 
@@ -323,7 +323,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                         href={`https://wa.me/${member.noHp.replace(/[^0-9]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex-1 py-1 px-2 rounded-full border border-[#0a66c2] text-[#0a66c2] hover:bg-blue-50 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors"
+                        className="flex-1 py-1 px-2 rounded-full border border-red-800 text-red-900 hover:bg-red-50 font-bold text-[11px] flex items-center justify-center gap-1 transition-colors"
                       >
                         <Phone className="w-3 h-3" />
                         <span>Kirim WA</span>

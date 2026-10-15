@@ -143,7 +143,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
             </p>
             <button
               onClick={markAllAsRead}
-              className="text-[#0a66c2] font-bold hover:underline pt-2 flex items-center gap-1.5"
+              className="text-red-900 font-bold hover:underline pt-2 flex items-center gap-1.5"
             >
               <CheckCheck className="w-3.5 h-3.5" />
               <span>Tandai semua telah dibaca</span>
@@ -161,7 +161,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Bell className="w-5 h-5 text-[#0a66c2]" />
+                <Bell className="w-5 h-5 text-red-800" />
                 Notifikasi Batalyon Wira Satya 96
               </h2>
               <span className="text-xs text-slate-500 font-semibold">
@@ -182,7 +182,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
                   onClick={() => setActiveFilter(f.key as 'semua' | 'health' | 'treasury' | 'social')}
                   className={`px-3 py-1.5 rounded-full whitespace-nowrap transition-colors ${
                     activeFilter === f.key
-                      ? 'bg-slate-900 text-white'
+                      ? 'bg-red-800 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -198,7 +198,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
               <div
                 key={notif.id}
                 className={`p-4 sm:p-5 flex items-start justify-between gap-3 transition-colors ${
-                  !notif.isRead ? 'bg-blue-50/40' : 'hover:bg-slate-50'
+                  !notif.isRead ? 'bg-red-50/40' : 'hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-start gap-3.5 min-w-0">
@@ -213,7 +213,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-900">{notif.title}</span>
                       {!notif.isRead && (
-                        <span className="w-2 h-2 rounded-full bg-[#0a66c2]" />
+                        <span className="w-2 h-2 rounded-full bg-red-800" />
                       )}
                     </div>
 
@@ -226,7 +226,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
                       {notif.actionLabel && notif.targetTab && (
                         <button
                           onClick={() => onNavigateToTab(notif.targetTab!)}
-                          className="text-[#0a66c2] font-bold hover:underline"
+                          className="text-red-900 font-bold hover:underline"
                         >
                           {notif.actionLabel} →
                         </button>
