@@ -222,17 +222,20 @@ BUCKET_DOCUMENTS=wirasatya-documents
 
 ---
 
-## 👥 Hak Akses Berbasis Peran (Multi-Role RBAC)
+## 👥 Matriks Hak Akses & Kewenangan Kedinasan (Multi-Role RBAC)
 
-Platform dilengkapi sistem *Role Switcher* instan untuk pengujian fungsionalitas berdasarkan wewenang:
+Sistem menerapkan prinsip *Least Privilege* dan segregasi tugas kedinasan (*Separation of Duties*) yang terintegrasi dengan mekanisme otorisasi bertingkat:
 
-| Role | Identitas Akun Demo | Wewenang Khusus |
+| Peran (Role) | Lingkup Kedinasan | Wewenang Khusus & Tanggung Jawab |
 |---|---|---|
-| **SUPERADMIN** | `omeko11` (NRP 74010001) | Akses kontrol penuh: manajemen user, audit log sistem, konfigurasi SIPP, ekspor data global. |
-| **KETUA** | Irjen Pol. Suwondo Nainggolan | Executive Dashboard, pemantauan menyeluruh kesejahteraan dan mutasi leting, persetujuan program. |
-| **SEKRETARIAT** | Kombes Pol. Yulius Bambang | Pengelolaan direktori anggota, pembaruan data penempatan 38 Polda, verifikasi profil perwira. |
-| **BENDAHARA** | Kombes Pol. Heru Susanto | Akses penuh modul Bendahara Portal, pencatatan transaksi masuk/keluar kas, rekapitulasi iuran. |
-| **ANGGOTA** | Kombes Pol. Hadi Wicaksono | Partisipasi Feed linimasa, Buku Saku digital, pembaruan data mandiri, donasi iuran, info purna tugas. |
+| **SUPERADMIN** | Tim IT / Pengembang Bareskrim | Kontrol infrastruktur, pemeliharaan basis data, audit log keamanan, dan otorisasi verifikasi akun personel. |
+| **KETUA PAGUYUBAN** | Pimpinan Batalyon WS 1996 | Akses Executive Dashboard (Anev Leting), pengesahan program kerja, atensi kesehatan kritis, dan arah kebijakan. |
+| **SEKRETARIAT** | Kesekretariatan Batalyon | Verifikasi pendaftaran alumni baru, pengelolaan direktori 286 perwira, pembaruan penempatan 38 Polda, dan tata naskah dinas (TR/Sprint). |
+| **BENDAHARA** | Kebendaharaan Yayasan | Akses penuh modul Bendahara Portal, pencatatan mutasi kas masuk/keluar, rekapitulasi iuran, dan penyaluran santunan sosial. |
+| **ANGGOTA** | Alumni Akpol 1996 | Buku Saku digital 38 Polda & Mabes, partisipasi obrolan leting realtime, pembaruan data profil mandiri, dan transparansi kas. |
+
+> [!IMPORTANT]
+> **Kebijakan Keamanan Akun**: Seluruh personel alumni wajib melalui alur pendaftaran resmi (`NRP Dinas`) dan verifikasi oleh Superadmin / Sekretariat sebelum diberikan akses membuat kata sandi mandiri dan masuk ke portal.
 
 ---
 
