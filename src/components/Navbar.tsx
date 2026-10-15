@@ -22,6 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isLeadership = currentUser.role !== 'ANGGOTA';
 
   const roleColors: Record<UserRole, { badge: string; text: string }> = {
+    SUPERADMIN: { badge: 'bg-red-500/20 text-red-300 border-red-400/40', text: 'Superadmin Dev' },
     KETUA: { badge: 'bg-purple-500/20 text-purple-300 border-purple-400/40', text: 'Ketua Batalyon' },
     SEKRETARIAT: { badge: 'bg-blue-500/20 text-blue-300 border-blue-400/40', text: 'Kesekretariatan' },
     BENDAHARA: { badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40', text: 'Bendahara' },

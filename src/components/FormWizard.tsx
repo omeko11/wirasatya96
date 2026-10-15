@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AnggotaWiraSatya, Anak, AuthUser } from '@/types';
+import { AnggotaWiraSatya, Anak, AuthUser, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { 
   Shield, 
   Users, 
@@ -401,6 +401,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     NRP terkunci sebagai Primary Key akun Anda.
                   </span>
                 )}
+                {currentUser.role === 'SUPERADMIN' && (
+                  <span className="text-[10px] text-amber-600 font-bold mt-1 block">
+                    ⚡ Hak Superadmin / Dev: Anda memiliki hak penuh mengubah nomor NRP.
+                  </span>
+                )}
               </div>
 
               <div>
@@ -410,9 +415,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   onChange={(e) => handleInputChange('pangkat', e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
                 >
-                  <option value="Kombes Pol">Kombes Pol</option>
-                  <option value="Brigjen Pol">Brigjen Pol</option>
-                  <option value="Irjen Pol">Irjen Pol</option>
+                  {DAFTAR_PANGKAT_POLRI.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
                 </select>
               </div>
 

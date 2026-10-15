@@ -154,6 +154,13 @@ export default function Home() {
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={currentUser}
         onSelectUser={handleSelectUser}
+        onAddNewMemberAccount={(newM) => {
+          const updated = [newM, ...members];
+          setMembers(updated);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('wirasatya96_members', JSON.stringify(updated));
+          }
+        }}
       />
     </div>
   );

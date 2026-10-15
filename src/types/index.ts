@@ -1,12 +1,17 @@
-export type UserRole = 'KETUA' | 'SEKRETARIAT' | 'BENDAHARA' | 'ANGGOTA';
+export type UserRole = 'SUPERADMIN' | 'KETUA' | 'SEKRETARIAT' | 'BENDAHARA' | 'ANGGOTA';
+
+export type MfaMethod = 'BIOMETRIC' | 'GOOGLE_AUTH' | 'EMAIL_OTP' | 'PIN';
 
 export interface AuthUser {
   id: string;
   nrp: string;
   nama: string;
   pangkat: string;
+  email: string;
   role: UserRole;
-  profileId: string; // ID of their AnggotaWiraSatya profile
+  profileId: string;
+  mfaEnabled: boolean;
+  mfaMethod: MfaMethod;
 }
 
 export interface Anak {
@@ -42,6 +47,7 @@ export interface AnggotaWiraSatya {
   usia: number;
   jenisKelamin: 'LAKI-LAKI' | 'PEREMPUAN';
   noHp: string;
+  email?: string;
   kontakAdc?: string;
   namaAdc?: string;
   fotoUrl?: string;
@@ -95,3 +101,33 @@ export interface AnggotaWiraSatya {
   createdAt: string;
   updatedAt: string;
 }
+
+export const DAFTAR_PANGKAT_POLRI = [
+  // Perwira Tinggi (PATI)
+  'Jenderal Polisi',
+  'Komjen Pol',
+  'Irjen Pol',
+  'Brigjen Pol',
+  // Perwira Menengah (PAMEN)
+  'Kombes Pol',
+  'AKBP',
+  'Kompol',
+  // Perwira Pertama (PAMA)
+  'AKP',
+  'Iptu',
+  'Ipda',
+  // Bintara Tinggi & Bintara
+  'Aiptu',
+  'Aipda',
+  'Bripka',
+  'Brigpol',
+  'Briptu',
+  'Bripda',
+  // Tamtama
+  'Abrip',
+  'Abriptu',
+  'Abripda',
+  'Bharaka',
+  'Bharatu',
+  'Bharada',
+] as const;

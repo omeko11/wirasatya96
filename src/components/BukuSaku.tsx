@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { AnggotaWiraSatya } from '@/types';
+import { AnggotaWiraSatya, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { 
   Search, 
   MapPin, 
@@ -125,9 +125,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({ members, onAddNew }) => {
               className="py-2.5 px-3 rounded-lg border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
             >
               <option value="SEMUA">⭐ Semua Pangkat</option>
-              <option value="Kombes Pol">Kombes Pol</option>
-              <option value="Brigjen Pol">Brigjen Pol</option>
-              <option value="Irjen Pol">Irjen Pol</option>
+              {DAFTAR_PANGKAT_POLRI.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
             </select>
 
             <button
