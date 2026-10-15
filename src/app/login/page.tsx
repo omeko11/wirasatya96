@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { AuthUser, MfaMethod } from '@/types';
+import { WSLogo } from '@/components/WSLogo';
 import { 
   Key, 
   Eye, 
@@ -120,14 +121,12 @@ export default function LoginPage() {
       {/* ============================================================== */}
       {/* 1. TOP BRAND HEADER (EXACT LINKEDIN TOP LOGO)                 */}
       {/* ============================================================== */}
-      <header className="px-6 py-6 sm:px-12 flex items-center justify-between max-w-7xl w-full mx-auto">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-md bg-[#0a66c2] flex items-center justify-center text-white font-black text-sm shadow-sm">
-            WS
-          </div>
+      <header className="px-4 py-4 sm:px-12 flex items-center justify-between max-w-7xl w-full mx-auto">
+        <div className="flex items-center gap-3">
+          <WSLogo size="md" />
           <div>
             <span className="font-extrabold text-lg text-slate-900 tracking-tight block leading-tight">
-              Wira Satya <span className="text-[#0a66c2]">96</span>
+              Wira Satya <span className="text-red-800">96</span>
             </span>
             <span className="text-[10px] text-slate-500 font-semibold block">
               Portal Alumni Akpol 1996
@@ -137,10 +136,10 @@ export default function LoginPage() {
 
         <button
           onClick={() => setShowRoleDrawer(!showRoleDrawer)}
-          className="text-xs font-bold text-[#0a66c2] hover:text-[#004182] hover:underline flex items-center gap-1 bg-white px-3 py-1.5 rounded-full border border-slate-300 shadow-sm transition-all"
+          className="text-xs font-bold text-red-900 hover:text-red-950 hover:bg-red-50 flex items-center gap-1.5 bg-white px-3.5 py-1.5 rounded-full border border-slate-300 shadow-sm transition-all"
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Demo Role Picker</span>
+          <span>Demo Role</span>
         </button>
       </header>
 
@@ -249,7 +248,7 @@ export default function LoginPage() {
                     key={u.id}
                     type="button"
                     onClick={() => handleSelectRole(u)}
-                    className="p-2 text-left rounded-lg bg-white border border-slate-200 hover:border-[#0a66c2] hover:bg-blue-50/50 transition-all flex items-center justify-between text-xs"
+                    className="p-2 text-left rounded-lg bg-white border border-slate-200 hover:border-red-800 hover:bg-red-50/50 transition-all flex items-center justify-between text-xs"
                   >
                     <div>
                       <p className="font-bold text-slate-900 text-xs truncate">{u.nama.split(',')[0]}</p>
@@ -277,7 +276,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="NRP (contoh: 74080123) atau email"
-                className="w-full px-3.5 py-2.5 rounded-md border border-slate-400 text-slate-900 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a66c2] focus:border-[#0a66c2] transition-all"
+                className="w-full px-3.5 py-2.5 rounded-md border border-slate-400 text-slate-900 text-sm focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition-all"
               />
             </div>
 
@@ -290,7 +289,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-xs font-bold text-[#0a66c2] hover:underline"
+                  className="text-xs font-bold text-red-800 hover:underline"
                 >
                   {showPassword ? 'Sembunyikan' : 'Tampilkan'}
                 </button>
@@ -301,7 +300,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Kata Sandi"
-                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-400 text-slate-900 text-sm focus:outline-none focus:ring-1 focus:ring-[#0a66c2] focus:border-[#0a66c2] transition-all pr-10"
+                  className="w-full px-3.5 py-2.5 rounded-md border border-slate-400 text-slate-900 text-sm focus:outline-none focus:ring-1 focus:ring-red-800 focus:border-red-800 transition-all pr-10"
                 />
                 <button
                   type="button"
@@ -321,17 +320,17 @@ export default function LoginPage() {
                   e.preventDefault();
                   alert('Silakan hubungi Kesekretariatan atau Bendahara Yayasan Wira Satya 96 untuk reset kata sandi dinas.');
                 }}
-                className="text-xs font-bold text-[#0a66c2] hover:underline inline-block"
+                className="text-xs font-bold text-red-800 hover:underline inline-block"
               >
                 Lupa kata sandi?
               </a>
             </div>
 
-            {/* Submit Button (LinkedIn Full Width Rounded-Full Blue) */}
+            {/* Submit Button (Bareskrim Crimson Red) */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-[#0a66c2] hover:bg-[#004182] text-white font-bold rounded-full text-sm transition-all shadow-sm active:scale-[0.99] flex items-center justify-center gap-2"
+              className="w-full py-3 bg-red-800 hover:bg-red-900 text-white font-bold rounded-full text-sm transition-all shadow-sm active:scale-[0.99] flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -357,7 +356,7 @@ export default function LoginPage() {
               onClick={() => setShowPasskeyModal(true)}
               className="w-full py-2.5 px-4 border border-slate-400 hover:bg-slate-50 text-slate-700 font-bold rounded-full text-xs transition-colors flex items-center justify-center gap-2 shadow-sm"
             >
-              <Fingerprint className="w-4 h-4 text-[#0a66c2]" />
+              <Fingerprint className="w-4 h-4 text-red-800" />
               <span>Masuk dengan Kunci Sandi / FIDO2</span>
             </button>
 
@@ -382,7 +381,7 @@ export default function LoginPage() {
                 e.preventDefault();
                 alert('Silakan hubungi Kesekretariatan Leting untuk registrasi data perwira baru.');
               }}
-              className="text-[#0a66c2] font-bold hover:underline"
+              className="text-red-800 font-bold hover:underline"
             >
               Hubungi Sekretariat Leting
             </a>

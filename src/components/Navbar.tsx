@@ -23,6 +23,7 @@ import {
   Lock
 } from 'lucide-react';
 import { AuthUser, UserRole } from '@/types';
+import { WSLogo } from './WSLogo';
 
 export type AppTab = 
   | 'direktori' 
@@ -99,13 +100,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             
             {/* Left: Brand Logo + Bareskrim Red Search Box */}
             <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-md">
-              <div 
+              <WSLogo 
+                size="sm"
                 onClick={() => setActiveTab('direktori')}
-                className="w-9 h-9 rounded-lg bg-gradient-to-br from-red-950 via-red-900 to-amber-950 border border-amber-500/40 flex items-center justify-center text-amber-300 font-black text-xs shadow-md cursor-pointer hover:scale-105 transition-transform flex-shrink-0"
-                title="Batalyon Wira Satya Akpol 1996"
-              >
-                WS96
-              </div>
+              />
 
               {/* Search Bar */}
               <div className="relative flex-1 hidden sm:block max-w-xs">

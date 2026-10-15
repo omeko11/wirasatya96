@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#D81818" />
+      <stop offset="55%" stop-color="#B80A0A" />
+      <stop offset="100%" stop-color="#960202" />
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Red Squircle Rounded Box -->
+  <rect x="24" y="24" width="464" height="464" rx="105" ry="105" fill="url(#redGrad)" filter="url(#dropShadow)" />
+
+  <!-- Top Lettering "WS" in Arial Black -->
+  <text 
+    x="256" 
+    y="280" 
+    text-anchor="middle" 
+    fill="#FFFFFF" 
+    font-family="'Arial Black', Gadget, Impact, sans-serif" 
+    font-size="228" 
+    font-weight="900" 
+    letter-spacing="-6">WS</text>
+
+  <!-- Bottom Lettering "1996" in Bierstadt / Aptos -->
+  <text 
+    x="256" 
+    y="405" 
+    text-anchor="middle" 
+    fill="#FFFFFF" 
+    font-family="'Bierstadt', 'Aptos', 'Segoe UI', system-ui, sans-serif" 
+    font-size="114" 
+    font-weight="600" 
+    letter-spacing="4">1996</text>
+</svg>

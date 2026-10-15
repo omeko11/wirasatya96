@@ -7,6 +7,14 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "WIRA SATYA 96 — Buku Saku Digital & Sistem Kesejahteraan Akpol 1996",
   description: "Sistem Informasi Kesejahteraan, Direktori Penempatan Tugas, dan Kesiapan Purna Tugas Batalyon Wira Satya Akpol 1996 #SelaluBahagia",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" }
+    ],
+    apple: [
+      { url: "/icon.svg", type: "image/svg+xml" }
+    ],
+  },
 };
 
 export default function RootLayout({
