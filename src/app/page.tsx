@@ -8,6 +8,7 @@ import { FormWizard } from '@/components/FormWizard';
 import { ExecutiveDashboard } from '@/components/ExecutiveDashboard';
 import { BendaharaPortal } from '@/components/BendaharaPortal';
 import { RoleSwitcherModal } from '@/components/RoleSwitcherModal';
+import { LinkedInChatDock } from '@/components/LinkedInChatDock';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } from '@/data/mockFinance';
@@ -20,6 +21,7 @@ export default function Home() {
   const [members, setMembers] = useState<AnggotaWiraSatya[]>(INITIAL_MEMBERS);
   const [currentUser, setCurrentUser] = useState<AuthUser>(PRESET_USERS[0]); // Default Superadmin
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [navbarSearchQuery, setNavbarSearchQuery] = useState('');
 
   // Financial State
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(INITIAL_FINANCE_SUMMARY);
@@ -215,7 +217,7 @@ export default function Home() {
   const currentMemberProfile = members.find((m) => m.nrp === currentUser.nrp);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 selection:bg-polri-gold selection:text-polri-navy">
+    <div className="min-h-screen flex flex-col bg-[#f3f2ef] selection:bg-[#0a66c2] selection:text-white">
       {/* Top Navbar */}
       <Navbar
         activeTab={activeTab}
@@ -224,6 +226,7 @@ export default function Home() {
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
+        onSearchChange={setNavbarSearchQuery}
       />
 
       {/* Role Banner Notification Bar */}
@@ -263,12 +266,15 @@ export default function Home() {
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4">
         {/* TAB 1: BUKU SAKU */}
         {activeTab === 'direktori' && (
           <BukuSaku
             members={members}
             onAddNew={() => setActiveTab('form')}
+            currentUser={currentUser}
+            onEditMember={() => setActiveTab('form')}
+            externalSearch={navbarSearchQuery}
           />
         )}
 
@@ -338,6 +344,9 @@ export default function Home() {
           }
         }}
       />
+
+      {/* LinkedIn Floating Messenger Dock at Bottom Right */}
+      <LinkedInChatDock members={members} currentUserName={currentUser.nama} />
     </div>
   );
 }
