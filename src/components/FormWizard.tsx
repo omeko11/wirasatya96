@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AnggotaWiraSatya, Anak, AuthUser, DAFTAR_PANGKAT_POLRI } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { 
   Shield, 
   Users, 
@@ -14,7 +15,8 @@ import {
   Trash2, 
   Save, 
   Lock,
-  Building2
+  Building2,
+  Camera
 } from 'lucide-react';
 import { 
   TIPE_SATKER_LIST, 
@@ -770,6 +772,55 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <Users className="w-3.5 h-3.5 text-polri-gold" />
                 2. Identitas Pribadi & Kontak
               </span>
+
+              {/* Foto Profil Upload */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3.5 bg-white rounded-xl border border-slate-200">
+                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-polri-gold bg-slate-100 flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={getAvatarUrl(formData.fotoUrl)}
+                    alt="Foto Profil"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-800">Foto Profil Personel</div>
+                  <p className="text-[11px] text-slate-500">
+                    Unggah foto resmi dari perangkat Anda. Jika belum diunggah, foto default Batalyon Wira Satya 96 akan digunakan.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <label className="px-3 py-1.5 rounded-lg bg-polri-navy hover:bg-polri-navyLight text-polri-gold text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Unggah Foto</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (typeof reader.result === 'string') {
+                              handleInputChange('fotoUrl', reader.result);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    {formData.fotoUrl && formData.fotoUrl !== '/default-avatar.png' && (
+                      <button
+                        type="button"
+                        onClick={() => handleInputChange('fotoUrl', '/default-avatar.png')}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-600 text-xs font-semibold transition-colors"
+                      >
+                        Gunakan Default
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

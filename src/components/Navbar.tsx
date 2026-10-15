@@ -25,6 +25,7 @@ import {
   Lock
 } from 'lucide-react';
 import { AuthUser, UserRole } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 
 export type AppTab = 
@@ -260,7 +261,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={currentUser.fotoUrl || '/default-avatar.png'}
+                    src={getAvatarUrl(currentUser.fotoUrl)}
                     alt={cleanDisplayName}
                     className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 flex-shrink-0 bg-white"
                   />
@@ -280,7 +281,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="px-4 pb-3 border-b border-slate-100 flex items-start gap-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={currentUser.fotoUrl || '/default-avatar.png'}
+                        src={getAvatarUrl(currentUser.fotoUrl)}
                         alt={cleanDisplayName}
                         className="w-12 h-12 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
                       />

@@ -13,6 +13,7 @@ import {
   CheckCheck
 } from 'lucide-react';
 import { AnggotaWiraSatya } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 
 interface ChatMessage {
   id: string;
@@ -37,18 +38,8 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
 
-  // Sample mock conversations for batch camaraderie
-  const [conversations, setConversations] = useState<Record<string, ChatMessage[]>>({
-    'ws-74080123': [
-      { id: '1', sender: 'other', text: 'Halo Bro, gimana kabar di penempatan yang baru? Sehat selalu?', timestamp: '09:15' },
-      { id: '2', sender: 'me', text: 'Alhamdulillah sehat Komandan, sudah mulai aktif koordinasi di wilayah.', timestamp: '09:20' },
-      { id: '3', sender: 'other', text: 'Mantap! Jangan lupa cek pembaruan data keluarga dan iuran leting 2026 ya.', timestamp: '09:22' },
-    ],
-    'ws-74100678': [
-      { id: '1', sender: 'other', text: 'Mohon izin rekan, data santunan kesehatan leting sudah diverifikasi oleh kebendaharaan.', timestamp: 'Kemarin' },
-      { id: '2', sender: 'me', text: 'Siap terima kasih banyak bendahara, sangat membantu.', timestamp: 'Kemarin' },
-    ],
-  });
+  // Real conversations state (empty until messages are exchanged)
+  const [conversations, setConversations] = useState<Record<string, ChatMessage[]>>({});
 
   const filteredMembers = members.filter((m) =>
     m.namaLengkap.toLowerCase().includes(searchQuery.toLowerCase()) ||

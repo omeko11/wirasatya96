@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { AuthUser, AnggotaWiraSatya, RiwayatJabatanLeting, FungsiPolri } from '@/types';
 import { INITIAL_RIWAYAT_JABATAN } from '@/data/mockJabatan';
+import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { 
   Briefcase, 
   Building2, 
@@ -36,7 +37,13 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       const saved = localStorage.getItem('wirasatya96_riwayat_jabatan');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            return parsed.map((j: RiwayatJabatanLeting) => ({
+              ...j,
+              avatarUrl: getAvatarUrl(j.avatarUrl),
+            }));
+          }
         } catch (e) {
           console.error(e);
         }
@@ -80,7 +87,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       perwiraNrp: currentUser.nrp,
       namaPerwira: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       pangkat: currentUser.pangkat,
-      avatarUrl: currentUser.fotoUrl || '/default-avatar.png',
+      avatarUrl: getAvatarUrl(currentUser.fotoUrl),
       jabatan: newJabatan.jabatan,
       satker: newJabatan.satker,
       polda: newJabatan.polda,
@@ -153,16 +160,22 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
 
             <div className="px-5 pb-5 relative">
-              <div className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white">
+              <div 
+                onClick={() => onSelectMember && onSelectMember(getOrBuildUserProfile(currentUser, members))}
+                className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || '/default-avatar.png'}
+                  src={getAvatarUrl(currentUser.fotoUrl)}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover"
                 />
               </div>
 
-              <h3 className="text-sm font-bold text-slate-900 mt-2 leading-tight">
+              <h3 
+                onClick={() => onSelectMember && onSelectMember(getOrBuildUserProfile(currentUser, members))}
+                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight"
+              >
                 {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
               </h3>
               <p className="text-xs font-semibold text-red-800 mt-0.5">
@@ -190,7 +203,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
           </div>
 
-          {/* Statistik Penugasan Letting 96 */}
+          {/* Statistik Penugasan Letting 96 (Dynamic from Real Data) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
             <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 pb-2 border-b border-slate-100">
               <Building2 className="w-4 h-4 text-red-800" />
@@ -199,33 +212,33 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
-                <span className="text-slate-600">Total Perwira Aktif:</span>
-                <span className="font-bold text-slate-900">286 Perwira</span>
+                <span className="text-slate-600">Total Riwayat Tercatat:</span>
+                <span className="font-bold text-slate-900">{jabatanList.length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-red-50">
                 <span className="text-red-900 font-medium">Bareskrim & Reserse:</span>
-                <span className="font-bold text-red-900">84 Perwira</span>
+                <span className="font-bold text-red-900">{jabatanList.filter(j => j.fungsiPolri === 'RESERSE').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50">
                 <span className="text-amber-900 font-medium">Intelijen Keamanan:</span>
-                <span className="font-bold text-amber-900">38 Perwira</span>
+                <span className="font-bold text-amber-900">{jabatanList.filter(j => j.fungsiPolri === 'INTELKAM').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50">
                 <span className="text-blue-900 font-medium">Korlantas / Lalu Lintas:</span>
-                <span className="font-bold text-blue-900">46 Perwira</span>
+                <span className="font-bold text-blue-900">{jabatanList.filter(j => j.fungsiPolri === 'LANTAS').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50">
-                <span className="text-emerald-900 font-medium">Kapolres & Pimpinan Wilayah:</span>
-                <span className="font-bold text-emerald-900">72 Perwira</span>
+                <span className="text-emerald-900 font-medium">Kapolres & Kewilayahan:</span>
+                <span className="font-bold text-emerald-900">{jabatanList.filter(j => j.fungsiPolri === 'KEWILAYAHAN').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50">
                 <span className="text-purple-900 font-medium">Lemdiklat & Sespim:</span>
-                <span className="font-bold text-purple-900">46 Perwira</span>
+                <span className="font-bold text-purple-900">{jabatanList.filter(j => j.fungsiPolri === 'LEMDIKLAT').length} Jabatan</span>
               </div>
             </div>
 
             <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-              Sumber: Surat Telegram Kapolri (TR Mutasi Pati/Pamen Polri) & Data Mandiri Letting 96.
+              Sumber: Surat Telegram Kapolri (TR Mutasi) & Data Mandiri Leting 96.
             </div>
           </div>
         </div>
@@ -244,7 +257,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   Riwayat Jabatan & Penugasan Alumni Wira Satya 96
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Arsip tour of duty, jabatan strategis kewilayahan, dan promosi 286 perwira leting Akpol 1996
+                  Arsip tour of duty, jabatan strategis kewilayahan, dan promosi perwira leting Akpol 1996
                 </p>
               </div>
 

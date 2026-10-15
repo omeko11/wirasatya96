@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthUser, AnggotaWiraSatya, ChatMessage } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { 
   Search, 
   Send, 
@@ -44,9 +45,8 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     if (initialTargetMember && initialTargetMember.nrp !== currentUser.nrp) {
       return initialTargetMember.nrp;
     }
-    // Default to first member that is not current user
     const firstOther = members.find((m) => m.nrp !== currentUser.nrp);
-    return firstOther ? firstOther.nrp : '74030456';
+    return firstOther ? firstOther.nrp : '';
   });
 
   // All messages in state
@@ -113,18 +113,6 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activePartnerNrp]);
 
-  // Active Partner Profile
-  const activePartner = members.find((m) => m.nrp === activePartnerNrp) || {
-    id: 'ws-partner',
-    nrp: activePartnerNrp,
-    namaLengkap: 'Rekan Perwira Leting 96',
-    pangkat: 'Kombes Pol',
-    jabatanTerakhir: 'Perwira Menengah Polri',
-    satuanKerja: 'Mabes Polri',
-    polda: 'MABES POLRI',
-    noHp: '081234567890',
-  } as AnggotaWiraSatya;
-
   // Compute unique conversation partners from messages and members list
   const conversationPartners = React.useMemo(() => {
     const partnerMap = new Map<string, { member: AnggotaWiraSatya; lastMessage?: ChatMessage; unread: number }>();
@@ -164,44 +152,57 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
       }
     });
 
-    // 2. Ensure active partner is always in the list
-    if (activePartner && !partnerMap.has(activePartner.nrp)) {
-      partnerMap.set(activePartner.nrp, {
-        member: activePartner,
-        unread: 0,
-      });
-    }
-
-    // 3. Ensure a few top leting leaders are accessible if list is sparse
-    if (partnerMap.size < 3) {
-      members.slice(0, 4).forEach((m) => {
-        if (m.nrp !== currentUser.nrp && !partnerMap.has(m.nrp)) {
-          partnerMap.set(m.nrp, {
-            member: m,
-            unread: 0,
-          });
-        }
-      });
-    }
+    // 2. Ensure registered members in directory are accessible
+    members.slice(0, 6).forEach((m) => {
+      if (m.nrp !== currentUser.nrp && !partnerMap.has(m.nrp)) {
+        partnerMap.set(m.nrp, {
+          member: m,
+          unread: 0,
+        });
+      }
+    });
 
     return Array.from(partnerMap.values()).sort((a, b) => {
       const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
       const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [messages, currentUser.nrp, members, activePartner]);
+  }, [messages, currentUser.nrp, members]);
+
+  // Active Partner Profile (only real partner or custom target NRP or null)
+  const activePartner: AnggotaWiraSatya | null = React.useMemo(() => {
+    const targetNrp = activePartnerNrp || conversationPartners[0]?.member.nrp || '';
+    if (!targetNrp) return null;
+    const fromMembers = members.find((m) => m.nrp === targetNrp);
+    if (fromMembers) return fromMembers;
+    const fromPartners = conversationPartners.find((p) => p.member.nrp === targetNrp);
+    if (fromPartners) return fromPartners.member;
+    return {
+      id: 'ws-' + targetNrp,
+      nrp: targetNrp,
+      namaLengkap: `Perwira NRP ${targetNrp}`,
+      pangkat: 'Kombes Pol',
+      jabatanTerakhir: 'Alumni Akpol 1996',
+      satuanKerja: 'Polri',
+      polda: 'MABES POLRI',
+      noHp: '',
+      fotoUrl: '/default-avatar.png',
+    } as AnggotaWiraSatya;
+  }, [activePartnerNrp, members, conversationPartners]);
 
   // Messages between currentUser and activePartner
-  const activeChatMessages = messages.filter(
-    (m) =>
-      (m.senderNrp === currentUser.nrp && m.receiverNrp === activePartnerNrp) ||
-      (m.senderNrp === activePartnerNrp && m.receiverNrp === currentUser.nrp)
-  );
+  const activeChatMessages = activePartner
+    ? messages.filter(
+        (m) =>
+          (m.senderNrp === currentUser.nrp && m.receiverNrp === activePartner.nrp) ||
+          (m.senderNrp === activePartner.nrp && m.receiverNrp === currentUser.nrp)
+      )
+    : [];
 
   // Send message handler
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || isSending) return;
+    if (!inputText.trim() || isSending || !activePartner) return;
 
     const text = inputText.trim();
     setInputText('');
@@ -291,7 +292,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
   return (
     <div className="max-w-7xl mx-auto py-2 font-sans text-slate-900 pb-20">
       
-      {/* 2-Column LinkedIn Messenger Layout (1:1 with user image 1) */}
+      {/* 2-Column LinkedIn Messenger Layout */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[720px]">
         
         {/* ============================================================ */}
@@ -330,7 +331,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
             </div>
           </div>
 
-          {/* Tabs Filter (Terfokus, Semua, Unread) */}
+          {/* Tabs Filter (Terfokus, Semua) */}
           <div className="px-3 pt-2 pb-1 border-b border-slate-100 flex items-center gap-1 text-xs">
             <button
               onClick={() => setActiveFilter('terfokus')}
@@ -354,7 +355,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
             {filteredPartners.length === 0 ? (
               <div className="p-6 text-center space-y-2">
-                <p className="text-xs text-slate-500">Belum ada obrolan ditemukan.</p>
+                <p className="text-xs text-slate-500">Belum ada obrolan aktif.</p>
                 <button
                   onClick={() => setIsNewChatModalOpen(true)}
                   className="text-xs font-bold text-red-800 hover:underline inline-block"
@@ -364,7 +365,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
               </div>
             ) : (
               filteredPartners.map(({ member, lastMessage, unread }) => {
-                const isSelected = member.nrp === activePartnerNrp;
+                const isSelected = activePartner?.nrp === member.nrp;
                 return (
                   <div
                     key={member.nrp}
@@ -377,7 +378,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                     <div className="relative flex-shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={member.fotoUrl || '/default-avatar.png'}
+                        src={getAvatarUrl(member.fotoUrl)}
                         alt={member.namaLengkap}
                         className="w-11 h-11 rounded-full object-cover border border-slate-200"
                       />
@@ -421,183 +422,204 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
         {/* RIGHT COLUMN: ACTIVE CHAT CANVAS (md:col-span-7 lg:col-span-8)*/}
         {/* ============================================================ */}
         <div className="md:col-span-7 lg:col-span-8 flex flex-col bg-white">
-          
-          {/* Top Bar of Active Conversation */}
-          <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10">
-            <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activePartner.fotoUrl || '/default-avatar.png'}
-                alt={activePartner.namaLengkap}
-                className="w-10 h-10 rounded-full object-cover border border-slate-200 cursor-pointer"
-                onClick={() => onSelectMember && onSelectMember(activePartner)}
-              />
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h3 
-                    onClick={() => onSelectMember && onSelectMember(activePartner)}
-                    className="text-xs sm:text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer flex items-center gap-1"
-                  >
-                    <span>{activePartner.namaLengkap}</span>
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600 inline" />
-                  </h3>
-                </div>
-                <p className="text-[10px] sm:text-xs text-slate-500">
-                  {activePartner.jabatanTerakhir} &bull; {activePartner.satuanKerja} ({activePartner.polda})
+          {!activePartner ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-[#f8fafc]">
+              <div className="w-16 h-16 rounded-full bg-red-100 text-red-900 flex items-center justify-center shadow-xs">
+                <MessageSquare className="w-8 h-8" />
+              </div>
+              <div className="max-w-sm space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">Obrolan Leting Wira Satya 96</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Pilih rekan perwira dari daftar di sebelah kiri atau mulai obrolan baru untuk berkomunikasi langsung.
                 </p>
               </div>
+              <button
+                onClick={() => setIsNewChatModalOpen(true)}
+                className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Mulai Obrolan Baru</span>
+              </button>
             </div>
-
-            <div className="flex items-center gap-2">
-              {activePartner.noHp && (
-                <a
-                  href={getWaUrl(activePartner.noHp)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-full border border-red-800 text-red-900 hover:bg-red-50 text-xs font-bold flex items-center gap-1.5 transition-colors"
-                  title="Hubungi via WhatsApp"
-                >
-                  <Phone className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">WhatsApp</span>
-                </a>
-              )}
-
-              {onSelectMember && (
-                <button
-                  onClick={() => onSelectMember(activePartner)}
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-600 transition-colors"
-                  title="Lihat Profil Lengkap"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Security & Confidentiality Notice Header */}
-          <div className="bg-slate-50 px-4 py-1.5 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Kanal Komunikasi Terverifikasi Personel Batalyon Wira Satya Akpol 1996</span>
-            </span>
-            <span className="text-[10px] font-semibold text-red-900">#SelaluBahagia</span>
-          </div>
-
-          {/* Chat Message Stream */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#f8fafc]">
-            {activeChatMessages.length === 0 ? (
-              <div className="py-16 text-center space-y-3 max-w-sm mx-auto">
-                <div className="w-14 h-14 rounded-full bg-red-100 text-red-900 flex items-center justify-center mx-auto shadow-xs">
-                  <MessageSquare className="w-7 h-7" />
+          ) : (
+            <>
+              {/* Top Bar of Active Conversation */}
+              <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10">
+                <div className="flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={getAvatarUrl(activePartner.fotoUrl)}
+                    alt={activePartner.namaLengkap}
+                    className="w-10 h-10 rounded-full object-cover border border-slate-200 cursor-pointer"
+                    onClick={() => onSelectMember && onSelectMember(activePartner)}
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <h3 
+                        onClick={() => onSelectMember && onSelectMember(activePartner)}
+                        className="text-xs sm:text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer flex items-center gap-1"
+                      >
+                        <span>{activePartner.namaLengkap}</span>
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-600 inline" />
+                      </h3>
+                    </div>
+                    <p className="text-[10px] sm:text-xs text-slate-500">
+                      {activePartner.jabatanTerakhir} &bull; {activePartner.satuanKerja} ({activePartner.polda})
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800">
-                    Mulai Obrolan dengan {activePartner.namaLengkap.split(',')[0]}
-                  </h4>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Silakan sampaikan salam hormat, koordinasi dinas, atau silaturahmi satu letting.
-                  </p>
-                </div>
-                <div className="flex flex-wrap justify-center gap-1.5 pt-2">
-                  {[
-                    'Siap Komandan, mohon izin koordinasi.',
-                    'Salam hormat satu letting Wira Satya 96!',
-                    'Mohon info tindak lanjut agenda leting.',
-                  ].map((preset, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setInputText(preset)}
-                      className="px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-red-800 text-[11px] font-medium transition-all"
+
+                <div className="flex items-center gap-2">
+                  {activePartner.noHp && (
+                    <a
+                      href={getWaUrl(activePartner.noHp)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded-full border border-red-800 text-red-900 hover:bg-red-50 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      title="Hubungi via WhatsApp"
                     >
-                      {preset}
+                      <Phone className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">WhatsApp</span>
+                    </a>
+                  )}
+
+                  {onSelectMember && (
+                    <button
+                      onClick={() => onSelectMember(activePartner)}
+                      className="p-1.5 rounded-full hover:bg-slate-100 text-slate-600 transition-colors"
+                      title="Lihat Profil Lengkap"
+                    >
+                      <ExternalLink className="w-4 h-4" />
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
-            ) : (
-              activeChatMessages.map((msg) => {
-                const isMe = msg.senderNrp === currentUser.nrp;
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                  >
-                    <div
-                      className={`max-w-[82%] sm:max-w-[70%] p-3.5 rounded-2xl text-xs sm:text-sm shadow-xs ${
-                        isMe
-                          ? 'bg-red-800 text-white rounded-tr-none'
-                          : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
-                      }`}
-                    >
-                      {!isMe && (
-                        <p className="text-[10px] font-bold text-red-900 mb-1">
-                          {msg.senderName} ({msg.senderPangkat || activePartner.pangkat})
-                        </p>
-                      )}
 
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+              {/* Security & Confidentiality Notice Header */}
+              <div className="bg-slate-50 px-4 py-1.5 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                <span className="flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Kanal Komunikasi Terverifikasi Personel Batalyon Wira Satya Akpol 1996</span>
+                </span>
+                <span className="text-[10px] font-semibold text-red-900">#SelaluBahagia</span>
+              </div>
 
-                      {msg.attachmentUrl && (
-                        <div className="mt-2 p-2 rounded-lg bg-black/10 flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
-                          <span className="text-xs underline">{msg.attachmentName || 'Dokumen Terlampir'}</span>
-                        </div>
-                      )}
-
-                      <div
-                        className={`text-[9px] mt-1.5 flex items-center justify-end gap-1 ${
-                          isMe ? 'text-red-200' : 'text-slate-400'
-                        }`}
-                      >
-                        <span>{msg.timestamp}</span>
-                        {isMe && <CheckCheck className="w-3.5 h-3.5 text-white/90" />}
-                      </div>
+              {/* Chat Message Stream */}
+              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#f8fafc]">
+                {activeChatMessages.length === 0 ? (
+                  <div className="py-16 text-center space-y-3 max-w-sm mx-auto">
+                    <div className="w-14 h-14 rounded-full bg-red-100 text-red-900 flex items-center justify-center mx-auto shadow-xs">
+                      <MessageSquare className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800">
+                        Mulai Obrolan dengan {activePartner.namaLengkap.split(',')[0]}
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Silakan sampaikan salam hormat, koordinasi dinas, atau silaturahmi satu letting.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-1.5 pt-2">
+                      {[
+                        'Siap Komandan, mohon izin koordinasi.',
+                        'Salam hormat satu letting Wira Satya 96!',
+                        'Mohon info tindak lanjut agenda leting.',
+                      ].map((preset, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setInputText(preset)}
+                          className="px-2.5 py-1 rounded-full bg-white border border-slate-300 text-slate-700 hover:border-red-800 text-[11px] font-medium transition-all"
+                        >
+                          {preset}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                );
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+                ) : (
+                  activeChatMessages.map((msg) => {
+                    const isMe = msg.senderNrp === currentUser.nrp;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                      >
+                        <div
+                          className={`max-w-[82%] sm:max-w-[70%] p-3.5 rounded-2xl text-xs sm:text-sm shadow-xs ${
+                            isMe
+                              ? 'bg-red-800 text-white rounded-tr-none'
+                              : 'bg-white border border-slate-200 text-slate-900 rounded-tl-none'
+                          }`}
+                        >
+                          {!isMe && (
+                            <p className="text-[10px] font-bold text-red-900 mb-1">
+                              {msg.senderName} ({msg.senderPangkat || activePartner.pangkat})
+                            </p>
+                          )}
 
-          {/* Bottom Chat Input Bar */}
-          <div className="p-3 border-t border-slate-200 bg-white">
-            <form onSubmit={handleSendMessage} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={`Tulis pesan untuk ${activePartner.namaLengkap.split(',')[0]}...`}
-                  className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
-                />
+                          <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const preset = prompt('Masukkan URL dokumen/lampiran (misal PDF atau tautan OnlyOffice):');
-                    if (preset) {
-                      setInputText((prev) => (prev ? `${prev}\nLampiran: ${preset}` : `Lampiran Dokumen: ${preset}`));
-                    }
-                  }}
-                  className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                  title="Lampirkan Dokumen / Tautan Dinas"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </button>
+                          {msg.attachmentUrl && (
+                            <div className="mt-2 p-2 rounded-lg bg-black/10 flex items-center gap-2">
+                              <FileText className="w-4 h-4" />
+                              <span className="text-xs underline">{msg.attachmentName || 'Dokumen Terlampir'}</span>
+                            </div>
+                          )}
 
-                <button
-                  type="submit"
-                  disabled={!inputText.trim() || isSending}
-                  className="p-2.5 rounded-full bg-red-800 hover:bg-red-900 disabled:opacity-50 text-white transition-all shadow-sm active:scale-95"
-                  title="Kirim Pesan"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
+                          <div
+                            className={`text-[9px] mt-1.5 flex items-center justify-end gap-1 ${
+                              isMe ? 'text-red-200' : 'text-slate-400'
+                            }`}
+                          >
+                            <span>{msg.timestamp}</span>
+                            {isMe && <CheckCheck className="w-3.5 h-3.5 text-white/90" />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
               </div>
-            </form>
-          </div>
 
+              {/* Bottom Chat Input Bar */}
+              <div className="p-3 border-t border-slate-200 bg-white">
+                <form onSubmit={handleSendMessage} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      placeholder={`Tulis pesan untuk ${activePartner.namaLengkap.split(',')[0]}...`}
+                      className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-full text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const preset = prompt('Masukkan URL dokumen/lampiran (misal PDF atau tautan OnlyOffice):');
+                        if (preset) {
+                          setInputText((prev) => (prev ? `${prev}\nLampiran: ${preset}` : `Lampiran Dokumen: ${preset}`));
+                        }
+                      }}
+                      className="p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                      title="Lampirkan Dokumen / Tautan Dinas"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={!inputText.trim() || isSending}
+                      className="p-2.5 rounded-full bg-red-800 hover:bg-red-900 disabled:opacity-50 text-white transition-all shadow-sm active:scale-95"
+                      title="Kirim Pesan"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </>
+          )}
         </div>
 
       </div>
@@ -629,7 +651,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   type="text"
                   value={newChatSearch}
                   onChange={(e) => setNewChatSearch(e.target.value)}
-                  placeholder="Cari nama perwira, NRP, pangkat, atau Polda..."
+                  placeholder="Ketik NRP atau cari nama perwira di direktori..."
                   autoFocus
                   className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
                 />
@@ -638,9 +660,26 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
 
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2">
               {searchableMembers.length === 0 ? (
-                <p className="p-6 text-center text-xs text-slate-500">
-                  Tidak ada perwira leting yang cocok dengan pencarian.
-                </p>
+                <div className="p-6 text-center space-y-3">
+                  <p className="text-xs text-slate-500">
+                    {newChatSearch.trim()
+                      ? `Perwira "${newChatSearch}" belum ada di daftar direktori.`
+                      : 'Belum ada perwira lain di direktori.'}
+                  </p>
+                  {newChatSearch.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivePartnerNrp(newChatSearch.trim());
+                        setIsNewChatModalOpen(false);
+                        setNewChatSearch('');
+                      }}
+                      className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white text-xs font-bold transition-colors"
+                    >
+                      Mulai Obrolan dengan NRP / Nama &ldquo;{newChatSearch.trim()}&rdquo;
+                    </button>
+                  )}
+                </div>
               ) : (
                 searchableMembers.map((m) => (
                   <div
@@ -654,7 +693,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={m.fotoUrl || '/default-avatar.png'}
+                      src={getAvatarUrl(m.fotoUrl)}
                       alt={m.namaLengkap}
                       className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
                     />

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AuthUser } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { 
   User, 
   Lock, 
@@ -86,7 +87,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-800 flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentUser.fotoUrl || '/default-avatar.png'}
+              src={getAvatarUrl(currentUser.fotoUrl)}
               alt={currentUser.nama}
               className="w-full h-full object-cover"
             />
@@ -117,7 +118,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
         
         {/* ============================================================ */}
-        {/* LEFT SIDEBAR MENU (SCREENSHOTS 1-5 NAVIGATION MATCH)        */}
+        {/* LEFT SIDEBAR MENU                                            */}
         {/* ============================================================ */}
         <div className="md:col-span-4 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden divide-y divide-slate-100 text-xs">
           {[
@@ -150,12 +151,12 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
         </div>
 
         {/* ============================================================ */}
-        {/* RIGHT CONTENT RAIL (MATCHING SCREENSHOT DETAILS)             */}
+        {/* RIGHT CONTENT RAIL                                           */}
         {/* ============================================================ */}
         <div className="md:col-span-8 space-y-4">
           
           {/* ========================================================== */}
-          {/* 1. PREFERENSI AKUN (SCREENSHOT 1)                          */}
+          {/* 1. PREFERENSI AKUN                                         */}
           {/* ========================================================== */}
           {activeSection === 'account' && (
             <div className="space-y-4 animate-fadeIn">
@@ -165,7 +166,10 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                   Informasi profil
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div 
+                    onClick={() => onNavigateToTab ? onNavigateToTab('form') : showToast('Membuka form edit profil...')}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition-colors"
+                  >
                     <div>
                       <div className="font-semibold text-slate-800">Nama, lokasi, dan institusi</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
@@ -174,14 +178,20 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div 
+                    onClick={() => onNavigateToTab ? onNavigateToTab('form') : showToast('Membuka form data kedinasan...')}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition-colors"
+                  >
                     <div>
                       <div className="font-semibold text-slate-800">Info demografi dinas</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">NRP {currentUser.nrp} &bull; Pangkat {currentUser.pangkat}</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div 
+                    onClick={() => showToast(`Akun NRP ${currentUser.nrp} telah terverifikasi resmi.`)}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer transition-colors"
+                  >
                     <div>
                       <div className="font-semibold text-slate-800">Verifikasi Anggota Akpol 1996</div>
                       <div className="text-emerald-600 font-semibold text-[11px] flex items-center gap-1 mt-0.5">
@@ -227,14 +237,17 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                   Preferensi umum
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div 
+                    onClick={() => showToast('Bahasa Indonesia (Resmi Polri) sedang aktif.')}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer"
+                  >
                     <div>
                       <div className="font-semibold text-slate-800">Bahasa aplikasi</div>
                       <div className="text-slate-500 text-[11px]">Bahasa Indonesia (Resmi Polri)</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
                       <div className="font-semibold text-slate-800">Putar otomatis video dokumentasi</div>
                       <div className="text-slate-500 text-[11px]">{isAutoPlayVideo ? 'Aktif' : 'Nonaktif'}</div>
@@ -246,7 +259,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                       {isAutoPlayVideo ? 'Aktif' : 'Nonaktif'}
                     </button>
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
                       <div className="font-semibold text-slate-800">Efek suara notifikasi</div>
                       <div className="text-slate-500 text-[11px]">{isSoundEffects ? 'Aktif' : 'Nonaktif'}</div>
@@ -258,10 +271,13 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                       {isSoundEffects ? 'Aktif' : 'Nonaktif'}
                     </button>
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div 
+                    onClick={() => onNavigateToTab ? onNavigateToTab('form') : showToast('Membuka pengaturan foto profil...')}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer"
+                  >
                     <div>
-                      <div className="font-semibold text-slate-800">Menampilkan foto profil</div>
-                      <div className="text-slate-500 text-[11px]">Semua anggota Batalyon Wira Satya 96</div>
+                      <div className="font-semibold text-slate-800">Ubah Foto Profil</div>
+                      <div className="text-slate-500 text-[11px]">Perbarui foto profil Anda di Formulir Data Diri</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
@@ -271,7 +287,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           )}
 
           {/* ========================================================== */}
-          {/* 2. LOGIN DAN KEAMANAN (SCREENSHOT 2 MATCH)                 */}
+          {/* 2. LOGIN DAN KEAMANAN                                      */}
           {/* ========================================================== */}
           {activeSection === 'security' && (
             <div className="space-y-4 animate-fadeIn">
@@ -295,7 +311,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                         <span>Alamat email terdaftar</span>
                       </div>
                       <div className="text-slate-500 text-[11px] font-mono mt-0.5">
-                        {currentUser.email || 'agungkrisdianto96@gmail.com'}
+                        {currentUser.email || 'Belum diatur (Perbarui di Data Diri)'}
                       </div>
                     </div>
                     <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
@@ -305,13 +321,16 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                   </div>
 
                   {/* Phone */}
-                  <div className="py-3 flex items-center justify-between">
+                  <div 
+                    onClick={() => onNavigateToTab && onNavigateToTab('form')}
+                    className="py-3 flex items-center justify-between hover:bg-slate-50 px-1 rounded cursor-pointer"
+                  >
                     <div>
                       <div className="font-semibold text-slate-800 flex items-center gap-1.5">
                         <Smartphone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Nomor telepon OTP</span>
+                        <span>Nomor telepon WhatsApp / OTP</span>
                       </div>
-                      <div className="text-slate-500 text-[11px] font-mono mt-0.5">+62 812-9696-1996</div>
+                      <div className="text-slate-500 text-[11px] mt-0.5">Klik untuk memperbarui nomor kontak di Data Diri</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
@@ -323,7 +342,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                         <KeyRound className="w-3.5 h-3.5 text-slate-400" />
                         <span>Ubah kata sandi</span>
                       </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">Terakhir diperbarui 14 hari yang lalu</div>
+                      <div className="text-slate-500 text-[11px] mt-0.5">Gunakan kata sandi kuat minimal 6 karakter</div>
                     </div>
                     <button
                       onClick={() => setActivePasswordModal(true)}
@@ -333,7 +352,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     </button>
                   </div>
 
-                  {/* Passkey / FIDO2 (User explicit request) */}
+                  {/* Passkey / FIDO2 */}
                   <div className="py-3 flex items-center justify-between">
                     <div>
                       <div className="font-semibold text-slate-800 flex items-center gap-1.5">
@@ -364,7 +383,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     <div>
                       <div className="font-semibold text-slate-800">Di mana Anda login</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Windows PC (Mabes Bareskrim) &bull; Sesi Aktif Sekarang
+                        Perangkat Web Browser &bull; Sesi Aktif Sekarang (NRP {currentUser.nrp})
                       </div>
                     </div>
                     <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
@@ -400,37 +419,33 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           )}
 
           {/* ========================================================== */}
-          {/* 3. VISIBILITAS (SCREENSHOT 3 MATCH)                        */}
+          {/* 3. VISIBILITAS                                             */}
           {/* ========================================================== */}
           {activeSection === 'visibility' && (
             <div className="space-y-4 animate-fadeIn">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <h3 className="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100 mb-3">
-                  Visibilitas profil dan jaringan Anda
+                  Visibilitas profil dan direktori Anda
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div 
+                    onClick={() => showToast('Visibilitas profil diatur ke: Nama, pangkat, dan foto ditampilkan untuk rekan leting.')}
+                    className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer"
+                  >
                     <div>
                       <div className="font-semibold text-slate-800">Visibilitas saat mengunjungi profil rekan</div>
                       <div className="text-slate-500 text-[11px]">Nama, pangkat, dan foto ditampilkan</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
                       <div className="font-semibold text-slate-800">Pengaturan profil internal</div>
-                      <div className="text-slate-500 text-[11px]">Hanya dapat diakses oleh 286 Perwira Wira Satya 96</div>
+                      <div className="text-slate-500 text-[11px]">Hanya dapat diakses oleh Perwira Wira Satya 96 terverifikasi</div>
                     </div>
                     <span className="font-bold text-emerald-600 text-[11px]">Terkunci Internal</span>
                   </div>
-                  <div className="py-2.5 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800">Visibilitas koneksi & jejaring</div>
-                      <div className="text-slate-500 text-[11px]">Aktif untuk seluruh rekan leting</div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </div>
-                  <div className="py-2.5 flex items-center justify-between">
+                  <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
                       <div className="font-semibold text-slate-800">Kelola status aktif / online</div>
                       <div className="text-slate-500 text-[11px]">{activeStatusVisible ? 'Terlihat oleh leting' : 'Disembunyikan'}</div>
@@ -448,7 +463,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           )}
 
           {/* ========================================================== */}
-          {/* 4. PRIVASI DATA (SCREENSHOT 4 MATCH)                       */}
+          {/* 4. PRIVASI DATA                                            */}
           {/* ========================================================== */}
           {activeSection === 'privacy' && (
             <div className="space-y-4 animate-fadeIn">
@@ -459,9 +474,9 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                 <div className="divide-y divide-slate-100 text-xs">
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-800">Unduh data profil Anda (Export JSON / Excel)</div>
+                      <div className="font-semibold text-slate-800">Unduh data profil Anda (Export JSON)</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Dapatkan salinan arsip data kedinasan, keluarga, dan kebendaharaan Anda
+                        Dapatkan salinan arsip data kedinasan dan profil akun Anda
                       </div>
                     </div>
                     <button
@@ -485,25 +500,13 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                       Hapus
                     </button>
                   </div>
-
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800">Data untuk Asisten AI Wira Satya</div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">
-                        Membantu perangkuman laporan eksekutif dan rekomendasi mutasi leting
-                      </div>
-                    </div>
-                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[11px]">
-                      Aktif (Terenkripsi)
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
           )}
 
           {/* ========================================================== */}
-          {/* 5. NOTIFIKASI (SCREENSHOT 5 MATCH)                         */}
+          {/* 5. NOTIFIKASI                                              */}
           {/* ========================================================== */}
           {activeSection === 'notifications' && (
             <div className="space-y-4 animate-fadeIn">
@@ -512,31 +515,27 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                 <Bell className="w-4 h-4 text-red-800 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <span className="font-bold">Pengaturan notifikasi terpusat Batalyon: </span>
-                  <span>Notifikasi penting seperti Atensi Kesehatan dan Transparansi Kas otomatis dikirimkan ke Email dan WhatsApp leting.</span>
+                  <span>Notifikasi penting seperti Atensi Kesehatan dan Arus Kas otomatis dikirimkan ke akun leting.</span>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <h3 className="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100 mb-3">
-                  Notifikasi yang Anda terima
+                  Pintasan Modul & Notifikasi
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
                   {[
-                    { title: 'Atensi Kesehatan Leting', desc: 'Pemberitahuan bila ada rekan leting atau keluarga yang sakit/dirawat' },
-                    { title: 'Transparansi Kas & Iuran Yayasan', desc: 'Laporan rekapitulasi kebendaharaan bulanan dan konfirmasi pembayaran' },
-                    { title: 'Riwayat Jabatan & Mutasi Baru', desc: 'Update mutasi dan promosi jabatan TR Kapolri rekan sesama angkatan' },
-                    { title: 'Pesan & Obrolan Masuk', desc: 'Notifikasi chat langsung dari perwira leting' },
-                    { title: 'Linimasa & Postingan Beranda', desc: 'Komentar dan respon suka pada postingan Anda' },
+                    { title: 'Atensi Kesehatan Leting', desc: 'Pemberitahuan bila ada rekan leting atau keluarga yang sakit/dirawat', tab: 'direktori' },
+                    { title: 'Arus Kas & Iuran', desc: 'Laporan rekapitulasi kebendaharaan bulanan dan konfirmasi pembayaran', tab: 'bendahara' },
+                    { title: 'Karier & Purna Tugas', desc: 'Informasi transisi karier dan peluang wirausaha purna tugas', tab: 'purnaTugas' },
+                    { title: 'Pesan & Obrolan Masuk', desc: 'Notifikasi chat langsung dari perwira leting', tab: 'pesan' },
+                    { title: 'Linimasa & Postingan Beranda', desc: 'Komentar dan respon suka pada postingan Anda', tab: 'direktori' },
                   ].map((notif, idx) => (
                     <div 
                       key={idx} 
                       onClick={() => {
                         if (onNavigateToTab) {
-                          if (notif.title.includes('Kesehatan')) onNavigateToTab('kesehatan');
-                          else if (notif.title.includes('Iuran') || notif.title.includes('Kas')) onNavigateToTab('keuangan');
-                          else if (notif.title.includes('Jabatan')) onNavigateToTab('jobs');
-                          else if (notif.title.includes('Pesan')) onNavigateToTab('messaging');
-                          else onNavigateToTab('beranda');
+                          onNavigateToTab(notif.tab);
                         } else {
                           showToast(`Preferensi ${notif.title} aktif`);
                         }

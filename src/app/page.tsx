@@ -19,7 +19,10 @@ import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } from '@/data/mockFinance';
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
-import { ShieldCheck, UserCheck, KeyRound, LogOut, ExternalLink, UserPlus } from 'lucide-react';
+import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
+import { ShieldCheck, LogOut } from 'lucide-react';
+
+const STORAGE_VERSION = 'ws96_clean_v4';
 
 export default function Home() {
   const router = useRouter();
@@ -41,13 +44,30 @@ export default function Home() {
 
   // Load from localStorage or API on initial mount
   useEffect(() => {
-    // Load User
+    // Purge stale dummy caches from previous versions
+    const currentVersion = localStorage.getItem('ws96_storage_version');
+    if (currentVersion !== STORAGE_VERSION) {
+      localStorage.removeItem('wirasatya96_members');
+      localStorage.removeItem('wirasatya96_feed_posts');
+      localStorage.removeItem('wirasatya96_riwayat_jabatan');
+      localStorage.removeItem('wirasatya96_finance');
+      localStorage.removeItem('ws96_messages_cache');
+      localStorage.setItem('ws96_storage_version', STORAGE_VERSION);
+    }
+
+    // Load User and sanitize any legacy Unsplash avatar URL
     const savedUser = localStorage.getItem('ws96_active_user') || localStorage.getItem('wirasatya96_current_user');
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
         if (parsed && parsed.nrp) {
-          setCurrentUser(parsed);
+          const sanitizedUser: AuthUser = {
+            ...parsed,
+            fotoUrl: getAvatarUrl(parsed.fotoUrl),
+          };
+          setCurrentUser(sanitizedUser);
+          localStorage.setItem('ws96_active_user', JSON.stringify(sanitizedUser));
+          localStorage.setItem('wirasatya96_current_user', JSON.stringify(sanitizedUser));
         }
       } catch (err) {
         console.error('Failed to parse user session', err);
@@ -60,7 +80,11 @@ export default function Home() {
       try {
         const parsed = JSON.parse(savedMembers);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMembers(parsed);
+          const sanitizedMembers = parsed.map((m: AnggotaWiraSatya) => ({
+            ...m,
+            fotoUrl: getAvatarUrl(m.fotoUrl),
+          }));
+          setMembers(sanitizedMembers);
         }
       } catch (err) {
         console.error('Failed to parse saved members', err);
@@ -115,15 +139,19 @@ export default function Home() {
 
   // Save member profile
   const handleSaveMember = async (newMember: AnggotaWiraSatya) => {
-    const existingIndex = members.findIndex((m) => m.nrp === newMember.nrp);
+    const cleanMember: AnggotaWiraSatya = {
+      ...newMember,
+      fotoUrl: getAvatarUrl(newMember.fotoUrl),
+    };
+    const existingIndex = members.findIndex((m) => m.nrp === cleanMember.nrp);
     let updatedList: AnggotaWiraSatya[];
     if (existingIndex >= 0) {
       updatedList = [...members];
-      updatedList[existingIndex] = { ...newMember, id: members[existingIndex].id || newMember.id || ('ws-' + Date.now()) };
+      updatedList[existingIndex] = { ...cleanMember, id: members[existingIndex].id || cleanMember.id || ('ws-' + Date.now()) };
     } else {
       const createdMember: AnggotaWiraSatya = {
-        ...newMember,
-        id: newMember.id || ('ws-' + Date.now()),
+        ...cleanMember,
+        id: cleanMember.id || ('ws-' + Date.now()),
       };
       updatedList = [createdMember, ...members];
     }
@@ -132,7 +160,25 @@ export default function Home() {
       localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
     }
 
+    // If the user updated their own profile, sync currentUser as well
+    if (cleanMember.nrp === currentUser.nrp) {
+      const updatedUser: AuthUser = {
+        ...currentUser,
+        nama: cleanMember.namaLengkap,
+        pangkat: cleanMember.pangkat,
+        satker: cleanMember.satuanKerja,
+        polda: cleanMember.polda,
+        fotoUrl: getAvatarUrl(cleanMember.fotoUrl),
+      };
+      setCurrentUser(updatedUser);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ws96_active_user', JSON.stringify(updatedUser));
+        localStorage.setItem('wirasatya96_current_user', JSON.stringify(updatedUser));
+      }
+    }
+
     setEditingMember(null);
+    setViewingMember(cleanMember);
     setActiveTab('direktori');
 
     // Try sync with API
@@ -140,7 +186,7 @@ export default function Home() {
       await fetch('/api/members', {
         method: existingIndex >= 0 ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMember),
+        body: JSON.stringify(cleanMember),
       });
     } catch (err) {
       console.log('Saved to local storage, API sync skipped', err);
@@ -263,8 +309,11 @@ export default function Home() {
     router.push('/login');
   };
 
-  // Find logged-in user profile if exists
-  const currentMemberProfile = members.find((m) => m.nrp === currentUser.nrp);
+  // Find or construct logged-in user profile
+  const currentMemberProfile = React.useMemo(
+    () => getOrBuildUserProfile(currentUser, members),
+    [currentUser, members]
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f2ee] selection:bg-red-800 selection:text-white">
@@ -286,7 +335,7 @@ export default function Home() {
         onLogout={handleLogout}
         onSearchChange={setNavbarSearchQuery}
         onViewMyProfile={() => {
-          const myProfile = members.find((m) => m.nrp === currentUser.nrp) || members[0];
+          const myProfile = getOrBuildUserProfile(currentUser, members);
           setViewingMember(myProfile);
         }}
       />
@@ -371,6 +420,9 @@ export default function Home() {
                 onNavigateToTab={(t) => {
                   setViewingMember(null);
                   setActiveTab(t as AppTab);
+                }}
+                onViewMyProfile={() => {
+                  setViewingMember(getOrBuildUserProfile(currentUser, members));
                 }}
               />
             )}

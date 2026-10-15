@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AnggotaWiraSatya, 
-  AuthUser 
+  AuthUser,
+  FeedPost
 } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { 
   Shield, 
   MapPin, 
@@ -47,6 +49,23 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   const isSelf = currentUser.nrp === member.nrp;
   const isOwner = isSelf;
   const canEdit = isLeadership || isSelf;
+  const [userPosts, setUserPosts] = useState<FeedPost[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('wirasatya96_feed_posts');
+      if (saved) {
+        try {
+          const parsed: FeedPost[] = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setUserPosts(parsed.filter((p) => p.authorNrp === member.nrp));
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [member.nrp]);
 
   const getWaUrl = (phone?: string) => {
     if (!phone) return '#';
@@ -88,7 +107,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
         {/* ============================================================== */}
         <div className="lg:col-span-2 space-y-4">
           
-          {/* 1. HERO PROFILE CARD (1:1 WITH USER SCREENSHOT 1) */}
+          {/* 1. HERO PROFILE CARD */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative">
             
             {/* Cover Banner Image with Default Polri Cover */}
@@ -108,7 +127,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <button
                     onClick={() => onEditProfile && onEditProfile(member)}
                     className="p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white backdrop-blur transition-all"
-                    title={isSelf ? "Edit Sampul Profil" : `Edit Data Anggota (${currentUser.role})`}
+                    title={isSelf ? "Edit Profil" : `Edit Data Anggota (${currentUser.role})`}
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
@@ -124,7 +143,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={member.fotoUrl || '/default-avatar.png'}
+                    src={getAvatarUrl(member.fotoUrl)}
                     alt={member.namaLengkap}
                     className="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-white shadow-xl bg-white"
                   />
@@ -137,7 +156,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <button
                     onClick={() => onEditProfile && onEditProfile(member)}
                     className="p-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-600 transition-colors"
-                    title={isSelf ? "Edit Foto Profil" : `Edit Data Anggota (${currentUser.role})`}
+                    title={isSelf ? "Edit Foto & Data Profil" : `Edit Data Anggota (${currentUser.role})`}
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
@@ -152,7 +171,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                       {member.namaLengkap}
                     </h1>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold border border-slate-200">
-                      Perwira Polri
+                      {member.pangkat}
                     </span>
                   </div>
 
@@ -164,17 +183,28 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span>{member.polda} • NRP {member.nrp}</span>
                     <span>&bull;</span>
-                    <span className="text-red-900 font-semibold hover:underline cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${member.namaLengkap} (${member.pangkat}) - NRP: ${member.nrp} - WA: ${member.noHp || '-'} - Email: ${member.email || '-'}`);
+                        alert(`Info Kontak ${member.namaLengkap}:\nNRP: ${member.nrp}\nWhatsApp: ${member.noHp || 'Belum diisi'}\nEmail: ${member.email || 'Belum diisi'}\n(Disalin ke clipboard)`);
+                      }}
+                      className="text-red-900 font-semibold hover:underline cursor-pointer"
+                    >
                       Info Kontak Leting
-                    </span>
+                    </button>
                   </p>
 
-                  <p className="text-xs text-red-900 font-bold hover:underline cursor-pointer pt-0.5">
-                    {allMembers.length > 0 ? `${allMembers.length} rekan leting terdaftar (Akpol 1996)` : 'Alumni Akpol 1996'}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onClose && onClose()}
+                    className="text-xs text-red-900 font-bold hover:underline cursor-pointer pt-0.5 block text-left"
+                  >
+                    {allMembers.length > 0 ? `${allMembers.length} rekan leting terdaftar (Akpol 1996)` : 'Direktori Alumni Akpol 1996'}
+                  </button>
                 </div>
 
-                {/* Right Side Institution Logos (matching LinkedIn profile) */}
+                {/* Right Side Institution Logos */}
                 <div className="space-y-2 flex-shrink-0 text-xs">
                   <div className="flex items-center gap-2 text-slate-800 font-bold">
                     <div className="w-7 h-7 rounded bg-red-950 text-amber-400 flex items-center justify-center font-black text-[11px] shadow-sm">
@@ -193,15 +223,17 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-2.5 pt-4 mt-2 border-t border-slate-100">
-                <a
-                  href={getWaUrl(member.noHp)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-5 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
-                >
-                  <Phone className="w-4 h-4" />
-                  <span>Kirim Pesan WhatsApp</span>
-                </a>
+                {member.noHp && (
+                  <a
+                    href={getWaUrl(member.noHp)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-5 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                  >
+                    <Phone className="w-4 h-4" />
+                    <span>Kirim Pesan WhatsApp</span>
+                  </a>
+                )}
 
                 {!isSelf && onOpenChat && (
                   <button
@@ -241,8 +273,8 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
                 <button
                   onClick={() => {
-                    navigator.clipboard.writeText(`${member.namaLengkap} - ${member.pangkat} (NRP: ${member.nrp}) - WA: ${member.noHp}`);
-                    alert('Data kontak perwira berhasil disalin ke clipboard!');
+                    navigator.clipboard.writeText(`${member.namaLengkap} - ${member.pangkat} (NRP: ${member.nrp}) - WA: ${member.noHp || '-'}`);
+                    alert('Data kontak berhasil disalin ke clipboard!');
                   }}
                   className="px-4 py-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold text-xs sm:text-sm transition-colors flex items-center gap-1.5"
                 >
@@ -251,7 +283,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 </button>
               </div>
 
-              {/* Status Purna & Kesehatan Highlights Card (Suggested For You in LinkedIn) */}
+              {/* Status Purna & Kesehatan Highlights Card */}
               <div className="mt-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
@@ -278,7 +310,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     <Award className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Iuran Leting 2026:</span>
+                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">Status Akun:</span>
                     <span className="font-bold text-amber-800">TERVERIFIKASI AKTIF</span>
                   </div>
                 </div>
@@ -300,9 +332,8 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               )}
             </div>
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-              Perwira Polri lulusan Akademi Kepolisian Republik Indonesia Batalyon Wira Satya 1996 (#SelaluBahagia). 
-              Saat ini mengemban amanah sebagai <b>{member.jabatanTerakhir}</b> di lingkungan <b>{member.satuanKerja}</b>. 
-              Berkomitmen menjaga soliditas leting, dedikasi penugasan Bhayangkara, serta aktif mendukung program kesejahteraan dan kepedulian sosial angkatan.
+              Personel Kepolisian Negara Republik Indonesia — Batalyon Wira Satya 1996 (#SelaluBahagia). 
+              Saat ini mengemban amanah sebagai <b>{member.jabatanTerakhir}</b> di lingkungan <b>{member.satuanKerja}</b>.
             </p>
             <div className="pt-2 flex flex-wrap gap-2 text-xs">
               <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-semibold">
@@ -317,15 +348,15 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             </div>
           </div>
 
-          {/* SECTION: AKTIVITAS & POSTINGAN (ACTIVITY - MATCHING USER SCREENSHOT 2) */}
+          {/* SECTION: AKTIVITAS & POSTINGAN (REAL POSTS BY THIS USER) */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">
-                  Aktivitas & Postingan Leting
+                  Aktivitas & Postingan
                 </h2>
-                <p className="text-xs text-red-900 font-semibold mt-0.5">
-                  {allMembers.length > 0 ? `${allMembers.length} Rekan Leting Terdaftar` : 'Alumni Akpol 1996'}
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {userPosts.length} postingan dipublikasikan
                 </p>
               </div>
 
@@ -342,33 +373,34 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               )}
             </div>
 
-            {/* Post sample card matching LinkedIn Activity UI */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
-              <div className="flex items-center gap-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={member.fotoUrl || '/default-avatar.png'}
-                  alt={member.namaLengkap}
-                  className="w-10 h-10 rounded-full object-cover border border-slate-200"
-                />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-slate-900">{member.namaLengkap}</span>
-                    {isOwner && <span className="text-[10px] text-slate-400 font-medium">&bull; Anda</span>}
+            {userPosts.length > 0 ? (
+              <div className="space-y-3">
+                {userPosts.map((post) => (
+                  <div key={post.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+                    <div className="flex items-center gap-2.5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getAvatarUrl(member.fotoUrl)}
+                        alt={member.namaLengkap}
+                        className="w-9 h-9 rounded-full object-cover border border-slate-200 bg-white"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-900 block">{member.namaLengkap}</span>
+                        <span className="text-[10px] text-slate-500">{post.createdAt}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{post.content}</p>
+                    <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>👍 {post.likesCount} suka &bull; {post.comments.length} komentar</span>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-slate-500">{member.jabatanTerakhir} &bull; 6 jam yang lalu</p>
-                </div>
+                ))}
               </div>
-
-              <p className="text-xs text-slate-700 leading-relaxed">
-                Tetap menjaga soliditas Bhayangkara dan silaturahmi satu angkatan Batalyon Wira Satya Akpol 1996. Saling bahu membahu mendukung tugas kedinasan dan kepedulian keluarga leting. Salam hormat #SelaluBahagia!
-              </p>
-
-              <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-                <span className="font-semibold text-slate-700">👍 94 leting menyukai &bull; 8 komentar</span>
-                <span className="text-red-900 font-semibold">149 tayangan leting</span>
+            ) : (
+              <div className="p-6 rounded-xl border border-slate-200 bg-slate-50/50 text-center text-xs text-slate-500">
+                Belum ada aktivitas postingan yang dibagikan oleh personel ini.
               </div>
-            </div>
+            )}
           </div>
 
           {/* 3. SECTION: STRUKTUR KEDINASAN & RIWAYAT SIPP (EXPERIENCE) */}

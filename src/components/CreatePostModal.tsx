@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { AuthUser, FeedPost } from '@/types';
 import { PRESET_POST_IMAGES } from '@/data/mockPosts';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { 
   X, 
   Image as ImageIcon, 
@@ -58,6 +59,19 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     setShowEmojiPicker(false);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setSelectedImage(reader.result);
+        setCustomImageUrl('');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
@@ -72,7 +86,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       authorPangkat: currentUser.pangkat,
       authorJabatan: `${currentUser.satker || 'Alumni Akpol 1996'} • Leting 96`,
-      authorAvatar: currentUser.fotoUrl || '/default-avatar.png',
+      authorAvatar: getAvatarUrl(currentUser.fotoUrl),
       authorNrp: currentUser.nrp,
       badgeLabel: currentUser.role === 'SUPERADMIN' ? 'Admin Leting' : currentUser.role === 'KETUA' ? 'Ketua Batalyon 96' : currentUser.role === 'BENDAHARA' ? 'Bendahara 96' : 'Alumni Akpol 1996',
       content: content.trim(),
@@ -97,12 +111,12 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header (Exact LinkedIn Modal Header from user screenshot) */}
+        {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={currentUser.fotoUrl || '/default-avatar.png'}
+              src={getAvatarUrl(currentUser.fotoUrl)}
               alt={cleanUserName}
               className="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm bg-white"
             />
@@ -114,21 +128,14 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
               {/* LinkedIn Audience Pills */}
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors"
-                >
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
                   <Globe className="w-3 h-3 text-red-800" />
                   <span>Semua Rekan Leting 96</span>
-                  <span className="text-[9px]">▾</span>
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50 hover:bg-slate-100 transition-colors"
-                >
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
                   <MessageSquare className="w-3 h-3 text-slate-500" />
                   <span>Komentar: Terbuka</span>
-                </button>
+                </span>
               </div>
             </div>
           </div>
@@ -143,7 +150,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-5 space-y-4">
-          {/* Rich Textarea (Bagikan opini Anda...) */}
+          {/* Rich Textarea */}
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
@@ -199,13 +206,13 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
             </div>
           </div>
 
-          {/* Preset Photo Picker or Preview */}
+          {/* Photo Upload & Picker */}
           {showImagePicker && (
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2.5 animate-fadeIn">
               <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                 <span className="flex items-center gap-1">
                   <ImageIcon className="w-3.5 h-3.5 text-red-800" />
-                  Pilih Dokumentasi Angkatan / Foto:
+                  Unggah Foto atau Pilih Dokumentasi:
                 </span>
                 <button
                   type="button"
@@ -218,6 +225,20 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 >
                   Tutup
                 </button>
+              </div>
+
+              {/* Upload File From Device */}
+              <div>
+                <label className="w-full py-2 px-3 rounded-lg border border-dashed border-red-800 bg-white hover:bg-red-50 text-red-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                  <ImageIcon className="w-4 h-4" />
+                  <span>Pilih File Foto dari Perangkat...</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

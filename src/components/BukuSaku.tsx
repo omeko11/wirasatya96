@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { AnggotaWiraSatya, AuthUser, DAFTAR_PANGKAT_POLRI, FeedPost, PostComment } from '@/types';
 import { DAFTAR_38_POLDA } from '@/data/polriStructure';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
+import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
 import { LinkedInPostCard } from './LinkedInPostCard';
 import { CreatePostModal } from './CreatePostModal';
@@ -53,7 +54,12 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((p: FeedPost) => ({
+              ...p,
+              authorAvatar: getAvatarUrl(p.authorAvatar),
+            }));
+          }
         } catch (e) {
           console.error(e);
         }
@@ -128,7 +134,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       id: `c-${Date.now()}`,
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       authorPangkat: currentUser.pangkat,
-      authorAvatar: currentMemberObj?.fotoUrl || currentUser.fotoUrl || '/default-avatar.png',
+      authorAvatar: getAvatarUrl(currentMemberObj?.fotoUrl || currentUser.fotoUrl),
       authorNrp: currentUser.nrp,
       content: commentText,
       createdAt: 'Baru saja',
@@ -151,6 +157,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
   const handleAuthorClick = (authorNrp?: string) => {
     if (!authorNrp) return;
+    if (authorNrp === currentUser.nrp) {
+      setSelectedMember(getOrBuildUserProfile(currentUser, members));
+      return;
+    }
     const found = members.find((m) => m.nrp === authorNrp);
     if (found) setSelectedMember(found);
   };
@@ -222,8 +232,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       });
   }, [members]);
 
-  // Current logged in member profile if exists
-  const currentMemberObj = members.find((m) => m.nrp === currentUser.nrp) || members[0];
+  // Current logged in member profile (always returns valid profile object)
+  const currentMemberObj = useMemo(
+    () => getOrBuildUserProfile(currentUser, members),
+    [currentUser, members]
+  );
 
   // IF A MEMBER IS SELECTED, SHOW LINKEDIN FULL PROFILE VIEW
   if (selectedMember) {
@@ -253,7 +266,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         <div className="order-2 lg:order-1 lg:col-span-3 space-y-4">
           
-          {/* User Mini Profile Card (Exact User Screenshot media_1792053907699_1addcb0f.png) */}
+          {/* User Mini Profile Card */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
             
             {/* Header cover background - Default Polri Cover */}
@@ -269,19 +282,19 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             {/* Avatar overlapping */}
             <div className="px-4 pb-4 relative">
               <div 
-                onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
+                onClick={() => setSelectedMember(currentMemberObj)}
                 className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer group"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || currentMemberObj?.fotoUrl || '/default-avatar.png'}
+                  src={getAvatarUrl(currentUser.fotoUrl || currentMemberObj.fotoUrl)}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
               </div>
 
               <h3 
-                onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
+                onClick={() => setSelectedMember(currentMemberObj)}
                 className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight"
               >
                 {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
@@ -290,7 +303,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 {currentUser.nrp === '98010710' ? 'Briptu • Lead Developer' : `${currentUser.pangkat} • Alumni Akpol 1996`}
               </p>
 
-              {/* Metrics (Exact screenshot match) */}
+              {/* Metrics */}
               <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Rekan Letting:</span>
@@ -310,10 +323,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
               {/* Action Button */}
               <button
-                onClick={() => currentMemberObj ? setSelectedMember(currentMemberObj) : onAddNew()}
+                onClick={() => setSelectedMember(currentMemberObj)}
                 className="w-full mt-3 py-1.5 px-3 rounded-lg border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
-                {currentMemberObj ? 'Lihat Profil Saya' : 'Lengkapi Profil Saya'}
+                Lihat Profil Saya
               </button>
             </div>
           </div>
@@ -399,7 +412,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={currentMemberObj?.fotoUrl || currentUser.fotoUrl || '/default-avatar.png'}
+                src={getAvatarUrl(currentMemberObj?.fotoUrl || currentUser.fotoUrl)}
                 alt={currentUser.nama}
                 className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
               />
@@ -585,7 +598,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     <div className="relative">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={member.fotoUrl || '/default-avatar.png'}
+                        src={getAvatarUrl(member.fotoUrl)}
                         alt={member.namaLengkap}
                         className="w-16 h-16 rounded-full object-cover border-4 border-white shadow bg-white cursor-pointer"
                         onClick={() => setSelectedMember(member)}

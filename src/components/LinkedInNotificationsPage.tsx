@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AuthUser } from '@/types';
+import { getAvatarUrl } from '@/lib/avatarUtils';
 import { 
   Bell, 
   MoreHorizontal, 
@@ -11,6 +12,7 @@ import {
 interface LinkedInNotificationsPageProps {
   currentUser: AuthUser;
   onNavigateToTab: (tab: string) => void;
+  onViewMyProfile?: () => void;
 }
 
 interface NotificationItem {
@@ -28,6 +30,7 @@ interface NotificationItem {
 export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps> = ({
   currentUser,
   onNavigateToTab,
+  onViewMyProfile,
 }) => {
   const [activeFilter, setActiveFilter] = useState<'semua' | 'health' | 'treasury' | 'social'>('semua');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -46,7 +49,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
   return (
     <div className="max-w-7xl mx-auto py-2 font-sans text-slate-900 pb-20">
       
-      {/* 2-Column LinkedIn Notifications Layout (1:1 with user screenshot 4) */}
+      {/* 2-Column LinkedIn Notifications Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* ============================================================ */}
@@ -64,16 +67,22 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
               />
             </div>
             <div className="px-4 pb-4 relative">
-              <div className="w-16 h-16 rounded-full border-2 border-white shadow mx-auto -mt-8 overflow-hidden bg-slate-100">
+              <div 
+                onClick={() => onViewMyProfile && onViewMyProfile()}
+                className="w-16 h-16 rounded-full border-2 border-white shadow mx-auto -mt-8 overflow-hidden bg-white cursor-pointer"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={currentUser.fotoUrl || '/default-avatar.png'}
+                  src={getAvatarUrl(currentUser.fotoUrl)}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover"
                 />
               </div>
 
-              <h3 className="text-sm font-bold text-slate-900 mt-2">
+              <h3 
+                onClick={() => onViewMyProfile && onViewMyProfile()}
+                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2"
+              >
                 {currentUser.nama.split('(')[0].trim()}
               </h3>
               <p className="text-[11px] text-slate-500">
