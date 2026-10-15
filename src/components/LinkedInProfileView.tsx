@@ -7,7 +7,13 @@ import {
   FeedPost,
   UserRole,
 } from '@/types';
-import { getAvatarUrl, DEFAULT_AVATAR_URL, DEFAULT_COVER_URL } from '@/lib/avatarUtils';
+import {
+  getAvatarUrl,
+  resolveAvatarUrl,
+  formatMemberDisplayName,
+  DEFAULT_AVATAR_URL,
+  DEFAULT_COVER_URL,
+} from '@/lib/avatarUtils';
 import { MetaVerifiedBadge, resolveRoleForBadge } from '@/components/MetaVerifiedBadge';
 import {
   Shield,
@@ -85,7 +91,19 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   allMembers = [],
   onSelectMember,
 }) => {
-  const [localMember, setLocalMember] = useState<AnggotaWiraSatya>(member);
+  const [localMember, setLocalMember] = useState<AnggotaWiraSatya>(() => ({
+    ...member,
+    fotoUrl:
+      member.nrp === currentUser.nrp
+        ? resolveAvatarUrl(member.fotoUrl, currentUser.fotoUrl)
+        : getAvatarUrl(member.fotoUrl),
+    coverUrl:
+      member.nrp === currentUser.nrp
+        ? member.coverUrl && member.coverUrl !== DEFAULT_COVER_URL
+          ? member.coverUrl
+          : currentUser.coverUrl || member.coverUrl
+        : member.coverUrl,
+  }));
   const [userPosts, setUserPosts] = useState<FeedPost[]>([]);
 
   // Interactive UI states
@@ -103,9 +121,21 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   const peersSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setLocalMember(member);
+    setLocalMember({
+      ...member,
+      fotoUrl:
+        member.nrp === currentUser.nrp
+          ? resolveAvatarUrl(member.fotoUrl, currentUser.fotoUrl)
+          : getAvatarUrl(member.fotoUrl),
+      coverUrl:
+        member.nrp === currentUser.nrp
+          ? member.coverUrl && member.coverUrl !== DEFAULT_COVER_URL
+            ? member.coverUrl
+            : currentUser.coverUrl || member.coverUrl
+          : member.coverUrl,
+    });
     setDraftBio(member.bio || '');
-  }, [member]);
+  }, [member, currentUser.nrp, currentUser.fotoUrl, currentUser.coverUrl]);
 
   const isLeadership = ['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role);
   const isOwnProfile = currentUser.nrp === localMember.nrp;
@@ -194,6 +224,9 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               bio: updated.bio,
             };
             localStorage.setItem('ws96_auth_user', JSON.stringify(nextAuth));
+            localStorage.setItem('ws96_active_user', JSON.stringify(nextAuth));
+            localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextAuth));
+            window.dispatchEvent(new Event('ws96_user_updated'));
           } catch {
             // ignore
           }
@@ -282,23 +315,33 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
     e.target.value = '';
   };
 
+  const displayMemberNameWithRank = formatMemberDisplayName(
+    localMember.pangkat,
+    localMember.namaLengkap
+  );
+
+  const resolvedMemberAvatar =
+    localMember.nrp === currentUser.nrp
+      ? resolveAvatarUrl(localMember.fotoUrl, currentUser.fotoUrl)
+      : getAvatarUrl(localMember.fotoUrl);
+
   const getWaUrl = (phone?: string) => {
     if (!phone) return '#';
     let clean = phone.replace(/[^0-9]/g, '');
     if (clean.startsWith('0')) clean = '62' + clean.slice(1);
     return `https://wa.me/${clean}?text=Halo%20${encodeURIComponent(
-      `${localMember.pangkat} ${localMember.namaLengkap}`
+      displayMemberNameWithRank
     )}%2C%20mohon%20izin%20menghubungi%20dari%20Portal%20Wira%20Satya%2096`;
   };
 
   const getDefaultBioText = (): string => {
     if (isSuperadminDev) {
-      return `${localMember.pangkat} ${localMember.namaLengkap} (NRP ${localMember.nrp}) bertugas pada ${localMember.satuanKerja} (${localMember.polda}) sebagai ${localMember.jabatanTerakhir}. Berlatar belakang pendidikan ${localMember.pendidikanTerakhir}, bertanggung jawab atas arsitektur sistem, keamanan data, dan pengelolaan infrastruktur digital portal Wira Satya 96.`;
+      return `${displayMemberNameWithRank} (NRP ${localMember.nrp}) bertugas pada ${localMember.satuanKerja} (${localMember.polda}) sebagai ${localMember.jabatanTerakhir}. Berlatar belakang pendidikan ${localMember.pendidikanTerakhir}, bertanggung jawab atas arsitektur sistem, keamanan data, dan pengelolaan infrastruktur digital portal Wira Satya 96.`;
     }
     if (!isAkpol96Alumni) {
-      return `${localMember.pangkat} ${localMember.namaLengkap} (NRP ${localMember.nrp}) berdinas aktif pada ${localMember.satuanKerja} (${localMember.polda}) dengan jabatan ${localMember.jabatanTerakhir}. Lulusan ${localMember.pendidikanTerakhir || 'Pendidikan Polri'}.`;
+      return `${displayMemberNameWithRank} (NRP ${localMember.nrp}) berdinas aktif pada ${localMember.satuanKerja} (${localMember.polda}) dengan jabatan ${localMember.jabatanTerakhir}. Lulusan ${localMember.pendidikanTerakhir || 'Pendidikan Polri'}.`;
     }
-    return `${localMember.pangkat} ${localMember.namaLengkap} adalah Perwira Polri alumni Akademi Kepolisian (Akpol) Tahun 1996 Batalyon Wira Satya yang saat ini mengemban amanah sebagai ${localMember.jabatanTerakhir} pada ${localMember.satuanKerja} (${localMember.polda}).`;
+    return `${displayMemberNameWithRank} adalah Perwira Polri alumni Akademi Kepolisian (Akpol) Tahun 1996 Batalyon Wira Satya yang saat ini mengemban amanah sebagai ${localMember.jabatanTerakhir} pada ${localMember.satuanKerja} (${localMember.polda}).`;
   };
 
   const displayedBio =
@@ -360,7 +403,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
   // Render Cover Banner Visual
   const renderCoverBannerContent = () => {
-    const cover = localMember.coverUrl?.trim();
+    const rawCover =
+      localMember.coverUrl && localMember.coverUrl !== DEFAULT_COVER_URL
+        ? localMember.coverUrl
+        : localMember.nrp === currentUser.nrp
+        ? currentUser.coverUrl || localMember.coverUrl
+        : localMember.coverUrl;
+    const cover = rawCover?.trim();
 
     if (cover === 'none') {
       return (
@@ -443,7 +492,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             <span>Direktori Personel</span>
             <span>/</span>
             <span className="font-bold text-slate-900 inline-flex items-center gap-1">
-              {localMember.pangkat} {localMember.namaLengkap}
+              {displayMemberNameWithRank}
               <MetaVerifiedBadge nrp={localMember.nrp} role={effectiveRole} size="xs" />
             </span>
           </div>
@@ -589,7 +638,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 <div className="relative group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={getAvatarUrl(localMember.fotoUrl)}
+                    src={resolvedMemberAvatar}
                     alt={localMember.namaLengkap}
                     onClick={() => {
                       if (canManageProfile) {
@@ -666,14 +715,12 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 )}
               </div>
 
-              {/* Name, Headline, & Dynamic Affiliations */}
+              {/* Name & Headline */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight inline-flex items-center gap-1.5">
-                      <span>
-                        {localMember.pangkat} {localMember.namaLengkap}
-                      </span>
+                      <span>{displayMemberNameWithRank}</span>
                       <MetaVerifiedBadge
                         nrp={localMember.nrp}
                         role={effectiveRole}
@@ -686,7 +733,11 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </div>
 
                   <p className="text-sm font-semibold text-slate-700 leading-snug">
-                    {localMember.jabatanTerakhir} — {localMember.satuanKerja}
+                    {(localMember.jabatanTerakhir || '')
+                      .toLowerCase()
+                      .includes((localMember.satuanKerja || '').toLowerCase())
+                      ? localMember.jabatanTerakhir
+                      : `${localMember.jabatanTerakhir} — ${localMember.satuanKerja}`}
                   </p>
 
                   <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 pt-1">
@@ -703,56 +754,6 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                       Info Kontak
                     </button>
                   </p>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (peersSectionRef.current) {
-                        peersSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-                      } else if (onClose) {
-                        onClose();
-                      }
-                    }}
-                    className="text-xs text-red-900 font-bold hover:underline cursor-pointer pt-0.5 block text-left"
-                  >
-                    {allMembers.length} personel terdaftar di direktori
-                  </button>
-                </div>
-
-                {/* Right Side Dynamic Institution & Education Badges (Fixes Crossed-Out Area #1) */}
-                <div className="space-y-2 flex-shrink-0 text-xs sm:max-w-[270px]">
-                  <div className="flex items-start gap-2.5 text-slate-800">
-                    <div className="w-8 h-8 rounded-lg bg-red-950 text-amber-400 flex items-center justify-center font-black text-[11px] shadow-sm shrink-0 mt-0.5">
-                      <Building2 className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-xs font-bold text-slate-900 block leading-tight">
-                        {localMember.satuanKerja || 'Mabes Polri'}
-                      </span>
-                      <span className="text-[11px] text-slate-500 block">
-                        {localMember.polda || 'MABES POLRI'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-2.5 text-slate-700">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-900 flex items-center justify-center font-black text-[10px] border border-amber-300 shrink-0 mt-0.5">
-                      <GraduationCap className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="text-xs font-bold text-slate-800 block leading-tight">
-                        {localMember.pendidikanTerakhir ||
-                          (isAkpol96Alumni ? 'Akpol 1996' : 'Personel Polri')}
-                      </span>
-                      <span className="text-[11px] text-slate-500 block">
-                        {isSuperadminDev
-                          ? 'Tim IT & Pengembang Sistem'
-                          : isAkpol96Alumni
-                          ? 'Batalyon Wira Satya 1996'
-                          : localMember.jenisAnggota || 'Personel Polri'}
-                      </span>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -988,15 +989,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     <div className="flex items-center gap-2.5">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={getAvatarUrl(localMember.fotoUrl)}
+                        src={resolvedMemberAvatar}
                         alt={localMember.namaLengkap}
                         className="w-9 h-9 rounded-full object-cover border border-slate-200 bg-white"
                       />
                       <div>
                         <span className="text-xs font-bold text-slate-900 inline-flex items-center gap-1">
-                          <span>
-                            {localMember.pangkat} {localMember.namaLengkap}
-                          </span>
+                          <span>{displayMemberNameWithRank}</span>
                           <MetaVerifiedBadge
                             nrp={localMember.nrp}
                             role={effectiveRole}
@@ -1357,7 +1356,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                         className="text-xs font-bold text-slate-900 truncate hover:text-red-900 cursor-pointer inline-flex items-center gap-1 max-w-full"
                       >
                         <span className="truncate">
-                          {peer.pangkat} {peer.namaLengkap.split(',')[0]}
+                          {formatMemberDisplayName(peer.pangkat, peer.namaLengkap)}
                         </span>
                         <MetaVerifiedBadge nrp={peer.nrp} size="sm" />
                       </p>
@@ -1420,15 +1419,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               <div className="flex items-center gap-2.5 min-w-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getAvatarUrl(localMember.fotoUrl)}
+                  src={resolvedMemberAvatar}
                   alt={localMember.namaLengkap}
                   className="w-10 h-10 rounded-full object-cover border-2 border-amber-400 shrink-0 bg-white"
                 />
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-white truncate inline-flex items-center gap-1.5">
-                    <span className="truncate">
-                      {localMember.pangkat} {localMember.namaLengkap}
-                    </span>
+                    <span className="truncate">{displayMemberNameWithRank}</span>
                     <MetaVerifiedBadge
                       nrp={localMember.nrp}
                       role={effectiveRole}
@@ -1456,7 +1453,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     Nama & Pangkat
                   </span>
                   <span className="font-bold text-slate-900 inline-flex items-center gap-1">
-                    {localMember.pangkat} {localMember.namaLengkap}
+                    {displayMemberNameWithRank}
                     <MetaVerifiedBadge
                       nrp={localMember.nrp}
                       role={effectiveRole}
@@ -1563,7 +1560,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const summary = `${localMember.pangkat} ${localMember.namaLengkap} (NRP: ${localMember.nrp})\nSatker: ${localMember.satuanKerja} - ${localMember.polda}\nWA: ${localMember.noHp || '-'}\nEmail Dinas: ${officialEmail}`;
+                  const summary = `${displayMemberNameWithRank} (NRP: ${localMember.nrp})\nSatker: ${localMember.satuanKerja} - ${localMember.polda}\nWA: ${localMember.noHp || '-'}\nEmail Dinas: ${officialEmail}`;
                   copyToClipboard('all', summary);
                   triggerToast('Data kontak disalin');
                 }}

@@ -27,9 +27,52 @@ export function getCoverUrl(url?: string | null): string {
   return trimmed;
 }
 
+export function isCustomAvatarUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  return (
+    trimmed.length > 0 &&
+    trimmed !== DEFAULT_AVATAR_URL &&
+    !trimmed.includes('images.unsplash.com')
+  );
+}
+
+/**
+ * Picks the custom (non-default) avatar URL between two sources, falling back to DEFAULT_AVATAR_URL.
+ */
+export function resolveAvatarUrl(
+  primaryUrl?: string | null,
+  secondaryUrl?: string | null
+): string {
+  if (isCustomAvatarUrl(primaryUrl)) return primaryUrl!.trim();
+  if (isCustomAvatarUrl(secondaryUrl)) return secondaryUrl!.trim();
+  return DEFAULT_AVATAR_URL;
+}
+
+/**
+ * Formats a member's rank and full name without duplicating the rank prefix
+ * (e.g., avoids "Kombes Pol Kombes Pol. Daniel...").
+ */
+export function formatMemberDisplayName(
+  pangkat?: string | null,
+  namaLengkap?: string | null
+): string {
+  const cleanName = (namaLengkap || '').replace(/\(.*?\)/g, '').trim();
+  const cleanRank = (pangkat || '').trim();
+  if (!cleanRank) return cleanName;
+  if (!cleanName) return cleanRank;
+
+  const normName = cleanName.toLowerCase().replace(/\./g, '');
+  const normRank = cleanRank.toLowerCase().replace(/\./g, '');
+  if (normName.startsWith(normRank)) {
+    return cleanName;
+  }
+  return `${cleanRank} ${cleanName}`;
+}
+
 /**
  * Finds the current user's profile in the directory or constructs a valid profile object from AuthUser
- * so that "Lihat Profil" always works even when the directory is empty.
+ * so that "Lihat Profil" always works and preserves any custom uploaded photo/cover.
  */
 export function getOrBuildUserProfile(
   currentUser: AuthUser,
@@ -39,7 +82,11 @@ export function getOrBuildUserProfile(
   if (existing) {
     return {
       ...existing,
-      fotoUrl: getAvatarUrl(existing.fotoUrl || currentUser.fotoUrl),
+      fotoUrl: resolveAvatarUrl(existing.fotoUrl, currentUser.fotoUrl),
+      coverUrl:
+        existing.coverUrl && existing.coverUrl !== DEFAULT_COVER_URL
+          ? existing.coverUrl
+          : currentUser.coverUrl || existing.coverUrl,
     };
   }
 
@@ -50,7 +97,7 @@ export function getOrBuildUserProfile(
     pangkat: currentUser.pangkat || 'Kombes Pol',
     jabatanTerakhir:
       currentUser.role === 'SUPERADMIN'
-        ? 'Lead Developer & Superadmin Sistem Wira Satya 96'
+        ? 'Lead Developer — Bareskrim Polri'
         : `Perwira ${currentUser.satker || 'Polri'}`,
     satuanKerja: currentUser.satker || 'Mabes Polri',
     tipeSatker:
@@ -61,14 +108,18 @@ export function getOrBuildUserProfile(
     subSatker: currentUser.satker || '',
     jenisAnggota: 'ANGGOTA POLRI',
     polda: currentUser.polda || 'MABES POLRI',
-    pendidikanTerakhir: 'Akpol / Perguruan Tinggi Ilmu Kepolisian',
+    pendidikanTerakhir:
+      currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN'
+        ? 'S1 Teknik Informatika'
+        : 'Akpol / Perguruan Tinggi Ilmu Kepolisian',
     tempatLahir: 'Jakarta',
     tanggalLahir: '1974-01-01',
     usia: 52,
     jenisKelamin: 'LAKI-LAKI',
     noHp: '',
-    email: currentUser.email || '',
-    fotoUrl: getAvatarUrl(currentUser.fotoUrl),
+    email: currentUser.email || `${currentUser.nrp}@polri.go.id`,
+    fotoUrl: resolveAvatarUrl(currentUser.fotoUrl),
+    coverUrl: currentUser.coverUrl,
     alamatTempatTinggal: currentUser.polda || 'Jakarta',
     statusTempatTinggal: 'MILIK PRIBADI',
     statusPerkawinan: 'MENIKAH',

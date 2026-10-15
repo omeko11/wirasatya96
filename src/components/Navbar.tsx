@@ -21,7 +21,7 @@ import {
   Phone
 } from 'lucide-react';
 import { AuthUser, UserRole, AnggotaWiraSatya } from '@/types';
-import { getAvatarUrl } from '@/lib/avatarUtils';
+import { getAvatarUrl, resolveAvatarUrl } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 
@@ -83,11 +83,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const isLeadership = currentUser.role !== 'ANGGOTA';
 
-  // Sanitize name for compact single-line display
-  const cleanDisplayName = currentUser.nama
+  // Sanitize name for compact single-line display while preserving degrees
+  const myMember = React.useMemo(
+    () => members.find((m) => m.nrp === currentUser.nrp),
+    [members, currentUser.nrp]
+  );
+  const cleanDisplayName = (myMember?.namaLengkap || currentUser.nama)
     .replace(/\(.*?\)/g, '')
-    .split(',')[0]
     .trim();
+  const myAvatarUrl = resolveAvatarUrl(myMember?.fotoUrl, currentUser.fotoUrl);
 
   const roleBadgeColors: Record<UserRole, string> = {
     SUPERADMIN: 'bg-red-100 text-red-900 border-red-300',
@@ -425,7 +429,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={getAvatarUrl(currentUser.fotoUrl)}
+                    src={myAvatarUrl}
                     alt={cleanDisplayName}
                     className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 flex-shrink-0 bg-white"
                   />
@@ -445,7 +449,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div className="px-4 pb-3 border-b border-slate-100 flex items-start gap-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={getAvatarUrl(currentUser.fotoUrl)}
+                        src={myAvatarUrl}
                         alt={cleanDisplayName}
                         className="w-12 h-12 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
                       />
@@ -456,7 +460,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                           </h4>
                           <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
                         </div>
-                        <p className="text-[11px] text-slate-500 truncate">{currentUser.pangkat} &bull; {currentUser.satker || 'Mabes Polri'}</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {currentUser.pangkat} &bull;{' '}
+                          {currentUser.nrp === '98010710'
+                            ? 'Lead Developer — Bareskrim Polri'
+                            : myMember?.satuanKerja || currentUser.satker || 'Mabes Polri'}
+                        </p>
                         <span className={`inline-block text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border mt-1 ${roleBadgeColors[currentUser.role]}`}>
                           {roleDisplayLabels[currentUser.role]}
                         </span>

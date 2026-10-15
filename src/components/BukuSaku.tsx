@@ -3,7 +3,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, FinanceSummary, IuranAnggota, KasTransaction } from '@/types';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
-import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
+import {
+  getAvatarUrl,
+  resolveAvatarUrl,
+  formatMemberDisplayName,
+  getOrBuildUserProfile,
+} from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
 import { LinkedInPostCard } from './LinkedInPostCard';
 import { CreatePostModal } from './CreatePostModal';
@@ -293,7 +298,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       id: `c-${Date.now()}`,
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       authorPangkat: currentUser.pangkat,
-      authorAvatar: getAvatarUrl(currentMemberObj?.fotoUrl || currentUser.fotoUrl),
+      authorAvatar: resolveAvatarUrl(currentMemberObj?.fotoUrl, currentUser.fotoUrl),
       authorNrp: currentUser.nrp,
       content: commentText,
       createdAt: 'Baru saja',
@@ -409,6 +414,20 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           [updated.id]: updated,
         }));
         setSelectedMember(updated);
+        if (typeof window !== 'undefined' && updated.nrp === currentUser?.nrp) {
+          const nextUser: AuthUser = {
+            ...currentUser,
+            nama: updated.namaLengkap,
+            pangkat: updated.pangkat,
+            fotoUrl: updated.fotoUrl,
+            coverUrl: updated.coverUrl,
+            bio: updated.bio,
+          };
+          localStorage.setItem('ws96_auth_user', JSON.stringify(nextUser));
+          localStorage.setItem('ws96_active_user', JSON.stringify(nextUser));
+          localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextUser));
+          window.dispatchEvent(new Event('ws96_user_updated'));
+        }
       },
     };
     return (
@@ -426,6 +445,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   }
 
   const miniCardCoverUrl = currentMemberObj?.coverUrl || currentUser?.coverUrl;
+  const myResolvedAvatarUrl = resolveAvatarUrl(
+    currentMemberObj?.fotoUrl,
+    currentUser.fotoUrl
+  );
 
   return (
     <div className="font-sans text-slate-900 pb-20">
@@ -454,7 +477,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getAvatarUrl(currentMemberObj?.fotoUrl || currentUser.fotoUrl)}
+                  src={myResolvedAvatarUrl}
                   alt={currentUser.nama}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -478,8 +501,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               {/* Metrics */}
               <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
-                  <span>Rekan Letting:</span>
-                  <span className="font-bold text-red-900">{publicMembers.length} Perwira</span>
+                  <span>NRP:</span>
+                  <span className="font-mono font-bold text-slate-800">{currentUser.nrp}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Satker / Wilayah:</span>
@@ -585,11 +608,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                         />
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-1">
-                            <span className="truncate">{m.namaLengkap}</span>
+                            <span className="truncate">
+                              {formatMemberDisplayName(m.pangkat, m.namaLengkap)}
+                            </span>
                             <MetaVerifiedBadge nrp={m.nrp} size="sm" />
                           </div>
                           <div className="text-[10px] text-slate-500 truncate">
-                            {m.pangkat} &bull; NRP {m.nrp} &bull; {m.jabatanTerakhir}
+                            NRP {m.nrp} &bull; {m.jabatanTerakhir}
                           </div>
                         </div>
                       </div>
@@ -612,7 +637,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={getAvatarUrl(currentMemberObj?.fotoUrl || currentUser.fotoUrl)}
+                src={myResolvedAvatarUrl}
                 alt={currentUser.nama}
                 className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
               />

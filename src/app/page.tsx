@@ -20,7 +20,12 @@ import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_ASSETS } from '@/data/mockFinance';
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem, FeedPost, ChatMessage } from '@/types';
-import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
+import {
+  getAvatarUrl,
+  resolveAvatarUrl,
+  isCustomAvatarUrl,
+  getOrBuildUserProfile,
+} from '@/lib/avatarUtils';
 
 const STORAGE_VERSION = 'ws96_akpol96_real_v10';
 
@@ -60,15 +65,97 @@ export default function Home() {
       })
       .catch(() => {});
 
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((data) => {
+        const usersList = data.users || data.data;
+        if (data.success && Array.isArray(usersList)) {
+          const roleMap: Record<string, string> = {};
+          usersList.forEach((u: AuthUser) => {
+            if (u.nrp && u.role) {
+              roleMap[u.nrp] = u.role;
+            }
+          });
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('ws96_role_map', JSON.stringify(roleMap));
+            window.dispatchEvent(new Event('ws96_roles_updated'));
+          }
+          setCurrentUser((prev) => {
+            const matched = usersList.find((u: AuthUser) => u.nrp === prev.nrp);
+            if (!matched) return prev;
+            const nextUser: AuthUser = {
+              ...prev,
+              ...matched,
+              nama:
+                matched.nrp === '98010710' &&
+                (matched.nama === 'Eko Agung' || matched.nama === 'Eko Agung Krisdianto')
+                  ? 'Eko Agung Krisdianto, S.Kom.'
+                  : matched.nama || prev.nama,
+              pangkat:
+                matched.nrp === '98010710'
+                  ? 'Briptu'
+                  : matched.pangkat || prev.pangkat,
+              fotoUrl: resolveAvatarUrl(matched.fotoUrl, prev.fotoUrl),
+              coverUrl:
+                matched.coverUrl && matched.coverUrl !== '/default-cover.jpg'
+                  ? matched.coverUrl
+                  : prev.coverUrl || matched.coverUrl,
+            };
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('ws96_auth_user', JSON.stringify(nextUser));
+              localStorage.setItem('ws96_active_user', JSON.stringify(nextUser));
+              localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextUser));
+            }
+            return nextUser;
+          });
+        }
+      })
+      .catch(() => {});
+
     fetch('/api/members')
       .then((res) => res.json())
       .then((data) => {
         const list = data.members || data.data;
         if (data.success && Array.isArray(list) && list.length > 0) {
-          const sanitizedMembers = list.map((m: AnggotaWiraSatya) => ({
-            ...m,
-            fotoUrl: getAvatarUrl(m.fotoUrl),
-          }));
+          let authUser: AuthUser | null = null;
+          if (typeof window !== 'undefined') {
+            const rawAuth = localStorage.getItem('ws96_auth_user');
+            if (rawAuth) {
+              try {
+                authUser = JSON.parse(rawAuth);
+              } catch {
+                authUser = null;
+              }
+            }
+          }
+
+          const sanitizedMembers = list.map((m: AnggotaWiraSatya) => {
+            if (authUser && m.nrp === authUser.nrp) {
+              const merged: AnggotaWiraSatya = {
+                ...m,
+                fotoUrl: resolveAvatarUrl(m.fotoUrl, authUser.fotoUrl),
+                coverUrl:
+                  m.coverUrl && m.coverUrl !== '/default-cover.jpg'
+                    ? m.coverUrl
+                    : authUser.coverUrl || m.coverUrl,
+              };
+              if (
+                isCustomAvatarUrl(authUser.fotoUrl) &&
+                (!m.fotoUrl || m.fotoUrl === '/default-avatar.png' || !isCustomAvatarUrl(m.fotoUrl))
+              ) {
+                fetch('/api/members', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(merged),
+                }).catch(() => {});
+              }
+              return merged;
+            }
+            return {
+              ...m,
+              fotoUrl: getAvatarUrl(m.fotoUrl),
+            };
+          });
           setMembers(sanitizedMembers);
           localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
         }
@@ -130,9 +217,17 @@ export default function Home() {
         const parsed = JSON.parse(savedUser);
         if (parsed && parsed.nrp) {
           activeNrp = parsed.nrp;
+          if (
+            parsed.nrp === '98010710' &&
+            (parsed.nama === 'Eko Agung' || parsed.nama === 'Eko Agung Krisdianto')
+          ) {
+            parsed.nama = 'Eko Agung Krisdianto, S.Kom.';
+            parsed.pangkat = 'Briptu';
+          }
           const sanitizedUser: AuthUser = {
             ...parsed,
             fotoUrl: getAvatarUrl(parsed.fotoUrl),
+            coverUrl: parsed.coverUrl,
           };
           setCurrentUser(sanitizedUser);
           localStorage.setItem('ws96_auth_user', JSON.stringify(sanitizedUser));
@@ -200,8 +295,30 @@ export default function Home() {
         .catch(() => {});
     };
     refreshMessages();
+
+    const handleUserUpdatedEvent = () => {
+      const latestAuth = localStorage.getItem('ws96_auth_user');
+      if (latestAuth) {
+        try {
+          const parsedLatest = JSON.parse(latestAuth);
+          if (parsedLatest && parsedLatest.nrp) {
+            setCurrentUser({
+              ...parsedLatest,
+              fotoUrl: getAvatarUrl(parsedLatest.fotoUrl),
+            });
+          }
+        } catch {
+          // ignore
+        }
+      }
+    };
+
     window.addEventListener('ws96_messages_updated', refreshMessages);
-    return () => window.removeEventListener('ws96_messages_updated', refreshMessages);
+    window.addEventListener('ws96_user_updated', handleUserUpdatedEvent);
+    return () => {
+      window.removeEventListener('ws96_messages_updated', refreshMessages);
+      window.removeEventListener('ws96_user_updated', handleUserUpdatedEvent);
+    };
   }, [fetchPendingVerificationCount]);
 
   // Superadmin Impersonate User handler

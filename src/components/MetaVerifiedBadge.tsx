@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserRole } from '@/types';
 
 export interface MetaVerifiedBadgeProps {
@@ -10,12 +10,78 @@ export interface MetaVerifiedBadgeProps {
   className?: string;
 }
 
+const VALID_ROLES: UserRole[] = ['SUPERADMIN', 'KETUA', 'SEKRETARIAT', 'BENDAHARA', 'ANGGOTA'];
+
+let memoryRoleMap: Record<string, UserRole> | null = null;
+
+function ensureRoleMapLoaded(): Record<string, UserRole> {
+  if (memoryRoleMap !== null) return memoryRoleMap;
+  memoryRoleMap = {};
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('ws96_role_map');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          memoryRoleMap = parsed as Record<string, UserRole>;
+        }
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+  }
+  return memoryRoleMap;
+}
+
+export function setDynamicRoleMap(roleMap: Record<string, UserRole>): void {
+  memoryRoleMap = { ...roleMap };
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('ws96_role_map', JSON.stringify(memoryRoleMap));
+      window.dispatchEvent(new Event('ws96_roles_updated'));
+    } catch {
+      // ignore localStorage errors
+    }
+  }
+}
+
+export function updateDynamicUserRole(nrp: string, role: UserRole): void {
+  const cleanNrp = (nrp || '').trim();
+  if (!cleanNrp) return;
+  const current = ensureRoleMapLoaded();
+  memoryRoleMap = { ...current, [cleanNrp]: role };
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('ws96_role_map', JSON.stringify(memoryRoleMap));
+      window.dispatchEvent(new Event('ws96_roles_updated'));
+    } catch {
+      // ignore localStorage errors
+    }
+  }
+}
+
+export function getDynamicRoleForNrp(nrp?: string): UserRole | undefined {
+  if (!nrp) return undefined;
+  const cleanNrp = nrp.trim();
+  if (!cleanNrp) return undefined;
+  const map = ensureRoleMapLoaded();
+  const found = map[cleanNrp];
+  if (found && VALID_ROLES.includes(found)) {
+    return found;
+  }
+  return undefined;
+}
+
 export function resolveRoleForBadge(nrp?: string, explicitRole?: UserRole | string): UserRole | undefined {
-  if (explicitRole && ['SUPERADMIN', 'KETUA', 'SEKRETARIAT', 'BENDAHARA', 'ANGGOTA'].includes(explicitRole)) {
+  if (explicitRole && VALID_ROLES.includes(explicitRole as UserRole)) {
     return explicitRole as UserRole;
   }
   if (!nrp) return undefined;
   const cleanNrp = nrp.trim();
+  const dynamicRole = getDynamicRoleForNrp(cleanNrp);
+  if (dynamicRole) {
+    return dynamicRole;
+  }
   if (cleanNrp === '98010710') return 'SUPERADMIN';
   if (cleanNrp === '980107102') return 'KETUA';
   if (cleanNrp === '980107103') return 'SEKRETARIAT';
@@ -36,6 +102,34 @@ export const MetaVerifiedBadge: React.FC<MetaVerifiedBadgeProps> = ({
   size = 'sm',
   className = '',
 }) => {
+  const [, setRoleTick] = useState(0);
+
+  useEffect(() => {
+    const handleRoleUpdate = () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('ws96_role_map');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+              memoryRoleMap = parsed as Record<string, UserRole>;
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+      setRoleTick((t) => t + 1);
+    };
+
+    window.addEventListener('ws96_roles_updated', handleRoleUpdate);
+    window.addEventListener('storage', handleRoleUpdate);
+    return () => {
+      window.removeEventListener('ws96_roles_updated', handleRoleUpdate);
+      window.removeEventListener('storage', handleRoleUpdate);
+    };
+  }, []);
+
   const effectiveRole = resolveRoleForBadge(nrp, role);
 
   if (!effectiveRole || effectiveRole === 'ANGGOTA') {

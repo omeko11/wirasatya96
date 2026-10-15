@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
-import { MetaVerifiedBadge } from './MetaVerifiedBadge';
+import { MetaVerifiedBadge, setDynamicRoleMap, updateDynamicUserRole } from './MetaVerifiedBadge';
 import { 
   ShieldCheck, 
   X, 
@@ -172,7 +172,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       const regData = await regRes.json();
 
       if (usersData.success && Array.isArray(usersData.data)) {
-        setUsers(usersData.data);
+        const fetchedUsers = usersData.data as AuthUser[];
+        setUsers(fetchedUsers);
+        const map: Record<string, UserRole> = {};
+        fetchedUsers.forEach((u) => {
+          if (u.nrp && u.role) {
+            map[u.nrp.trim()] = u.role;
+          }
+        });
+        setDynamicRoleMap(map);
       }
       if (regData.success && Array.isArray(regData.registrations)) {
         setRegistrations(regData.registrations);
@@ -199,6 +207,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   };
 
   const handleRoleChange = async (nrp: string, nextRole: UserRole) => {
+    // Immediate optimistic update for 0ms UI & badge response
+    setUsers((prev) => prev.map((u) => (u.nrp === nrp ? { ...u, role: nextRole } : u)));
+    updateDynamicUserRole(nrp, nextRole);
     setUpdatingUserNrp(nrp);
     try {
       const res = await fetch('/api/users', {
@@ -208,14 +219,26 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       });
       const data = await res.json();
       if (data.success) {
+        if (Array.isArray(data.data)) {
+          const updatedUsers = data.data as AuthUser[];
+          setUsers(updatedUsers);
+          const map: Record<string, UserRole> = {};
+          updatedUsers.forEach((u) => {
+            if (u.nrp && u.role) {
+              map[u.nrp.trim()] = u.role;
+            }
+          });
+          setDynamicRoleMap(map);
+        }
         showToast(`Role pengguna NRP ${nrp} berhasil diubah menjadi ${nextRole}.`, 'success');
-        await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
       } else {
         showToast(data.message || 'Gagal mengubah role pengguna.', 'error');
+        await fetchAllData();
       }
     } catch {
       showToast('Kesalahan jaringan saat mengubah role.', 'error');
+      await fetchAllData();
     } finally {
       setUpdatingUserNrp(null);
     }
@@ -223,7 +246,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
   const handleStartEditUser = (u: AuthUser) => {
     const poldaVal = u.polda || 'MABES POLRI';
-    const satkerVal = u.satker || 'BARESKRIM POLRI';
+    const satkerVal = (u.satker || 'BARESKRIM POLRI').split(' / ')[0].trim();
     const regMatch = registrations.find((r) => r.nrp === u.nrp);
     setEditingUser(u);
     setEditNama(u.nama);
@@ -242,41 +265,79 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
-    setUpdatingUserNrp(editingUser.nrp);
-    const composedSatker =
+    const targetNrp = editingUser.nrp;
+    const composedSatker = (
       editComposedSatker ||
       (editSubSatker && editSubSatker !== 'Pimpinan / Staf Utama Satker'
         ? `${editSubSatker} - ${editSatkerUtama}`
         : editSatkerUtama) ||
-      'MABES POLRI';
+      'MABES POLRI'
+    ).split(' / ')[0].trim();
+    const cleanedEmail = editEmail.trim() || `${targetNrp}@polri.go.id`;
+    const cleanedSecondaryEmail = editSecondaryEmail.trim();
+    const cleanedNoHp = editNoHp.trim();
+
+    // Immediate optimistic update on users state and dynamic badge role map
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.nrp === targetNrp
+          ? {
+              ...u,
+              nama: editNama.trim(),
+              pangkat: editPangkat,
+              role: editRole,
+              polda: editPolda || 'MABES POLRI',
+              satker: composedSatker,
+              email: cleanedEmail,
+              secondaryEmail: cleanedSecondaryEmail,
+              noHp: cleanedNoHp,
+            }
+          : u
+      )
+    );
+    updateDynamicUserRole(targetNrp, editRole);
+    setUpdatingUserNrp(targetNrp);
 
     try {
       const res = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nrp: editingUser.nrp,
+          nrp: targetNrp,
           nama: editNama.trim(),
           pangkat: editPangkat,
           role: editRole,
           polda: editPolda || 'MABES POLRI',
           satker: composedSatker,
-          email: editEmail.trim() || `${editingUser.nrp}@polri.go.id`,
-          secondaryEmail: editSecondaryEmail.trim(),
-          noHp: editNoHp.trim(),
+          email: cleanedEmail,
+          secondaryEmail: cleanedSecondaryEmail,
+          noHp: cleanedNoHp,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Data, Email & Satker ${editNama} (NRP ${editingUser.nrp}) berhasil diperbarui.`, 'success');
+        if (Array.isArray(data.data)) {
+          const updatedUsers = data.data as AuthUser[];
+          setUsers(updatedUsers);
+          const map: Record<string, UserRole> = {};
+          updatedUsers.forEach((u) => {
+            if (u.nrp && u.role) {
+              map[u.nrp.trim()] = u.role;
+            }
+          });
+          setDynamicRoleMap(map);
+        }
+        showToast(`Data, Email & Satker ${editNama} (NRP ${targetNrp}) berhasil diperbarui.`, 'success');
         setEditingUser(null);
         await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
       } else {
         showToast(data.message || 'Gagal memperbarui data pengguna.', 'error');
+        await fetchAllData();
       }
     } catch {
       showToast('Kesalahan jaringan saat menyimpan perubahan.', 'error');
+      await fetchAllData();
     } finally {
       setUpdatingUserNrp(null);
     }
@@ -901,6 +962,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 const regInfo = registrations.find((r) => r.nrp === u.nrp);
                 const isActive = isUserAccountActive(u, regInfo);
                 const secondaryEmail = u.secondaryEmail || regInfo?.secondaryEmail;
+                const cleanSatker = (u.satker || 'Mabes Polri').split(' / ')[0].trim();
+                const dynamicJabatanAngkatan =
+                  u.role === 'KETUA'
+                    ? 'Ketua Angkatan'
+                    : u.role === 'SEKRETARIAT'
+                    ? 'Sekretaris Angkatan'
+                    : u.role === 'BENDAHARA'
+                    ? 'Bendahara Angkatan'
+                    : null;
                 const showPangkat =
                   Boolean(u.pangkat) &&
                   !u.nama.toLowerCase().trim().startsWith((u.pangkat || '').toLowerCase().trim());
@@ -920,6 +990,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                           NRP {u.nrp}
                           {showPangkat ? ` • ${u.pangkat}` : ''}
                         </span>
+                        {dynamicJabatanAngkatan && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 font-bold text-amber-800">
+                            {dynamicJabatanAngkatan}
+                          </span>
+                        )}
                         {isActive ? (
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 ml-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -936,7 +1011,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-0.5">
                         <span className="flex items-center gap-1">
                           <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{u.satker || 'Mabes Polri'} &bull; {u.polda || 'MABES POLRI'}</span>
+                          <span>{cleanSatker} &bull; {u.polda || 'MABES POLRI'}</span>
                         </span>
                         <span className="flex items-center gap-1.5 flex-wrap">
                           <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
