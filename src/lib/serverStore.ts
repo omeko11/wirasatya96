@@ -29,19 +29,92 @@ const INITIAL_MESSAGES: ChatMessage[] = [];
 
 const INITIAL_REGISTRATIONS: PendingRegistration[] = [
   {
-    id: 'reg-superadmin',
+    id: 'reg-98010710',
     nrp: '98010710',
     nama: 'Eko Agung',
     pangkat: 'Briptu',
     satker: 'Bareskrim Polri / Tim IT Developer Wira Satya 96',
     polda: 'MABES POLRI',
-    noHp: '081298765432',
+    noHp: '081298010710',
     email: 'agungkrisdianto96@gmail.com',
     alasanDaftar: 'Superadmin & Lead Developer Sistem Informasi Batalyon Wira Satya Akpol 1996.',
     status: 'DISETUJUI_BELUM_PASSWORD',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Sistem Otentikasi Bareskrim Polri (Dev Lead)',
+  },
+  {
+    id: 'reg-980107102',
+    nrp: '980107102',
+    nama: 'Eko_2',
+    pangkat: 'Irjen Pol',
+    satker: 'Mabes Polri / Ketua Batalyon Wira Satya 96',
+    polda: 'MABES POLRI',
+    noHp: '0812980107102',
+    email: 'eko2@wirasatya96.id',
+    alasanDaftar: 'Akun Testing Role KETUA Batalyon Wira Satya 96.',
+    status: 'DISETUJUI_BELUM_PASSWORD',
+    createdAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: 'Eko Agung (Superadmin)',
+  },
+  {
+    id: 'reg-980107103',
+    nrp: '980107103',
+    nama: 'Eko_3',
+    pangkat: 'Brigjen Pol',
+    satker: 'SSDM Polri / Sekretariat Wira Satya 96',
+    polda: 'MABES POLRI',
+    noHp: '0812980107103',
+    email: 'eko3@wirasatya96.id',
+    alasanDaftar: 'Akun Testing Role SEKRETARIAT Batalyon Wira Satya 96.',
+    status: 'DISETUJUI_BELUM_PASSWORD',
+    createdAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: 'Eko Agung (Superadmin)',
+  },
+  {
+    id: 'reg-980107104',
+    nrp: '980107104',
+    nama: 'Eko_4',
+    pangkat: 'Kombes Pol',
+    satker: 'Puskeu Polri / Bendahara Wira Satya 96',
+    polda: 'MABES POLRI',
+    noHp: '0812980107104',
+    email: 'eko4@wirasatya96.id',
+    alasanDaftar: 'Akun Testing Role BENDAHARA Batalyon Wira Satya 96.',
+    status: 'DISETUJUI_BELUM_PASSWORD',
+    createdAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: 'Eko Agung (Superadmin)',
+  },
+  {
+    id: 'reg-980107105',
+    nrp: '980107105',
+    nama: 'Eko_5',
+    pangkat: 'Kombes Pol',
+    satker: 'Ditreskrimsus Polda Metro Jaya',
+    polda: 'POLDA METRO JAYA',
+    noHp: '0812980107105',
+    email: 'eko5@wirasatya96.id',
+    alasanDaftar: 'Akun Testing Role ANGGOTA Batalyon Wira Satya 96.',
+    status: 'DISETUJUI_BELUM_PASSWORD',
+    createdAt: new Date().toISOString(),
+    verifiedAt: new Date().toISOString(),
+    verifiedBy: 'Eko Agung (Superadmin)',
+  },
+  {
+    id: 'reg-980107106',
+    nrp: '980107106',
+    nama: 'Eko_6',
+    pangkat: 'Kombes Pol',
+    satker: 'Ditlantas Polda Jawa Barat',
+    polda: 'POLDA JAWA BARAT',
+    noHp: '0812980107106',
+    email: 'eko6@wirasatya96.id',
+    alasanDaftar: 'Akun Testing Calon Anggota Menunggu Verifikasi Superadmin / Sekretariat.',
+    status: 'PENDING_VERIFIKASI',
+    createdAt: new Date().toISOString(),
   },
 ];
 
@@ -227,6 +300,23 @@ export const serverStore = {
         });
       }
 
+      // Also ensure iuran entry exists
+      const existingIuran = globalStore.iuranList.find((i) => i.nrp === reg.nrp);
+      if (!existingIuran) {
+        globalStore.iuranList.push({
+          id: 'iur-' + reg.nrp,
+          nrp: reg.nrp,
+          namaLengkap: reg.nama,
+          pangkat: reg.pangkat,
+          polda: reg.polda,
+          tahun: 2026,
+          bulanTerbayar: [],
+          totalTagihan: 3000000,
+          totalTerbayar: 0,
+          status: 'BELUM_BAYAR',
+        });
+      }
+
       return {
         success: true,
         message: `Pendaftaran ${reg.nama} berhasil disetujui. Akun siap diaktivasi oleh personel bersangkutan.`,
@@ -314,7 +404,7 @@ export const serverStore = {
   } => {
     const cleanId = identifier.trim();
 
-    // 1. Check registrations for pending/approved status
+    // 1. Check registrations for pending/rejected status
     const reg = globalStore.registrations.find(
       (r) => r.nrp === cleanId || r.email.toLowerCase() === cleanId.toLowerCase()
     );
@@ -335,18 +425,6 @@ export const serverStore = {
           message: 'Permohonan pendaftaran akun Anda ditolak oleh Pengurus Batalyon.',
         };
       }
-
-      if (reg.status === 'DISETUJUI_BELUM_PASSWORD' || (!reg.password && !passwordInput)) {
-        return {
-          success: false,
-          requiresPasswordSetup: true,
-          status: 'DISETUJUI_BELUM_PASSWORD',
-          nrp: reg.nrp,
-          nama: reg.nama,
-          pangkat: reg.pangkat,
-          message: 'Pendaftaran Anda telah disetujui Superadmin! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
-        };
-      }
     }
 
     // 2. Check registered users list
@@ -354,18 +432,49 @@ export const serverStore = {
       (u) =>
         u.nrp === cleanId ||
         u.id === cleanId ||
-        u.email.toLowerCase() === cleanId.toLowerCase()
+        u.email.toLowerCase() === cleanId.toLowerCase() ||
+        u.nama.toLowerCase() === cleanId.toLowerCase()
     );
 
-    if (user && user.status === 'DISETUJUI_BELUM_PASSWORD') {
+    // If user is approved but hasn't set a password yet:
+    // - If passwordInput is empty -> prompt password setup modal
+    // - If passwordInput is provided -> save it as their password and log them in immediately
+    if (user && (user.status === 'DISETUJUI_BELUM_PASSWORD' || !user.password)) {
+      if (!passwordInput) {
+        return {
+          success: false,
+          requiresPasswordSetup: true,
+          status: 'DISETUJUI_BELUM_PASSWORD',
+          nrp: user.nrp,
+          nama: user.nama,
+          pangkat: user.pangkat,
+          message: 'Akun Anda telah disetujui! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
+        };
+      } else {
+        user.password = passwordInput;
+        user.status = 'AKTIF';
+        if (reg) {
+          reg.password = passwordInput;
+          reg.status = 'AKTIF';
+        }
+        globalStore.activeSession = user;
+        return {
+          success: true,
+          user,
+          message: `Login berhasil sebagai ${user.nama} (${user.role})`,
+        };
+      }
+    }
+
+    if (reg && reg.status === 'DISETUJUI_BELUM_PASSWORD' && !passwordInput) {
       return {
         success: false,
         requiresPasswordSetup: true,
         status: 'DISETUJUI_BELUM_PASSWORD',
-        nrp: user.nrp,
-        nama: user.nama,
-        pangkat: user.pangkat,
-        message: 'Pendaftaran Anda telah disetujui! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
+        nrp: reg.nrp,
+        nama: reg.nama,
+        pangkat: reg.pangkat,
+        message: 'Pendaftaran Anda telah disetujui Superadmin! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
       };
     }
 

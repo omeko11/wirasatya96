@@ -22,7 +22,7 @@ import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummar
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
 import { ShieldCheck, LogOut } from 'lucide-react';
 
-const STORAGE_VERSION = 'ws96_clean_v4';
+const STORAGE_VERSION = 'ws96_role_test_v5';
 
 export default function Home() {
   const router = useRouter();
@@ -520,8 +520,18 @@ export default function Home() {
           fetch('/api/members')
             .then((res) => res.json())
             .then((data) => {
-              if (data.success && Array.isArray(data.members)) {
-                setMembers(data.members);
+              const list = data.members || data.data;
+              if (data.success && Array.isArray(list)) {
+                setMembers(list);
+                localStorage.setItem('wirasatya96_members', JSON.stringify(list));
+              }
+            })
+            .catch(() => {});
+          fetch('/api/finance')
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success && data.data) {
+                if (data.data.iuranList) setIuranList(data.data.iuranList);
               }
             })
             .catch(() => {});

@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ success: true, count: members.length, data: members });
+  return NextResponse.json({ success: true, count: members.length, data: members, members });
 }
 
 export async function POST(req: NextRequest) {
