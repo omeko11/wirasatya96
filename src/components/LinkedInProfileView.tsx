@@ -374,7 +374,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </p>
                   {member.namaPolres && (
                     <p className="text-[11px] text-slate-600">
-                      Satwil: {member.namaPolres} {member.namaPolsek ? `— Polsek ${member.namaPolsek}` : ''}
+                      Satwil / Komando: <span className="font-semibold text-slate-800">{member.namaPolres}</span>
                     </p>
                   )}
                   <p className="text-[11px] text-slate-500 pt-1">

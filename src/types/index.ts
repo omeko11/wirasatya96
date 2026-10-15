@@ -41,7 +41,7 @@ export interface AnggotaWiraSatya {
   pangkat: string;
   jabatanTerakhir: string;
   satuanKerja: string;
-  tipeSatker?: 'MABES' | 'POLDA' | 'POLRES/TA/BES' | 'POLSEK';
+  tipeSatker?: 'MABES' | 'POLDA' | 'POLRES/TA/BES' | 'KEMEN/LEMBAGA' | 'PURNA TUGAS' | 'POLSEK';
   satkerMabes?: string;
   subSatker?: string;
   namaPolres?: string;

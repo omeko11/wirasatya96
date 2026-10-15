@@ -22,8 +22,10 @@ import {
   SUB_SATKER_BARESKRIM, 
   SUB_SATKER_POLDA_LIST, 
   SUB_SATKER_POLRES_LIST, 
-  SUB_SATKER_POLSEK_LIST, 
-  DAFTAR_38_POLDA
+  DAFTAR_38_POLDA,
+  DAFTAR_KEMEN_LEMBAGA,
+  STATUS_PURNA_TUGAS_LIST,
+  getSubSatkerForMabes
 } from '@/data/polriStructure';
 
 interface FormWizardProps {
@@ -194,6 +196,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     const derivedPolda = 
       formData.tipeSatker === 'MABES' 
         ? (formData.satkerMabes === 'LEMDIKLAT POLRI' ? 'LEMDIKLAT POLRI' : 'MABES POLRI')
+        : formData.tipeSatker === 'KEMEN/LEMBAGA'
+        ? (formData.polda || 'KEMENTERIAN / LEMBAGA')
+        : formData.tipeSatker === 'PURNA TUGAS'
+        ? 'PURNA TUGAS'
         : (formData.polda || 'POLDA METRO JAYA');
 
     const derivedSatker = 
@@ -204,7 +210,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
           ? `${derivedPolda} - ${formData.subSatker || ''}`
           : formData.tipeSatker === 'POLRES/TA/BES'
           ? `${formData.namaPolres || 'Polres'} - ${formData.subSatker || ''}`
-          : `${formData.namaPolsek || 'Polsek'} - ${formData.subSatker || ''}`
+          : formData.tipeSatker === 'KEMEN/LEMBAGA'
+          ? `${formData.polda || 'Kemen/Lembaga'}${formData.subSatker ? ' (' + formData.subSatker + ')' : ''}`
+          : formData.tipeSatker === 'PURNA TUGAS'
+          ? `Bhayangkara Purna Tugas Akpol 1996`
+          : `${formData.namaPolres || 'Polres'}`
       );
 
     const combinedDiseases = [...(formData.daftarPenyakit || [])];
@@ -390,7 +400,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   Modul 1: Identitas Pribadi & Struktur Kedinasan Polri
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Standardisasi data penempatan SIPP Polri (Mabes, Polda, Polres, Polsek) & identitas perwira.
+                  Standardisasi data penempatan SIPP Polri (Mabes Polri, Polda, Polres/Ta/Bes, Kemen/Lembaga) leting Akpol 1996.
                 </p>
               </div>
               <span className="text-[11px] font-bold px-2.5 py-1 rounded bg-polri-navy/10 text-polri-navy flex items-center gap-1 self-start sm:self-auto">
@@ -443,7 +453,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Tingkat / Tipe Satuan Kerja (Satker) <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {TIPE_SATKER_LIST.map((tipe) => (
                     <button
                       key={tipe}
@@ -452,17 +462,27 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                         handleInputChange('tipeSatker', tipe);
                         if (tipe === 'MABES') {
                           handleInputChange('polda', 'MABES POLRI');
-                          if (!formData.satkerMabes) handleInputChange('satkerMabes', 'DIVHUMAS POLRI');
-                        } else {
-                          if (!formData.polda || formData.polda === 'MABES POLRI' || formData.polda === 'LEMDIKLAT POLRI') {
+                          if (!formData.satkerMabes) handleInputChange('satkerMabes', 'BARESKRIM POLRI');
+                          handleInputChange('subSatker', 'DITTIPIDUM');
+                        } else if (tipe === 'POLDA') {
+                          if (!formData.polda || formData.polda === 'MABES POLRI' || formData.polda === 'KEMENTERIAN / LEMBAGA') {
                             handleInputChange('polda', 'POLDA METRO JAYA');
                           }
-                          if (tipe === 'POLDA' && !formData.subSatker) {
-                            handleInputChange('subSatker', 'DITRESKRIMUM');
+                          if (!formData.subSatker) handleInputChange('subSatker', 'DITRESKRIMUM (Reserse Kriminal Umum)');
+                        } else if (tipe === 'POLRES/TA/BES') {
+                          if (!formData.polda || formData.polda === 'MABES POLRI' || formData.polda === 'KEMENTERIAN / LEMBAGA') {
+                            handleInputChange('polda', 'POLDA METRO JAYA');
                           }
+                          if (!formData.subSatker) handleInputChange('subSatker', 'KAPOLRES / KAPOLRESTABES / KAPOLRES METRO');
+                        } else if (tipe === 'KEMEN/LEMBAGA') {
+                          handleInputChange('polda', 'BADAN INTELIJEN NEGARA (BIN)');
+                          handleInputChange('subSatker', '');
+                        } else if (tipe === 'PURNA TUGAS') {
+                          handleInputChange('polda', 'PURNA TUGAS');
+                          handleInputChange('subSatker', 'PURNAWIRAWAN / PENSIUN POLRI');
                         }
                       }}
-                      className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center ${
+                      className={`py-2 px-2 rounded-lg text-xs font-bold border transition-all text-center ${
                         formData.tipeSatker === tipe
                           ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
                           : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -476,7 +496,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
               {/* CASCADING DROPDOWNS BASED ON TIPE SATKER */}
               <div className="p-3.5 bg-white rounded-lg border border-slate-200/90 space-y-3.5">
-                {/* 1. KONDISI MABES */}
+                {/* 1. KONDISI MABES POLRI */}
                 {formData.tipeSatker === 'MABES' && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
@@ -484,15 +504,12 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                         Satuan Kerja Mabes Polri <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.satkerMabes || 'DIVHUMAS POLRI'}
+                        value={formData.satkerMabes || 'BARESKRIM POLRI'}
                         onChange={(e) => {
                           const val = e.target.value;
                           handleInputChange('satkerMabes', val);
-                          if (val === 'BARESKRIM POLRI') {
-                            handleInputChange('subSatker', 'DITTIPIDSIBER');
-                          } else {
-                            handleInputChange('subSatker', '');
-                          }
+                          const subList = getSubSatkerForMabes(val);
+                          handleInputChange('subSatker', subList.length > 0 ? subList[0] : '');
                         }}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
@@ -506,15 +523,15 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Sub Satker / Biro / Bagian / Dit
+                        Sub Satker / Direktorat / Biro / Bagian
                       </label>
-                      {formData.satkerMabes === 'BARESKRIM POLRI' ? (
+                      {getSubSatkerForMabes(formData.satkerMabes || 'BARESKRIM POLRI').length > 0 ? (
                         <select
-                          value={formData.subSatker || 'DITTIPIDSIBER'}
+                          value={formData.subSatker || ''}
                           onChange={(e) => handleInputChange('subSatker', e.target.value)}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                         >
-                          {SUB_SATKER_BARESKRIM.map((sub) => (
+                          {getSubSatkerForMabes(formData.satkerMabes || 'BARESKRIM POLRI').map((sub) => (
                             <option key={sub} value={sub}>
                               {sub}
                             </option>
@@ -523,7 +540,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                       ) : (
                         <input
                           type="text"
-                          placeholder="Contoh: Ro PID / Biro Penmas / Bag Opsnal"
+                          placeholder="Contoh: Biro Penmas / Bag Renmin / Unit Khusus"
                           value={formData.subSatker || ''}
                           onChange={(e) => handleInputChange('subSatker', e.target.value)}
                           className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
@@ -559,10 +576,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Sub Satker Polda <span className="text-red-500">*</span>
+                        Direktorat / Biro / Bidang Polda <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.subSatker || 'DITRESKRIMUM'}
+                        value={formData.subSatker || 'DITRESKRIMUM (Reserse Kriminal Umum)'}
                         onChange={(e) => handleInputChange('subSatker', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
@@ -602,11 +619,11 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Nama Polres / Polresta <span className="text-red-500">*</span>
+                        Nama Polres / Polrestabes / Metro <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        placeholder="Contoh: Polrestabes Bandung / Polres Metro Jaksel"
+                        placeholder="Contoh: Polrestabes Surabaya / Polres Metro Jaksel"
                         value={formData.namaPolres || ''}
                         onChange={(e) => handleInputChange('namaPolres', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
@@ -615,10 +632,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Sub Satker Polres <span className="text-red-500">*</span>
+                        Penugasan / Satker Polres <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.subSatker || 'SATRESKRIM'}
+                        value={formData.subSatker || 'KAPOLRES / KAPOLRESTABES / KAPOLRES METRO'}
                         onChange={(e) => handleInputChange('subSatker', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
@@ -632,25 +649,21 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   </div>
                 )}
 
-                {/* 4. KONDISI POLSEK */}
-                {formData.tipeSatker === 'POLSEK' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                {/* 4. KONDISI KEMEN/LEMBAGA (PENUGASAN LUAR STRUKTUR POLRI) */}
+                {formData.tipeSatker === 'KEMEN/LEMBAGA' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Polda Induk <span className="text-red-500">*</span>
+                        Kementerian / Lembaga Penugasan <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={
-                          formData.polda && (DAFTAR_38_POLDA as readonly string[]).includes(formData.polda)
-                            ? formData.polda
-                            : 'POLDA METRO JAYA'
-                        }
+                        value={formData.polda || 'BADAN INTELIJEN NEGARA (BIN)'}
                         onChange={(e) => handleInputChange('polda', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
-                        {DAFTAR_38_POLDA.map((p) => (
-                          <option key={p} value={p}>
-                            {p}
+                        {DAFTAR_KEMEN_LEMBAGA.map((kl) => (
+                          <option key={kl} value={kl}>
+                            {kl}
                           </option>
                         ))}
                       </select>
@@ -658,45 +671,50 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Nama Polres Induk
+                        Direktorat / Kedeputian / Unit Penugasan
                       </label>
                       <input
                         type="text"
-                        placeholder="Contoh: Polres Metro Jakpus"
-                        value={formData.namaPolres || ''}
-                        onChange={(e) => handleInputChange('namaPolres', e.target.value)}
+                        placeholder="Contoh: Deputi Penindakan / Direktur Intelijen / Staf Khusus"
+                        value={formData.subSatker || ''}
+                        onChange={(e) => handleInputChange('subSatker', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
                       />
                     </div>
+                  </div>
+                )}
 
+                {/* 5. KONDISI PURNA TUGAS */}
+                {formData.tipeSatker === 'PURNA TUGAS' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Nama Polsek <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Polsek Metro Menteng"
-                        value={formData.namaPolsek || ''}
-                        onChange={(e) => handleInputChange('namaPolsek', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Unit Satker
+                        Status Kehormatan Purna Tugas <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.subSatker || 'UNIT RESKRIM'}
+                        value={formData.subSatker || 'PURNAWIRAWAN / PENSIUN POLRI'}
                         onChange={(e) => handleInputChange('subSatker', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium focus:ring-1 focus:ring-polri-navy"
                       >
-                        {SUB_SATKER_POLSEK_LIST.map((sub) => (
-                          <option key={sub} value={sub}>
-                            {sub}
+                        {STATUS_PURNA_TUGAS_LIST.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Bidang Aktivitas / Usaha Saat Ini
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Pengusaha Transportasi / Praktisi Hukum / Dewan Pembina"
+                        value={formData.satuanKerja || ''}
+                        onChange={(e) => handleInputChange('satuanKerja', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-polri-navy"
+                      />
                     </div>
                   </div>
                 )}
