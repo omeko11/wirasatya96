@@ -20,9 +20,8 @@ import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST } from '@/data/mockFinance';
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary } from '@/types';
 import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
-import { ShieldCheck, LogOut } from 'lucide-react';
 
-const STORAGE_VERSION = 'ws96_role_test_v5';
+const STORAGE_VERSION = 'ws96_role_test_v6';
 
 export default function Home() {
   const router = useRouter();
@@ -481,26 +480,6 @@ export default function Home() {
           </>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="bg-polri-navy text-slate-400 py-6 border-t border-polri-gold/20 text-xs hidden md:block">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-polri-gold" />
-            <span className="font-semibold text-slate-200">
-              Batalyon Wira Satya Akpol 1996 — #SelaluBahagia
-            </span>
-          </div>
-          <div className="flex items-center gap-3 text-slate-400">
-            <span>Sistem Informasi Kesejahteraan & Direktori Purna Tugas</span>
-            <span>&bull;</span>
-            <button onClick={handleLogout} className="hover:text-red-400 font-semibold flex items-center gap-1">
-              <LogOut className="w-3.5 h-3.5" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </footer>
 
       {/* Superadmin Verification Modal */}
       <AdminVerificationModal
