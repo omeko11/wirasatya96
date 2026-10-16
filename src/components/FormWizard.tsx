@@ -1205,10 +1205,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <label className="block text-xs font-extrabold text-slate-800">
-                      Data ADC / Ajudan / Spri (Opsional)
+                      Data ADC / Ajudan / Spri (Opsional — Auto-Generate Login ADC)
                     </label>
                     <span className="text-[11px] text-slate-500">
-                      Identitas personel pendamping untuk koordinasi kedinasan
+                      NRP ADC yang ditambahkan otomatis dapat login menggunakan <strong>Kata Sandi yang sama dengan akun Alumni ini</strong>
                     </span>
                   </div>
                   <button
@@ -1223,7 +1223,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                 {(!formData.daftarAdc || formData.daftarAdc.length === 0) && (
                   <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-white/70 text-center text-xs text-slate-400">
-                    Belum ada data ADC / Ajudan. Klik &ldquo;Tambah ADC&rdquo; jika memiliki personel pendamping.
+                    Belum ada data ADC / Ajudan. Klik &ldquo;Tambah ADC&rdquo; untuk mengaktifkan akses login NRP ADC (kata sandi mengikuti akun Alumni).
                   </div>
                 )}
 

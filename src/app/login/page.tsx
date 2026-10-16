@@ -198,21 +198,88 @@ export default function LoginPage() {
     let matchedClientOverride: (AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }) | undefined;
     try {
       const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
-      if (rawOverrides) {
-        const parsedOverrides: Record<string, AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }> =
-          JSON.parse(rawOverrides);
-        const lowerId = cleanIdentifier.toLowerCase();
-        matchedClientOverride =
-          parsedOverrides[cleanIdentifier] ||
+      const parsedOverrides: Record<string, AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }> =
+        rawOverrides ? JSON.parse(rawOverrides) : {};
+      const lowerId = cleanIdentifier.toLowerCase();
+      matchedClientOverride =
+        parsedOverrides[cleanIdentifier] ||
+        Object.values(parsedOverrides).find(
+          (ov) =>
+            ov &&
+            (ov.nrp === cleanIdentifier ||
+              ov.oldNrp === cleanIdentifier ||
+              ov.email?.toLowerCase() === lowerId ||
+              ov.secondaryEmail?.toLowerCase() === lowerId ||
+              ov.nama?.trim().toLowerCase() === lowerId)
+        );
+
+      // If not yet in user overrides, check if cleanIdentifier is an ADC in wirasatya96_members
+      if (!matchedClientOverride) {
+        const rawMembers = localStorage.getItem('wirasatya96_members');
+        if (rawMembers) {
+          const parsedMembers = JSON.parse(rawMembers);
+          if (Array.isArray(parsedMembers)) {
+            for (const m of parsedMembers) {
+              if (Array.isArray(m.daftarAdc)) {
+                const adcMatch = m.daftarAdc.find(
+                  (adc: any) =>
+                    (adc.nrp && String(adc.nrp).trim() === cleanIdentifier) ||
+                    (adc.email && String(adc.email).trim().toLowerCase() === lowerId)
+                );
+                if (adcMatch && adcMatch.nrp) {
+                  const cleanAdcNrp = String(adcMatch.nrp).trim();
+                  const parentOv =
+                    parsedOverrides[m.nrp] ||
+                    (m.oldNrp ? parsedOverrides[m.oldNrp] : undefined) ||
+                    Object.values(parsedOverrides).find(
+                      (ov) => ov && !ov.isAdcAccount && (ov.nrp === m.nrp || ov.oldNrp === m.nrp)
+                    );
+                  matchedClientOverride = {
+                    id: `u-adc-${cleanAdcNrp}`,
+                    nrp: cleanAdcNrp,
+                    nama: (adcMatch.nama || `ADC ${m.namaLengkap}`).trim(),
+                    pangkat: adcMatch.pangkat || 'Briptu',
+                    email: (adcMatch.email || `${cleanAdcNrp}@polri.go.id`).trim(),
+                    noHp: adcMatch.noHp || '',
+                    role: 'ANGGOTA',
+                    profileId: m.id || `ws-${m.nrp}`,
+                    mfaEnabled: false,
+                    mfaMethod: 'PIN',
+                    satker: m.satuanKerja || 'Mabes Polri',
+                    polda: m.polda || 'MABES POLRI',
+                    jabatanTerakhir: 'ADC',
+                    tanggalLahir: adcMatch.tanggalLahir,
+                    fotoUrl: '/default-avatar.png',
+                    isAdcAccount: true,
+                    adcOfNrp: m.nrp,
+                    adcOfNama: m.namaLengkap,
+                    adcOfPangkat: m.pangkat,
+                    password: parentOv?.password,
+                    status: parentOv?.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD',
+                  };
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // If matchedClientOverride is an ADC account, ensure its password always inherits from the parent Alumni override!
+      if (matchedClientOverride?.isAdcAccount && matchedClientOverride.adcOfNrp) {
+        const parentNrp = matchedClientOverride.adcOfNrp;
+        const parentOv =
+          parsedOverrides[parentNrp] ||
           Object.values(parsedOverrides).find(
-            (ov) =>
-              ov &&
-              (ov.nrp === cleanIdentifier ||
-                ov.oldNrp === cleanIdentifier ||
-                ov.email?.toLowerCase() === lowerId ||
-                ov.secondaryEmail?.toLowerCase() === lowerId ||
-                ov.nama?.trim().toLowerCase() === lowerId)
+            (ov) => ov && !ov.isAdcAccount && (ov.nrp === parentNrp || ov.oldNrp === parentNrp)
           );
+        if (parentOv?.password) {
+          matchedClientOverride = {
+            ...matchedClientOverride,
+            password: parentOv.password,
+            status: 'AKTIF',
+          };
+        }
       }
     } catch {
       // ignore storage parse error
@@ -852,10 +919,10 @@ export default function LoginPage() {
             <div className="space-y-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Pendaftaran Alumni &amp; Personel
+                  Pendaftaran Alumni Wira Satya 96
                 </h1>
                 <p className="text-xs text-slate-600 mt-1">
-                  Pendaftaran akun Batalyon Wira Satya Akpol 1996 (termasuk ADC)
+                  Khusus Perwira Alumni Batalyon Wira Satya Akpol 1996. Akun ADC otomatis aktif dari profil Alumni yang menambahkan.
                 </p>
               </div>
 

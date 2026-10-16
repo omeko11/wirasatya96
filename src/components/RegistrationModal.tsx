@@ -152,7 +152,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                 Pendaftaran Anggota Alumni WS 1996
               </h3>
               <p className="text-xs text-slate-300">
-                Registrasi mandiri perwira alumni &amp; ADC Batalyon Wira Satya Akpol 1996
+                Registrasi mandiri khusus Perwira Alumni Batalyon Wira Satya Akpol 1996
               </p>
             </div>
           </div>

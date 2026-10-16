@@ -623,9 +623,15 @@ export default function Home() {
       .catch(() => {});
   };
 
-  // Start editing a specific member (Admin/Sekretaris or self)
+  // Start editing a specific member (Admin/Sekretaris, self, or ADC of that Alumni)
   const handleStartEditMember = (member: AnggotaWiraSatya) => {
-    if (!['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) && member.nrp !== currentUser.nrp) {
+    const isAdcOfTarget =
+      Boolean(currentUser.isAdcAccount && currentUser.adcOfNrp && currentUser.adcOfNrp === member.nrp);
+    if (
+      !['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role) &&
+      member.nrp !== currentUser.nrp &&
+      !isAdcOfTarget
+    ) {
       return;
     }
     setViewingMember(null);
@@ -680,6 +686,11 @@ export default function Home() {
       if (normalizedMember.oldNrp && normalizedMember.oldNrp !== normalizedMember.nrp) {
         delete userMap[normalizedMember.oldNrp];
       }
+      const parentPassword =
+        existingUOv.password ||
+        (currentUser.nrp === normalizedMember.nrp ? currentUser.password : undefined);
+      const nowIso = new Date().toISOString();
+
       userMap[normalizedMember.nrp] = {
         ...existingUOv,
         oldNrp: existingUOv.oldNrp || normalizedMember.oldNrp || normalizedMember.nrp,
@@ -699,8 +710,56 @@ export default function Home() {
         noHp: normalizedMember.noHp || existingUOv.noHp,
         fotoUrl: normalizedMember.fotoUrl,
         ...(normalizedMember.coverUrl ? { coverUrl: normalizedMember.coverUrl } : {}),
-        updatedAt: new Date().toISOString(),
+        ...(parentPassword ? { password: parentPassword, status: 'AKTIF' } : {}),
+        updatedAt: nowIso,
       };
+
+      // Also auto-generate / sync ADC accounts in ws96_user_overrides_v1 so ADC can login with NRP ADC + Alumni Password
+      const activeAdcNrps = new Set<string>();
+      if (Array.isArray(normalizedMember.daftarAdc)) {
+        normalizedMember.daftarAdc.forEach((adc) => {
+          const cleanAdcNrp = (adc.nrp || '').trim();
+          if (!cleanAdcNrp || cleanAdcNrp === normalizedMember.nrp) return;
+          activeAdcNrps.add(cleanAdcNrp);
+          const existingAdcOv = userMap[cleanAdcNrp] || {};
+          userMap[cleanAdcNrp] = {
+            ...existingAdcOv,
+            id: existingAdcOv.id || `u-adc-${cleanAdcNrp}`,
+            profileId: normalizedMember.id || `ws-${normalizedMember.nrp}`,
+            nrp: cleanAdcNrp,
+            nama: (adc.nama || `ADC ${normalizedMember.namaLengkap}`).trim(),
+            pangkat: adc.pangkat || 'Briptu',
+            role: 'ANGGOTA',
+            jabatanTerakhir: 'ADC',
+            tanggalLahir: adc.tanggalLahir,
+            satker: normalizedMember.satuanKerja,
+            polda: normalizedMember.polda,
+            email: (adc.email || `${cleanAdcNrp}@polri.go.id`).trim(),
+            noHp: adc.noHp || '',
+            fotoUrl: existingAdcOv.fotoUrl || '/default-avatar.png',
+            isAdcAccount: true,
+            adcOfNrp: normalizedMember.nrp,
+            adcOfNama: normalizedMember.namaLengkap,
+            adcOfPangkat: normalizedMember.pangkat,
+            ...(parentPassword ? { password: parentPassword, status: 'AKTIF' } : {}),
+            updatedAt: nowIso,
+          };
+        });
+      }
+
+      // Remove obsolete ADC overrides for this Alumni
+      Object.keys(userMap).forEach((key) => {
+        const item = userMap[key];
+        if (
+          item?.isAdcAccount &&
+          (item.adcOfNrp === normalizedMember.nrp ||
+            (normalizedMember.oldNrp && item.adcOfNrp === normalizedMember.oldNrp)) &&
+          !activeAdcNrps.has(item.nrp)
+        ) {
+          delete userMap[key];
+        }
+      });
+
       localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(userMap));
     } catch {
       // ignore

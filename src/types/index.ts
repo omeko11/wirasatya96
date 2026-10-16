@@ -49,6 +49,10 @@ export interface AuthUser {
   tempatLahir?: string;
   status?: UserAccountStatus;
   password?: string;
+  isAdcAccount?: boolean;
+  adcOfNrp?: string;
+  adcOfNama?: string;
+  adcOfPangkat?: string;
   updatedAt?: string;
 }
 
