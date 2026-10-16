@@ -493,23 +493,23 @@ export function detectStatusKedinasan(
 }
 
 /**
- * Returns numeric Status Kedinasan order (Almarhum -> Purna Tugas -> PTDH -> Masih Aktif):
- * 1 = ALMARHUM
+ * Returns numeric Status Kedinasan order (Aktif -> Purna Tugas -> PTDH -> Almarhum):
+ * 1 = AKTIF
  * 2 = PURNA_TUGAS
  * 3 = PTDH
- * 4 = AKTIF
+ * 4 = ALMARHUM
  */
 export function getStatusKedinasanOrder(status?: string | null): number {
   switch ((status || '').toUpperCase()) {
-    case 'ALMARHUM':
-      return 1;
     case 'PURNA_TUGAS':
       return 2;
     case 'PTDH':
       return 3;
+    case 'ALMARHUM':
+      return 4;
     case 'AKTIF':
     default:
-      return 4;
+      return 1;
   }
 }
 

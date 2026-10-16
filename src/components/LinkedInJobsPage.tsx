@@ -314,29 +314,18 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
     const comparePair = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting): number => {
       let res = 0;
       if (sortBy === 'DEFAULT' || sortBy === 'STATUS') {
-        // 1. Almarhum -> 2. Purna Tugas -> 3. PTDH -> 4. Masih Aktif
+        // 1. Aktif -> 2. Purna Tugas -> 3. PTDH -> 4. Almarhum
         const statusDiff = cmpStatus(a, b);
         if (statusDiff !== 0) {
           res = statusDiff;
         } else {
-          const st = a.statusKedinasan || 'AKTIF';
-          if (st === 'ALMARHUM' || st === 'PURNA_TUGAS' || st === 'PTDH') {
-            // Untuk Almarhum, Purna, dan PTDH: NRP paling kecil berada di urutan paling atas
-            res =
-              cmpNrp(a, b) ||
-              cmpPangkat(a, b) ||
-              cmpLevelSatker(a, b) ||
-              cmpNama(a, b) ||
-              cmpRole(a, b);
-          } else {
-            // Untuk yang Masih Aktif: Pangkat (Jenderal -> Bharada) -> Level Satker -> NRP (kecil -> besar) -> Nama -> Role
-            res =
-              cmpPangkat(a, b) ||
-              cmpLevelSatker(a, b) ||
-              cmpNrp(a, b) ||
-              cmpNama(a, b) ||
-              cmpRole(a, b);
-          }
+          // Dalam setiap kelompok status (termasuk Aktif): NRP Kecil berada di urutan paling atas
+          res =
+            cmpNrp(a, b) ||
+            cmpPangkat(a, b) ||
+            cmpLevelSatker(a, b) ||
+            cmpNama(a, b) ||
+            cmpRole(a, b);
         }
       } else if (sortBy === 'PANGKAT') {
         res =
@@ -658,7 +647,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   <span className="truncate">Riwayat Jabatan ({sortedJabatan.length})</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  Penempatan aktif di Mabes Polri &amp; 38 Polda &bull; Urutan Default: Almarhum (NRP Terkecil) &rarr; Purna Tugas &rarr; PTDH &rarr; Masih Aktif
+                  Penempatan aktif di Mabes Polri &amp; 38 Polda &bull; Urutan Default: Aktif (NRP Kecil) &rarr; Purna &rarr; PTDH &rarr; Almarhum
                 </p>
               </div>
 
@@ -673,8 +662,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1 min-w-0 flex-1 truncate"
                     title="Urutkan Daftar Riwayat Jabatan"
                   >
-                    <option value="DEFAULT">Default (Almarhum [NRP Kecil] → Purna → PTDH → Aktif)</option>
-                    <option value="STATUS">By Status (Almarhum → Purna → PTDH → Aktif)</option>
+                    <option value="DEFAULT">Default (Aktif [NRP Kecil] → Purna → PTDH → Almarhum)</option>
+                    <option value="STATUS">By Status (Aktif → Purna → PTDH → Almarhum)</option>
                     <option value="PANGKAT">By Pangkat (Jenderal Polisi → Bharada)</option>
                     <option value="LEVEL_SATKER">By Level Satker (Mabes → Polda → Polres → Polsek)</option>
                     <option value="NRP">By NRP (Angka Kecil → Besar)</option>
