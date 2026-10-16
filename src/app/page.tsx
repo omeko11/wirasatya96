@@ -27,6 +27,7 @@ import {
   resolveAvatarUrl,
   isCustomAvatarUrl,
   getOrBuildUserProfile,
+  calculateRetirement58,
 } from '@/lib/avatarUtils';
 
 const STORAGE_VERSION = 'ws96_akpol96_real_v10';
@@ -91,10 +92,32 @@ export default function Home() {
       .then((data) => {
         const usersList = data.users || data.data;
         if (data.success && Array.isArray(usersList)) {
+          let userOverrides: Record<string, any> = {};
+          if (typeof window !== 'undefined') {
+            try {
+              const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+              if (rawUOv) userOverrides = JSON.parse(rawUOv) || {};
+            } catch {
+              userOverrides = {};
+            }
+          }
           const roleMap: Record<string, string> = {};
           usersList.forEach((u: AuthUser) => {
-            if (u.nrp && u.role) {
-              roleMap[u.nrp] = u.role;
+            const ov =
+              userOverrides[u.nrp] ||
+              Object.values(userOverrides).find(
+                (item: any) =>
+                  item &&
+                  (item.oldNrp === u.nrp ||
+                    (u.id && item.id === u.id) ||
+                    (item.nama &&
+                      u.nama &&
+                      item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+              );
+            const effectiveNrp = ov?.nrp || u.nrp;
+            const effectiveRole = ov?.role || u.role;
+            if (effectiveNrp && effectiveRole) {
+              roleMap[effectiveNrp] = effectiveRole;
             }
           });
           if (typeof window !== 'undefined') {
@@ -102,25 +125,32 @@ export default function Home() {
             window.dispatchEvent(new Event('ws96_roles_updated'));
           }
           setCurrentUser((prev) => {
-            const matched = usersList.find((u: AuthUser) => u.nrp === prev.nrp);
-            if (!matched) return prev;
+            const matched = usersList.find(
+              (u: AuthUser) =>
+                u.nrp === prev.nrp ||
+                (prev.oldNrp && u.nrp === prev.oldNrp) ||
+                (u.id && u.id === prev.id)
+            );
+            const ov =
+              userOverrides[prev.nrp] ||
+              (prev.oldNrp ? userOverrides[prev.oldNrp] : undefined);
+            if (!matched && !ov) return prev;
+            const mergedSource = { ...(matched || {}), ...(ov || {}) };
             const nextUser: AuthUser = {
               ...prev,
-              ...matched,
+              ...mergedSource,
+              nrp: mergedSource.nrp || prev.nrp,
               nama:
-                matched.nrp === '98010710' &&
-                (matched.nama === 'Eko Agung' || matched.nama === 'Eko Agung Krisdianto')
+                (mergedSource.nrp || prev.nrp) === '98010710' &&
+                (mergedSource.nama === 'Eko Agung' || mergedSource.nama === 'Eko Agung Krisdianto')
                   ? 'Eko Agung Krisdianto, S.Kom.'
-                  : matched.nama || prev.nama,
-              pangkat:
-                matched.nrp === '98010710'
-                  ? 'Briptu'
-                  : matched.pangkat || prev.pangkat,
-              fotoUrl: resolveAvatarUrl(matched.fotoUrl, prev.fotoUrl),
+                  : mergedSource.nama || prev.nama,
+              pangkat: mergedSource.pangkat || prev.pangkat,
+              fotoUrl: resolveAvatarUrl(mergedSource.fotoUrl, prev.fotoUrl),
               coverUrl:
-                matched.coverUrl && matched.coverUrl !== '/default-cover.jpg'
-                  ? matched.coverUrl
-                  : prev.coverUrl || matched.coverUrl,
+                mergedSource.coverUrl && mergedSource.coverUrl !== '/default-cover.jpg'
+                  ? mergedSource.coverUrl
+                  : prev.coverUrl || mergedSource.coverUrl,
             };
             if (typeof window !== 'undefined') {
               localStorage.setItem('ws96_auth_user', JSON.stringify(nextUser));
@@ -140,6 +170,7 @@ export default function Home() {
         if (data.success && Array.isArray(list) && list.length > 0) {
           let authUser: AuthUser | null = null;
           let memberOverrides: Record<string, AnggotaWiraSatya> = {};
+          let userOverrides: Record<string, any> = {};
           if (typeof window !== 'undefined') {
             const rawAuth = localStorage.getItem('ws96_auth_user');
             if (rawAuth) {
@@ -157,14 +188,50 @@ export default function Home() {
                 memberOverrides = {};
               }
             }
+            const rawUserOverrides = localStorage.getItem('ws96_user_overrides_v1');
+            if (rawUserOverrides) {
+              try {
+                userOverrides = JSON.parse(rawUserOverrides) || {};
+              } catch {
+                userOverrides = {};
+              }
+            }
           }
 
           const sanitizedMembers = list.map((m: AnggotaWiraSatya) => {
-            const localOverride = memberOverrides[m.nrp];
-            const baseMember: AnggotaWiraSatya = localOverride
+            const localOverride =
+              memberOverrides[m.nrp] ||
+              (m.oldNrp ? memberOverrides[m.oldNrp] : undefined) ||
+              Object.values(memberOverrides).find(
+                (ov) =>
+                  ov &&
+                  (ov.oldNrp === m.nrp ||
+                    ov.id === m.id ||
+                    (ov.namaLengkap &&
+                      m.namaLengkap &&
+                      ov.namaLengkap.trim().toLowerCase() === m.namaLengkap.trim().toLowerCase()))
+              );
+            const uOverride =
+              userOverrides[m.nrp] ||
+              (m.oldNrp ? userOverrides[m.oldNrp] : undefined) ||
+              (localOverride?.nrp ? userOverrides[localOverride.nrp] : undefined) ||
+              Object.values(userOverrides).find(
+                (ov: any) =>
+                  ov &&
+                  (ov.oldNrp === m.nrp ||
+                    ov.id === `u-${m.nrp}` ||
+                    ov.profileId === m.id ||
+                    (ov.nama &&
+                      m.namaLengkap &&
+                      ov.nama.trim().toLowerCase() === m.namaLengkap.trim().toLowerCase()))
+              );
+
+            let baseMember: AnggotaWiraSatya = localOverride
               ? {
                   ...m,
                   ...localOverride,
+                  nrp: localOverride.nrp || m.nrp,
+                  oldNrp: localOverride.oldNrp || m.oldNrp || (localOverride.nrp && localOverride.nrp !== m.nrp ? m.nrp : undefined),
                   fotoUrl: resolveAvatarUrl(localOverride.fotoUrl, m.fotoUrl),
                   coverUrl:
                     localOverride.coverUrl && localOverride.coverUrl !== '/default-cover.jpg'
@@ -173,9 +240,41 @@ export default function Home() {
                 }
               : m;
 
-            if (authUser && baseMember.nrp === authUser.nrp) {
+            if (uOverride) {
+              const effectiveNrp = uOverride.nrp || baseMember.nrp;
+              const effectiveBirth = uOverride.tanggalLahir || baseMember.tanggalLahir;
+              const calc58 = calculateRetirement58(effectiveBirth || undefined, effectiveNrp);
+              baseMember = {
+                ...baseMember,
+                nrp: effectiveNrp,
+                oldNrp: uOverride.oldNrp || baseMember.oldNrp || (effectiveNrp !== m.nrp ? m.nrp : undefined),
+                namaLengkap: uOverride.nama || baseMember.namaLengkap,
+                pangkat: uOverride.pangkat || baseMember.pangkat,
+                satuanKerja: uOverride.satker || baseMember.satuanKerja,
+                polda: uOverride.polda || baseMember.polda,
+                jabatanTerakhir: uOverride.jabatanTerakhir || baseMember.jabatanTerakhir,
+                tanggalLahir: calc58.tanggalLahir,
+                usia: calc58.usiaTahun,
+                tahunPurnaTugas: calc58.tahunPurnaTugas,
+                sisaTahunDinas: calc58.sisaTahunDinas,
+                email: uOverride.email || baseMember.email,
+                secondaryEmail:
+                  uOverride.secondaryEmail !== undefined ? uOverride.secondaryEmail : baseMember.secondaryEmail,
+                noHp: uOverride.noHp || baseMember.noHp,
+              };
+            }
+
+            if (baseMember.jabatanTerakhir === 'Lead Developer') {
+              baseMember = { ...baseMember, jabatanTerakhir: 'Staf' };
+            }
+
+            if (authUser && (baseMember.nrp === authUser.nrp || (authUser.oldNrp && baseMember.nrp === authUser.oldNrp))) {
               const merged: AnggotaWiraSatya = {
                 ...baseMember,
+                nrp: authUser.nrp || baseMember.nrp,
+                pangkat: authUser.pangkat || baseMember.pangkat,
+                satuanKerja: authUser.satker || baseMember.satuanKerja,
+                polda: authUser.polda || baseMember.polda,
                 fotoUrl: resolveAvatarUrl(baseMember.fotoUrl, authUser.fotoUrl),
                 coverUrl:
                   baseMember.coverUrl && baseMember.coverUrl !== '/default-cover.jpg'
@@ -184,6 +283,7 @@ export default function Home() {
               };
               if (
                 localOverride ||
+                uOverride ||
                 (isCustomAvatarUrl(authUser.fotoUrl) &&
                   (!m.fotoUrl || m.fotoUrl === '/default-avatar.png' || !isCustomAvatarUrl(m.fotoUrl)))
               ) {
@@ -196,12 +296,25 @@ export default function Home() {
               return merged;
             }
 
-            if (localOverride) {
+            if (localOverride || uOverride) {
               fetch('/api/members', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(baseMember),
               }).catch(() => {});
+              if (uOverride) {
+                fetch('/api/users', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    nrp: uOverride.oldNrp || m.nrp,
+                    originalNrp: uOverride.oldNrp || m.nrp,
+                    oldNrp: uOverride.oldNrp || m.nrp,
+                    newNrp: baseMember.nrp,
+                    ...uOverride,
+                  }),
+                }).catch(() => {});
+              }
             }
 
             return {
@@ -210,6 +323,11 @@ export default function Home() {
             };
           });
           setMembers(sanitizedMembers);
+          setViewingMember((prev) =>
+            prev
+              ? sanitizedMembers.find((sm: AnggotaWiraSatya) => sm.nrp === prev.nrp || sm.id === prev.id) || prev
+              : null
+          );
           localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
         }
       })
@@ -346,7 +464,7 @@ export default function Home() {
             (parsed.nama === 'Eko Agung' || parsed.nama === 'Eko Agung Krisdianto')
           ) {
             parsed.nama = 'Eko Agung Krisdianto, S.Kom.';
-            parsed.pangkat = 'Briptu';
+            parsed.pangkat = parsed.pangkat || 'Briptu';
           }
           const sanitizedUser: AuthUser = {
             ...parsed,
@@ -536,10 +654,54 @@ export default function Home() {
   const persistMemberOverride = (member: AnggotaWiraSatya) => {
     if (typeof window === 'undefined') return;
     try {
+      const calc58 = calculateRetirement58(member.tanggalLahir, member.nrp);
+      const normalizedMember: AnggotaWiraSatya = {
+        ...member,
+        tanggalLahir: calc58.tanggalLahir,
+        usia: calc58.usiaTahun,
+        tahunPurnaTugas: calc58.tahunPurnaTugas,
+        sisaTahunDinas: calc58.sisaTahunDinas,
+      };
       const raw = localStorage.getItem('ws96_member_overrides_v1');
       const map: Record<string, AnggotaWiraSatya> = raw ? JSON.parse(raw) : {};
-      map[member.nrp] = member;
+      if (normalizedMember.oldNrp && normalizedMember.oldNrp !== normalizedMember.nrp) {
+        delete map[normalizedMember.oldNrp];
+      }
+      map[normalizedMember.nrp] = normalizedMember;
       localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(map));
+
+      // Also sync ws96_user_overrides_v1 so Manajemen User ("Edit Pengguna") stays 100% consistent
+      const rawUserOv = localStorage.getItem('ws96_user_overrides_v1');
+      const userMap: Record<string, any> = rawUserOv ? JSON.parse(rawUserOv) : {};
+      const existingUOv =
+        userMap[normalizedMember.nrp] ||
+        (normalizedMember.oldNrp ? userMap[normalizedMember.oldNrp] : undefined) ||
+        {};
+      if (normalizedMember.oldNrp && normalizedMember.oldNrp !== normalizedMember.nrp) {
+        delete userMap[normalizedMember.oldNrp];
+      }
+      userMap[normalizedMember.nrp] = {
+        ...existingUOv,
+        oldNrp: existingUOv.oldNrp || normalizedMember.oldNrp || normalizedMember.nrp,
+        nrp: normalizedMember.nrp,
+        nama: normalizedMember.namaLengkap,
+        pangkat: normalizedMember.pangkat,
+        satker: normalizedMember.satuanKerja,
+        polda: normalizedMember.polda,
+        jabatanTerakhir: normalizedMember.jabatanTerakhir,
+        tanggalLahir: calc58.tanggalLahir,
+        tempatLahir: normalizedMember.tempatLahir,
+        email: normalizedMember.email || existingUOv.email || `${normalizedMember.nrp}@polri.go.id`,
+        secondaryEmail:
+          normalizedMember.secondaryEmail !== undefined
+            ? normalizedMember.secondaryEmail
+            : existingUOv.secondaryEmail,
+        noHp: normalizedMember.noHp || existingUOv.noHp,
+        fotoUrl: normalizedMember.fotoUrl,
+        ...(normalizedMember.coverUrl ? { coverUrl: normalizedMember.coverUrl } : {}),
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(userMap));
     } catch {
       // ignore
     }
@@ -547,15 +709,35 @@ export default function Home() {
 
   // Save member profile
   const handleSaveMember = async (newMember: AnggotaWiraSatya) => {
+    const prevEditing = editingMember !== 'NEW' && editingMember ? editingMember : null;
+    const calc58 = calculateRetirement58(newMember.tanggalLahir, newMember.nrp);
+    const preservedOldNrp =
+      newMember.oldNrp ||
+      prevEditing?.oldNrp ||
+      (prevEditing && prevEditing.nrp !== newMember.nrp ? prevEditing.nrp : undefined);
+
     const cleanMember: AnggotaWiraSatya = {
       ...newMember,
+      ...(preservedOldNrp ? { oldNrp: preservedOldNrp } : {}),
+      tanggalLahir: calc58.tanggalLahir,
+      usia: calc58.usiaTahun,
+      tahunPurnaTugas: calc58.tahunPurnaTugas,
+      sisaTahunDinas: calc58.sisaTahunDinas,
       fotoUrl: getAvatarUrl(newMember.fotoUrl),
     };
-    const existingIndex = members.findIndex((m) => m.nrp === cleanMember.nrp);
+    const existingIndex = members.findIndex(
+      (m) =>
+        m.nrp === cleanMember.nrp ||
+        (preservedOldNrp && m.nrp === preservedOldNrp) ||
+        (cleanMember.id && m.id === cleanMember.id)
+    );
     let updatedList: AnggotaWiraSatya[];
     if (existingIndex >= 0) {
       updatedList = [...members];
-      updatedList[existingIndex] = { ...cleanMember, id: members[existingIndex].id || cleanMember.id || ('ws-' + Date.now()) };
+      updatedList[existingIndex] = {
+        ...cleanMember,
+        id: members[existingIndex].id || cleanMember.id || ('ws-' + Date.now()),
+      };
     } else {
       const createdMember: AnggotaWiraSatya = {
         ...cleanMember,
@@ -570,13 +752,21 @@ export default function Home() {
     }
 
     // If the user updated their own profile, sync currentUser as well
-    if (cleanMember.nrp === currentUser.nrp) {
+    if (
+      cleanMember.nrp === currentUser.nrp ||
+      (preservedOldNrp && preservedOldNrp === currentUser.nrp)
+    ) {
       const updatedUser: AuthUser = {
         ...currentUser,
+        nrp: cleanMember.nrp,
+        ...(preservedOldNrp ? { oldNrp: preservedOldNrp } : {}),
         nama: cleanMember.namaLengkap,
         pangkat: cleanMember.pangkat,
         satker: cleanMember.satuanKerja,
         polda: cleanMember.polda,
+        jabatanTerakhir: cleanMember.jabatanTerakhir,
+        tanggalLahir: cleanMember.tanggalLahir,
+        tempatLahir: cleanMember.tempatLahir,
         fotoUrl: getAvatarUrl(cleanMember.fotoUrl),
       };
       setCurrentUser(updatedUser);

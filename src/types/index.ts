@@ -29,6 +29,7 @@ export interface PendingRegistration {
 export interface AuthUser {
   id: string;
   nrp: string;
+  oldNrp?: string;
   nama: string;
   pangkat: string;
   email: string;
@@ -43,8 +44,12 @@ export interface AuthUser {
   bio?: string;
   satker?: string;
   polda?: string;
+  jabatanTerakhir?: string;
+  tanggalLahir?: string;
+  tempatLahir?: string;
   status?: UserAccountStatus;
   password?: string;
+  updatedAt?: string;
 }
 
 export interface Anak {
@@ -79,6 +84,7 @@ export interface AnggotaWiraSatya {
   id: string;
   // Modul 1: Identitas & Kedinasan
   nrp: string;
+  oldNrp?: string;
   namaLengkap: string;
   pangkat: string;
   jabatanTerakhir: string;

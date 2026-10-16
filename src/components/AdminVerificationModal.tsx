@@ -217,9 +217,36 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             if (rawOverrides) {
               const parsedOverrides: Record<string, Partial<AuthUser> & { oldNrp?: string }> = JSON.parse(rawOverrides);
               fetchedUsers = fetchedUsers.map((u) => {
-                const ov = parsedOverrides[u.nrp] || Object.values(parsedOverrides).find((item) => item.oldNrp === u.nrp);
+                const ov =
+                  parsedOverrides[u.nrp] ||
+                  (u.oldNrp ? parsedOverrides[u.oldNrp] : undefined) ||
+                  Object.values(parsedOverrides).find(
+                    (item) =>
+                      item &&
+                      (item.oldNrp === u.nrp ||
+                        (u.id && item.id === u.id) ||
+                        (item.oldNrp && u.id === `u-${item.oldNrp}`) ||
+                        (item.nama &&
+                          u.nama &&
+                          item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+                  );
                 if (ov) {
-                  return { ...u, ...ov };
+                  // Re-hydrate cold-started serverless instance in background if NRP or birthDate differs
+                  if (ov.nrp && (u.nrp !== ov.nrp || (ov.tanggalLahir && u.tanggalLahir !== ov.tanggalLahir))) {
+                    fetch('/api/users', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        nrp: ov.oldNrp || u.nrp,
+                        originalNrp: ov.oldNrp || u.nrp,
+                        oldNrp: ov.oldNrp || u.nrp,
+                        newNrp: ov.nrp,
+                        id: u.id,
+                        ...ov,
+                      }),
+                    }).catch(() => {});
+                  }
+                  return { ...u, ...ov, nrp: ov.nrp || u.nrp };
                 }
                 return u;
               });
@@ -302,27 +329,89 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const handleStartEditUser = (u: AuthUser) => {
     const poldaVal = u.polda || 'MABES POLRI';
     const satkerVal = (u.satker || 'BARESKRIM POLRI').split(' / ')[0].trim();
-    const regMatch = registrations.find((r) => r.nrp === u.nrp);
+    const origNrpFromId = u.id?.startsWith('u-') ? u.id.slice(2) : undefined;
+    const knownOldNrp = u.oldNrp || origNrpFromId;
+    const regMatch = registrations.find(
+      (r) => r.nrp === u.nrp || (knownOldNrp && r.nrp === knownOldNrp)
+    );
 
-    // Lookup member's current jabatanTerakhir & tanggalLahir from localStorage cache if available
-    let memberJabatan = '';
-    let memberBirthDate = '';
+    // Lookup member's current jabatanTerakhir & tanggalLahir from u, localStorage cache, and overrides
+    let memberJabatan = u.jabatanTerakhir || '';
+    let memberBirthDate = u.tanggalLahir || '';
     if (typeof window !== 'undefined') {
       try {
         const rawMembers = localStorage.getItem('wirasatya96_members');
         if (rawMembers) {
           const parsedMembers = JSON.parse(rawMembers);
           if (Array.isArray(parsedMembers)) {
-            const matchedMember = parsedMembers.find((m: any) => m.nrp === u.nrp);
+            const matchedMember = parsedMembers.find(
+              (m: any) =>
+                m.nrp === u.nrp ||
+                (knownOldNrp && (m.nrp === knownOldNrp || m.oldNrp === knownOldNrp)) ||
+                (u.profileId && m.id === u.profileId) ||
+                (knownOldNrp && m.id === `ws-${knownOldNrp}`) ||
+                (m.namaLengkap &&
+                  u.nama &&
+                  m.namaLengkap.trim().toLowerCase() === u.nama.trim().toLowerCase())
+            );
             if (matchedMember) {
-              memberJabatan = matchedMember.jabatanTerakhir || '';
-              memberBirthDate = matchedMember.tanggalLahir || '';
+              if (matchedMember.jabatanTerakhir) memberJabatan = matchedMember.jabatanTerakhir;
+              if (matchedMember.tanggalLahir) memberBirthDate = matchedMember.tanggalLahir;
+            }
+          }
+        }
+        const rawMemberOverrides = localStorage.getItem('ws96_member_overrides_v1');
+        if (rawMemberOverrides) {
+          const parsedMemberOverrides = JSON.parse(rawMemberOverrides);
+          if (parsedMemberOverrides) {
+            const mOv =
+              parsedMemberOverrides[u.nrp] ||
+              (knownOldNrp ? parsedMemberOverrides[knownOldNrp] : undefined) ||
+              Object.values(parsedMemberOverrides).find(
+                (item: any) =>
+                  item &&
+                  (item.nrp === u.nrp ||
+                    (knownOldNrp && item.oldNrp === knownOldNrp) ||
+                    (item.namaLengkap &&
+                      u.nama &&
+                      item.namaLengkap.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+              );
+            if (mOv) {
+              if (mOv.jabatanTerakhir) memberJabatan = mOv.jabatanTerakhir;
+              if (mOv.tanggalLahir) memberBirthDate = mOv.tanggalLahir;
+            }
+          }
+        }
+        const rawUserOverrides = localStorage.getItem('ws96_user_overrides_v1');
+        if (rawUserOverrides) {
+          const parsedUserOverrides = JSON.parse(rawUserOverrides);
+          if (parsedUserOverrides) {
+            const uOv =
+              parsedUserOverrides[u.nrp] ||
+              (knownOldNrp ? parsedUserOverrides[knownOldNrp] : undefined) ||
+              Object.values(parsedUserOverrides).find(
+                (item: any) =>
+                  item &&
+                  (item.nrp === u.nrp ||
+                    (knownOldNrp && item.oldNrp === knownOldNrp) ||
+                    (u.id && item.id === u.id) ||
+                    (item.nama &&
+                      u.nama &&
+                      item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+              );
+            if (uOv) {
+              if (uOv.jabatanTerakhir) memberJabatan = uOv.jabatanTerakhir;
+              if (uOv.tanggalLahir) memberBirthDate = uOv.tanggalLahir;
             }
           }
         }
       } catch {
         // ignore
       }
+    }
+
+    if (!isOfficerRankIpdaUp(u.pangkat) && memberJabatan === 'Lead Developer') {
+      memberJabatan = 'Staf';
     }
 
     const rankGroups = getJabatanGroupsForPangkat(u.pangkat || 'Kombes Pol', u.nrp);
@@ -373,22 +462,186 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     const cleanedSecondaryEmail = editSecondaryEmail.trim();
     const cleanedNoHp = editNoHp.trim();
     const cleanedJabatan = editJabatan.trim();
+    const calc58 = calculateRetirement58(editTanggalLahir || undefined, nextNrp);
+    const nowIso = new Date().toISOString();
 
-    // Immediate optimistic update on users state and dynamic badge role map
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.nrp === targetNrp
-          ? {
-              ...u,
+    const origNrpFromId = editingUser.id?.startsWith('u-') ? editingUser.id.slice(2) : undefined;
+    let preservedOldNrp = editingUser.oldNrp || origNrpFromId || targetNrp;
+    let effectivePassword = editPassword.trim() || editingUser.password || undefined;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+        const parsedOverrides = rawOverrides ? JSON.parse(rawOverrides) : {};
+        const existingOv =
+          parsedOverrides[targetNrp] ||
+          parsedOverrides[nextNrp] ||
+          (preservedOldNrp ? parsedOverrides[preservedOldNrp] : undefined) ||
+          Object.values(parsedOverrides).find(
+            (item: any) =>
+              item &&
+              (item.nrp === targetNrp ||
+                item.oldNrp === targetNrp ||
+                (editingUser.id && item.id === editingUser.id))
+          );
+
+        if (existingOv?.oldNrp) {
+          preservedOldNrp = existingOv.oldNrp;
+        }
+        if (!editPassword.trim() && existingOv?.password) {
+          effectivePassword = existingOv.password;
+        }
+
+        if (nextNrp !== targetNrp) {
+          delete parsedOverrides[targetNrp];
+        }
+        parsedOverrides[nextNrp] = {
+          ...(existingOv || {}),
+          id: editingUser.id || `u-${preservedOldNrp}`,
+          profileId: editingUser.profileId || `ws-${preservedOldNrp}`,
+          oldNrp: preservedOldNrp,
+          nrp: nextNrp,
+          nama: editNama.trim(),
+          pangkat: editPangkat,
+          role: editRole,
+          jabatanTerakhir: cleanedJabatan || undefined,
+          tanggalLahir: calc58.tanggalLahir,
+          polda: editPolda || 'MABES POLRI',
+          satker: composedSatker,
+          email: cleanedEmail,
+          secondaryEmail: cleanedSecondaryEmail,
+          noHp: cleanedNoHp,
+          ...(effectivePassword ? { password: effectivePassword, status: 'AKTIF' } : {}),
+          updatedAt: nowIso,
+        };
+        localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedOverrides));
+
+        // Also update ws96_member_overrides_v1 so page.tsx never overwrites with stale data
+        const rawMemberOverrides = localStorage.getItem('ws96_member_overrides_v1');
+        const parsedMemberOverrides = rawMemberOverrides ? JSON.parse(rawMemberOverrides) : {};
+        const prevMemberOverride =
+          parsedMemberOverrides[targetNrp] ||
+          parsedMemberOverrides[nextNrp] ||
+          (preservedOldNrp ? parsedMemberOverrides[preservedOldNrp] : undefined) ||
+          {};
+        if (nextNrp !== targetNrp) {
+          delete parsedMemberOverrides[targetNrp];
+        }
+        parsedMemberOverrides[nextNrp] = {
+          ...prevMemberOverride,
+          id: editingUser.profileId || `ws-${preservedOldNrp}`,
+          oldNrp: preservedOldNrp,
+          nrp: nextNrp,
+          namaLengkap: editNama.trim(),
+          pangkat: editPangkat,
+          satuanKerja: composedSatker,
+          polda: editPolda || 'MABES POLRI',
+          jabatanTerakhir: cleanedJabatan || prevMemberOverride.jabatanTerakhir || 'Staf',
+          tanggalLahir: calc58.tanggalLahir,
+          usia: calc58.usiaTahun,
+          tahunPurnaTugas: calc58.tahunPurnaTugas,
+          sisaTahunDinas: calc58.sisaTahunDinas,
+          email: cleanedEmail,
+          secondaryEmail: cleanedSecondaryEmail,
+          noHp: cleanedNoHp || prevMemberOverride.noHp,
+          updatedAt: nowIso,
+        };
+        localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(parsedMemberOverrides));
+
+        // Also update wirasatya96_members in localStorage matching by nrp, oldNrp, id, or nama
+        const rawMembers = localStorage.getItem('wirasatya96_members');
+        if (rawMembers) {
+          const parsedMembers = JSON.parse(rawMembers);
+          if (Array.isArray(parsedMembers)) {
+            const updatedMembers = parsedMembers.map((m: any) =>
+              m.nrp === targetNrp ||
+              m.nrp === nextNrp ||
+              (preservedOldNrp && (m.nrp === preservedOldNrp || m.oldNrp === preservedOldNrp)) ||
+              (editingUser.profileId && m.id === editingUser.profileId) ||
+              (preservedOldNrp && m.id === `ws-${preservedOldNrp}`) ||
+              (m.namaLengkap &&
+                editingUser.nama &&
+                m.namaLengkap.trim().toLowerCase() === editingUser.nama.trim().toLowerCase())
+                ? {
+                    ...m,
+                    oldNrp: preservedOldNrp,
+                    nrp: nextNrp,
+                    namaLengkap: editNama.trim(),
+                    pangkat: editPangkat,
+                    satuanKerja: composedSatker,
+                    polda: editPolda || 'MABES POLRI',
+                    jabatanTerakhir: cleanedJabatan || m.jabatanTerakhir,
+                    tanggalLahir: calc58.tanggalLahir,
+                    usia: calc58.usiaTahun,
+                    tahunPurnaTugas: calc58.tahunPurnaTugas,
+                    sisaTahunDinas: calc58.sisaTahunDinas,
+                    email: cleanedEmail,
+                    secondaryEmail: cleanedSecondaryEmail,
+                    noHp: cleanedNoHp || m.noHp,
+                    updatedAt: nowIso,
+                  }
+                : m
+            );
+            localStorage.setItem('wirasatya96_members', JSON.stringify(updatedMembers));
+          }
+        }
+
+        // If editing the currently logged-in user, update ws96_auth_user immediately
+        const rawAuth = localStorage.getItem('ws96_auth_user');
+        if (rawAuth) {
+          const parsedAuth = JSON.parse(rawAuth);
+          if (
+            parsedAuth &&
+            (parsedAuth.nrp === targetNrp ||
+              parsedAuth.nrp === nextNrp ||
+              (preservedOldNrp && parsedAuth.nrp === preservedOldNrp))
+          ) {
+            const nextAuth = {
+              ...parsedAuth,
+              oldNrp: preservedOldNrp,
               nrp: nextNrp,
               nama: editNama.trim(),
               pangkat: editPangkat,
               role: editRole,
+              jabatanTerakhir: cleanedJabatan || parsedAuth.jabatanTerakhir,
+              tanggalLahir: calc58.tanggalLahir,
+              polda: editPolda || 'MABES POLRI',
+              satker: composedSatker,
+              email: cleanedEmail,
+              secondaryEmail: cleanedSecondaryEmail,
+              noHp: cleanedNoHp || parsedAuth.noHp,
+              ...(effectivePassword ? { password: effectivePassword, status: 'AKTIF' } : {}),
+            };
+            localStorage.setItem('ws96_auth_user', JSON.stringify(nextAuth));
+            localStorage.setItem('ws96_active_user', JSON.stringify(nextAuth));
+            localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextAuth));
+            window.dispatchEvent(new Event('ws96_user_updated'));
+          }
+        }
+      } catch {
+        // ignore storage error
+      }
+    }
+
+    // Immediate optimistic update on users state and dynamic badge role map
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.nrp === targetNrp || (preservedOldNrp && u.nrp === preservedOldNrp) || u.id === editingUser.id
+          ? {
+              ...u,
+              oldNrp: preservedOldNrp,
+              nrp: nextNrp,
+              nama: editNama.trim(),
+              pangkat: editPangkat,
+              role: editRole,
+              jabatanTerakhir: cleanedJabatan || u.jabatanTerakhir,
+              tanggalLahir: calc58.tanggalLahir,
               polda: editPolda || 'MABES POLRI',
               satker: composedSatker,
               email: cleanedEmail,
               secondaryEmail: cleanedSecondaryEmail,
               noHp: cleanedNoHp,
+              ...(effectivePassword ? { password: effectivePassword, status: 'AKTIF' } : {}),
             }
           : u
       )
@@ -401,89 +654,26 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          id: editingUser.id,
           nrp: targetNrp,
-          newNrp: nextNrp !== targetNrp ? nextNrp : undefined,
+          originalNrp: preservedOldNrp,
+          oldNrp: preservedOldNrp,
+          newNrp: nextNrp,
           nama: editNama.trim(),
           pangkat: editPangkat,
           role: editRole,
           jabatanTerakhir: cleanedJabatan || undefined,
-          tanggalLahir: editTanggalLahir || undefined,
+          tanggalLahir: calc58.tanggalLahir,
           polda: editPolda || 'MABES POLRI',
           satker: composedSatker,
           email: cleanedEmail,
           secondaryEmail: cleanedSecondaryEmail,
           noHp: cleanedNoHp,
-          password: editPassword.trim() || undefined,
+          password: effectivePassword,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        if (typeof window !== 'undefined') {
-          try {
-            const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
-            const parsedOverrides = rawOverrides ? JSON.parse(rawOverrides) : {};
-            if (nextNrp !== targetNrp) {
-              delete parsedOverrides[targetNrp];
-            }
-            parsedOverrides[nextNrp] = {
-              oldNrp: targetNrp,
-              nrp: nextNrp,
-              nama: editNama.trim(),
-              pangkat: editPangkat,
-              role: editRole,
-              polda: editPolda || 'MABES POLRI',
-              satker: composedSatker,
-              email: cleanedEmail,
-              secondaryEmail: cleanedSecondaryEmail,
-              noHp: cleanedNoHp,
-            };
-            localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedOverrides));
-
-            // Also update wirasatya96_members & ws96_member_overrides_v1 in localStorage
-            const calc58 = calculateRetirement58(editTanggalLahir || undefined, nextNrp);
-            const rawMembers = localStorage.getItem('wirasatya96_members');
-            if (rawMembers) {
-              const parsedMembers = JSON.parse(rawMembers);
-              if (Array.isArray(parsedMembers)) {
-                const updatedMembers = parsedMembers.map((m: any) =>
-                  m.nrp === targetNrp || m.nrp === nextNrp
-                    ? {
-                        ...m,
-                        nrp: nextNrp,
-                        namaLengkap: editNama.trim(),
-                        pangkat: editPangkat,
-                        satuanKerja: composedSatker,
-                        polda: editPolda || 'MABES POLRI',
-                        jabatanTerakhir: cleanedJabatan || m.jabatanTerakhir,
-                        tanggalLahir: calc58.tanggalLahir,
-                        usia: calc58.usiaTahun,
-                        tahunPurnaTugas: calc58.tahunPurnaTugas,
-                        sisaTahunDinas: calc58.sisaTahunDinas,
-                        email: cleanedEmail,
-                        secondaryEmail: cleanedSecondaryEmail,
-                        noHp: cleanedNoHp || m.noHp,
-                      }
-                    : m
-                );
-                localStorage.setItem('wirasatya96_members', JSON.stringify(updatedMembers));
-              }
-            }
-          } catch {
-            // ignore
-          }
-        }
-
-        if (Array.isArray(data.data)) {
-          const updatedUsers = data.data as AuthUser[];
-          setUsers(updatedUsers);
-          const map: Record<string, UserRole> = {};
-          updatedUsers.forEach((u) => {
-            if (u.nrp && u.role) {
-              map[u.nrp.trim()] = u.role;
-            }
-          });
-          setDynamicRoleMap(map);
-        }
         showToast(
           `Data pengguna ${editNama.trim()} (NRP ${nextNrp}) berhasil diperbarui.`,
           'success'
@@ -496,8 +686,12 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         await fetchAllData();
       }
     } catch {
-      showToast('Kesalahan jaringan saat menyimpan perubahan.', 'error');
-      await fetchAllData();
+      showToast(
+        `Data pengguna ${editNama.trim()} (NRP ${nextNrp}) disimpan secara lokal.`,
+        'success'
+      );
+      setEditingUser(null);
+      if (onVerificationUpdate) onVerificationUpdate();
     } finally {
       setUpdatingUserNrp(null);
     }
@@ -1579,12 +1773,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                           if (!editIsExternalJabatan) {
                             const nextGroups = getJabatanGroupsForPangkat(nextRank, editNrp || editingUser.nrp);
                             const allOpts = nextGroups.flatMap((g) => g.options);
-                            if (!isOfficerRankIpdaUp(nextRank)) {
-                              if (!allOpts.includes(editJabatan.trim())) {
-                                setEditJabatan(allOpts[0] || 'Staf');
-                              }
-                            } else if (!editJabatan.trim()) {
-                              setEditJabatan(allOpts[0] || '');
+                            if (!allOpts.includes(editJabatan.trim())) {
+                              setEditJabatan(allOpts[0] || 'Staf');
                             }
                           }
                         }}

@@ -34,6 +34,8 @@ import {
   Info,
   Settings,
   Plus,
+  Calendar,
+  RotateCcw,
 } from 'lucide-react';
 
 export interface FinanceCategoryOption {
@@ -318,7 +320,17 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [astEstimasiIdr, setAstEstimasiIdr] = useState<number>(10000000);
   const [astKustodian, setAstKustodian] = useState('');
   const [astNomorSeri, setAstNomorSeri] = useState('');
+  const [astTanggalPerolehan, setAstTanggalPerolehan] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [astKeterangan, setAstKeterangan] = useState('');
+
+  // Period / Date Range Filter State (Kas & Aset)
+  const [periodMode, setPeriodMode] = useState<
+    'SEMUA' | 'BULAN_INI' | 'TRIWULAN_INI' | 'TAHUN_INI' | 'PILIH_BULAN' | 'RENTANG_TANGGAL'
+  >('SEMUA');
+  const [selectedMonth, setSelectedMonth] = useState<number>(() => new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   // Modal Pay Iuran (BENDAHARA & SUPERADMIN)
   const [payIuranModal, setPayIuranModal] = useState<IuranAnggota | null>(null);
@@ -339,16 +351,110 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     }).format(val || 0);
   };
 
-  // Compute Cashflow Summary from transactions & assets
-  const totalKasMasuk = localTransactions
+  const NAMA_BULAN_OPTIONS = [
+    { value: 0, label: 'Semua Bulan' },
+    { value: 1, label: 'Januari' },
+    { value: 2, label: 'Februari' },
+    { value: 3, label: 'Maret' },
+    { value: 4, label: 'April' },
+    { value: 5, label: 'Mei' },
+    { value: 6, label: 'Juni' },
+    { value: 7, label: 'Juli' },
+    { value: 8, label: 'Agustus' },
+    { value: 9, label: 'September' },
+    { value: 10, label: 'Oktober' },
+    { value: 11, label: 'November' },
+    { value: 12, label: 'Desember' },
+  ];
+
+  const availableYears = React.useMemo(() => {
+    const yearSet = new Set<number>([2024, 2025, 2026, 2027, new Date().getFullYear()]);
+    localTransactions.forEach((t) => {
+      const y = Number((t.tanggal || '').slice(0, 4));
+      if (y >= 2000 && y <= 2100) yearSet.add(y);
+    });
+    localAssets.forEach((a) => {
+      const y = Number((a.tanggalPerolehan || '').slice(0, 4));
+      if (y >= 2000 && y <= 2100) yearSet.add(y);
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [localTransactions, localAssets]);
+
+  const matchesPeriod = (dateStr?: string): boolean => {
+    if (periodMode === 'SEMUA') return true;
+    if (!dateStr) return false;
+    const ymd = dateStr.trim().slice(0, 10);
+    const y = Number(ymd.slice(0, 4));
+    const m = Number(ymd.slice(5, 7));
+    if (!y || !m) return false;
+
+    const now = new Date();
+    const curY = now.getFullYear();
+    const curM = now.getMonth() + 1;
+
+    if (periodMode === 'BULAN_INI') {
+      return y === curY && m === curM;
+    }
+    if (periodMode === 'TRIWULAN_INI') {
+      const diffMonths = (curY - y) * 12 + (curM - m);
+      return diffMonths >= 0 && diffMonths < 3;
+    }
+    if (periodMode === 'TAHUN_INI') {
+      return y === curY;
+    }
+    if (periodMode === 'PILIH_BULAN') {
+      return y === selectedYear && (selectedMonth === 0 ? true : m === selectedMonth);
+    }
+    if (periodMode === 'RENTANG_TANGGAL') {
+      if (dateFrom && ymd < dateFrom) return false;
+      if (dateTo && ymd > dateTo) return false;
+      return true;
+    }
+    return true;
+  };
+
+  const activePeriodLabel = React.useMemo(() => {
+    const now = new Date();
+    const curMonthName = NAMA_BULAN_OPTIONS.find((b) => b.value === now.getMonth() + 1)?.label || '';
+    if (periodMode === 'SEMUA') return 'Semua Periode';
+    if (periodMode === 'BULAN_INI') return `Bulan Ini (${curMonthName} ${now.getFullYear()})`;
+    if (periodMode === 'TRIWULAN_INI') return '3 Bulan Terakhir (Triwulan)';
+    if (periodMode === 'TAHUN_INI') return `Tahun Ini (${now.getFullYear()})`;
+    if (periodMode === 'PILIH_BULAN') {
+      const mLabel = NAMA_BULAN_OPTIONS.find((b) => b.value === selectedMonth)?.label || '';
+      return `${mLabel} ${selectedYear}`;
+    }
+    if (periodMode === 'RENTANG_TANGGAL') {
+      if (!dateFrom && !dateTo) return 'Rentang Tanggal (Semua)';
+      return `${dateFrom || 'Awal'} s/d ${dateTo || 'Sekarang'}`;
+    }
+    return 'Semua Periode';
+  }, [periodMode, selectedMonth, selectedYear, dateFrom, dateTo]);
+
+  const periodFilteredTransactions = localTransactions.filter((t) => matchesPeriod(t.tanggal));
+  const periodFilteredAssets = localAssets.filter((a) => matchesPeriod(a.tanggalPerolehan));
+
+  // Compute Cashflow Summary from period-filtered transactions & assets (plus all-time totals for reference)
+  const allTimeKasMasuk = localTransactions
     .filter((t) => t.jenis === 'MASUK')
     .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
-  const totalKasKeluar = localTransactions
+  const allTimeKasKeluar = localTransactions
+    .filter((t) => t.jenis === 'KELUAR')
+    .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
+  const allTimeSaldoKas =
+    localTransactions.length > 0 ? allTimeKasMasuk - allTimeKasKeluar : localSummary.saldoUtama || 0;
+
+  const totalKasMasuk = periodFilteredTransactions
+    .filter((t) => t.jenis === 'MASUK')
+    .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
+  const totalKasKeluar = periodFilteredTransactions
     .filter((t) => t.jenis === 'KELUAR')
     .reduce((sum, t) => sum + (Number(t.nominal) || 0), 0);
   const effectiveSaldoKas =
-    localTransactions.length > 0 ? totalKasMasuk - totalKasKeluar : localSummary.saldoUtama || 0;
-  const totalValuasiAset = localAssets.reduce((sum, a) => sum + (Number(a.estimasiNilaiIdr) || 0), 0);
+    periodMode === 'SEMUA'
+      ? allTimeSaldoKas
+      : totalKasMasuk - totalKasKeluar;
+  const totalValuasiAset = periodFilteredAssets.reduce((sum, a) => sum + (Number(a.estimasiNilaiIdr) || 0), 0);
   const totalKekayaanGabungan = effectiveSaldoKas + totalValuasiAset;
 
   const lunasCount = localIuranList.filter((i) => i.status === 'LUNAS').length;
@@ -364,8 +470,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     return code.replace(/_/g, ' ');
   };
 
-  // Filtered transactions
-  const filteredTransactions = localTransactions.filter((t) => {
+  // Filtered transactions (by period + MASUK/KELUAR + text search)
+  const filteredTransactions = periodFilteredTransactions.filter((t) => {
     const matchType = selectedFilter === 'SEMUA' || t.jenis === selectedFilter;
     const matchSearch =
       t.keterangan.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -375,8 +481,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     return matchType && matchSearch;
   });
 
-  // Filtered assets
-  const filteredAssets = localAssets.filter((a) => {
+  // Filtered assets (by period + category)
+  const filteredAssets = periodFilteredAssets.filter((a) => {
     return assetCategoryFilter === 'SEMUA' || a.kategori === assetCategoryFilter;
   });
 
@@ -631,7 +737,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       estimasiNilaiIdr: Number(astEstimasiIdr),
       kustodianLokasi: astKustodian.trim() || 'Bendahara Paguyuban',
       nomorSeriAtauWallet: astNomorSeri.trim() || '-',
-      tanggalPerolehan: new Date().toISOString().split('T')[0],
+      tanggalPerolehan: astTanggalPerolehan || new Date().toISOString().split('T')[0],
       keterangan: astKeterangan.trim(),
       dicatatOleh: currentUser.nama,
     };
@@ -666,6 +772,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     setAstNama('');
     setAstKustodian('');
     setAstNomorSeri('');
+    setAstTanggalPerolehan(new Date().toISOString().split('T')[0]);
     setAstKeterangan('');
   };
 
@@ -732,6 +839,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     }
 
     const trxHeaders = [
+      'PERIODE FILTER',
       'TIPE DATA',
       'Nomor Referensi / Kode',
       'Tanggal',
@@ -743,7 +851,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       'Keterangan',
       'Dicatat Oleh',
     ];
-    const trxRows = localTransactions.map((t) => [
+    const trxRows = filteredTransactions.map((t) => [
+      `"${activePeriodLabel}"`,
       '"TRANSAKSI_KAS"',
       `"${t.nomorReferensi}"`,
       `"${t.tanggal}"`,
@@ -756,7 +865,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       `"${t.dicatatOleh}"`,
     ]);
 
-    const assetRows = localAssets.map((a) => [
+    const assetRows = filteredAssets.map((a) => [
+      `"${activePeriodLabel}"`,
       '"PORTOFOLIO_ASET"',
       `"${a.kodeAset}"`,
       `"${a.tanggalPerolehan}"`,
@@ -777,7 +887,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       ownerNrp: 'EXPORT-FINANCE',
       preset: 'EXPORT',
       extension: 'csv',
-      extraEntropy: `${localTransactions.length}-${localAssets.length}`,
+      extraEntropy: `${filteredTransactions.length}-${filteredAssets.length}-${periodMode}`,
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -895,7 +1005,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             <button
               onClick={handleExportFinanceCSV}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/25 transition-all"
-              title="Unduh Rekap Kas & Aset (CSV)"
+              title="Unduh Rekap Kas & Aset Sesuai Periode (CSV)"
             >
               <Download className="w-4 h-4 text-amber-300" />
               CSV
@@ -904,12 +1014,151 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         </div>
       </div>
 
+      {/* Filter Periode Kas & Aset Bar */}
+      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-slate-900 text-amber-300 shrink-0">
+              <Calendar className="w-4 h-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-extrabold text-slate-900">Filter Periode Kas &amp; Aset</span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                  {activePeriodLabel}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Menampilkan <b>{periodFilteredTransactions.length}</b> transaksi kas &amp; <b>{periodFilteredAssets.length}</b> instrumen aset pada periode terpilih
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(
+              [
+                { id: 'SEMUA', label: 'Semua Periode' },
+                { id: 'BULAN_INI', label: 'Bulan Ini' },
+                { id: 'TRIWULAN_INI', label: '3 Bulan Terakhir' },
+                { id: 'TAHUN_INI', label: 'Tahun Ini' },
+                { id: 'PILIH_BULAN', label: 'Pilih Bulan & Tahun' },
+                { id: 'RENTANG_TANGGAL', label: 'Rentang Tanggal' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setPeriodMode(opt.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  periodMode === opt.id
+                    ? 'bg-slate-900 text-amber-300 border-slate-900 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+
+            {periodMode !== 'SEMUA' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPeriodMode('SEMUA');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-bold border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 inline-flex items-center gap-1 transition-all cursor-pointer"
+                title="Reset Filter Periode"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Sub-controls for PILIH_BULAN */}
+        {periodMode === 'PILIH_BULAN' && (
+          <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <label className="font-bold text-slate-600">Bulan:</label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+              >
+                {NAMA_BULAN_OPTIONS.map((b) => (
+                  <option key={b.value} value={b.value}>
+                    {b.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="font-bold text-slate-600">Tahun:</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+              >
+                {availableYears.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Sub-controls for RENTANG_TANGGAL */}
+        {periodMode === 'RENTANG_TANGGAL' && (
+          <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <label className="font-bold text-slate-600">Dari Tanggal:</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="font-bold text-slate-600">Sampai Tanggal:</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 focus:ring-2 focus:ring-slate-900/20 focus:outline-none"
+              />
+            </div>
+
+            {(dateFrom || dateTo) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:bg-slate-100"
+              >
+                Kosongkan Tanggal
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Top KPI Cards — Cashflow Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1. Saldo Kas Tunai */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600">Saldo Kas Tunai</span>
+            <span className="text-xs font-bold text-slate-600">
+              {periodMode === 'SEMUA' ? 'Saldo Kas Tunai' : 'Selisih Kas (Periode)'}
+            </span>
             <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
               <Wallet className="w-5 h-5" />
             </span>
@@ -919,8 +1168,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               {formatRupiah(effectiveSaldoKas)}
             </span>
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-              <span>Kas + Aset:</span>
-              <span className="font-bold text-slate-800">{formatRupiah(totalKekayaanGabungan)}</span>
+              <span>{periodMode === 'SEMUA' ? 'Kas + Aset:' : 'Saldo Kas Akumulasi:'}</span>
+              <span className="font-bold text-slate-800">
+                {formatRupiah(periodMode === 'SEMUA' ? totalKekayaanGabungan : allTimeSaldoKas)}
+              </span>
             </div>
           </div>
         </div>
@@ -967,7 +1218,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               {formatRupiah(totalValuasiAset)}
             </span>
             <span className="text-[11px] text-blue-700 font-medium block mt-1.5">
-              {localAssets.length} instrumen (SBN, Valas, Crypto, Emas)
+              {periodFilteredAssets.length} instrumen ({activePeriodLabel})
             </span>
           </div>
         </div>
@@ -1013,7 +1264,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            Buku Kas ({localTransactions.length})
+            Buku Kas ({filteredTransactions.length})
           </button>
 
           <button
@@ -1025,7 +1276,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <Briefcase className="w-4 h-4" />
-            Portofolio ({localAssets.length})
+            Portofolio ({filteredAssets.length})
           </button>
 
           <button

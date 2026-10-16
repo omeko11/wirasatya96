@@ -4,7 +4,7 @@ import { serverStore } from '@/lib/serverStore';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nrp, userId, username, identifier, password, mfaMethod } = body;
+    const { nrp, userId, username, identifier, password, mfaMethod, clientOverride } = body;
 
     const targetId = identifier || username || userId || nrp;
     if (!targetId) {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const authResult = serverStore.authenticate(targetId, password);
+    const authResult = serverStore.authenticate(targetId, password, clientOverride);
 
     // If requires password setup (user was approved by Superadmin, now needs to create initial password)
     if (authResult.requiresPasswordSetup) {

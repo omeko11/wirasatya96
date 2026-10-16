@@ -463,7 +463,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <p className="text-[11px] text-slate-500 truncate">
                           {currentUser.pangkat} &bull;{' '}
                           {formatJabatanWithSatker(
-                            myMember?.jabatanTerakhir || (currentUser.nrp === '98010710' ? 'Lead Developer' : undefined),
+                            myMember?.jabatanTerakhir === 'Lead Developer'
+                              ? 'Staf'
+                              : myMember?.jabatanTerakhir || (currentUser.nrp === '98010710' ? 'Staf' : undefined),
                             myMember?.satuanKerja || currentUser.satker || 'Mabes Polri'
                           )}
                         </p>

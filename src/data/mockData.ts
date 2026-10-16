@@ -7,7 +7,7 @@ export const INITIAL_MEMBERS: AnggotaWiraSatya[] = [
     nrp: '98010710',
     namaLengkap: 'Eko Agung Krisdianto, S.Kom.',
     pangkat: 'Briptu',
-    jabatanTerakhir: 'Lead Developer',
+    jabatanTerakhir: 'Staf',
     satuanKerja: 'Bareskrim Polri',
     tipeSatker: 'MABES',
     satkerMabes: 'BARESKRIM POLRI',

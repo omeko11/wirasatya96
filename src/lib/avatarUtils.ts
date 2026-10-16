@@ -259,13 +259,17 @@ export function getOrBuildUserProfile(
   const existing = members.find((m) => m.nrp === currentUser.nrp);
   if (existing) {
     const calc = calculateRetirement58(existing.tanggalLahir, existing.nrp);
+    const rawJab = cleanJabatanOnly(existing.jabatanTerakhir) || existing.jabatanTerakhir;
     return {
       ...existing,
+      pangkat: currentUser.nrp === existing.nrp && currentUser.pangkat ? currentUser.pangkat : existing.pangkat,
+      satuanKerja: currentUser.nrp === existing.nrp && currentUser.satker ? currentUser.satker : existing.satuanKerja,
+      polda: currentUser.nrp === existing.nrp && currentUser.polda ? currentUser.polda : existing.polda,
       tanggalLahir: calc.tanggalLahir,
       usia: calc.usiaTahun,
       tahunPurnaTugas: calc.tahunPurnaTugas,
       sisaTahunDinas: calc.sisaTahunDinas,
-      jabatanTerakhir: cleanJabatanOnly(existing.jabatanTerakhir) || existing.jabatanTerakhir,
+      jabatanTerakhir: rawJab === 'Lead Developer' ? 'Staf' : rawJab,
       fotoUrl: resolveAvatarUrl(existing.fotoUrl, currentUser.fotoUrl),
       coverUrl:
         existing.coverUrl && existing.coverUrl !== DEFAULT_COVER_URL
@@ -283,7 +287,7 @@ export function getOrBuildUserProfile(
     pangkat: currentUser.pangkat || 'Kombes Pol',
     jabatanTerakhir:
       currentUser.role === 'SUPERADMIN'
-        ? 'Lead Developer'
+        ? 'Staf'
         : `Perwira ${currentUser.satker || 'Polri'}`,
     satuanKerja: currentUser.satker || 'Mabes Polri',
     tipeSatker:

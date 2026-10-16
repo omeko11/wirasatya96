@@ -130,8 +130,37 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   const peersSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    let userOverrideJabatan = '';
+    let userOverridePangkat = '';
+    let userOverrideSatker = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const rawUserOverrides = localStorage.getItem('ws96_user_overrides_v1');
+        if (rawUserOverrides) {
+          const parsedUserOverrides = JSON.parse(rawUserOverrides);
+          const uOv = parsedUserOverrides?.[member.nrp];
+          if (uOv) {
+            userOverrideJabatan = uOv.jabatanTerakhir || '';
+            userOverridePangkat = uOv.pangkat || '';
+            userOverrideSatker = uOv.satker || '';
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     setLocalMember({
       ...member,
+      pangkat:
+        userOverridePangkat ||
+        (member.nrp === currentUser.nrp && currentUser.pangkat ? currentUser.pangkat : member.pangkat),
+      satuanKerja:
+        userOverrideSatker ||
+        (member.nrp === currentUser.nrp && currentUser.satker ? currentUser.satker : member.satuanKerja),
+      jabatanTerakhir:
+        userOverrideJabatan ||
+        (member.jabatanTerakhir === 'Lead Developer' ? 'Staf' : member.jabatanTerakhir),
       fotoUrl:
         member.nrp === currentUser.nrp
           ? resolveAvatarUrl(member.fotoUrl, currentUser.fotoUrl)
@@ -144,7 +173,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
           : member.coverUrl,
     });
     setDraftBio(member.bio || '');
-  }, [member, currentUser.nrp, currentUser.fotoUrl, currentUser.coverUrl]);
+  }, [member, currentUser.nrp, currentUser.pangkat, currentUser.satker, currentUser.fotoUrl, currentUser.coverUrl]);
 
   const isLeadership = ['SUPERADMIN', 'SEKRETARIAT'].includes(currentUser.role);
   const isOwnProfile = currentUser.nrp === localMember.nrp;
@@ -304,6 +333,8 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
     }
   };
 
+  const cleanMemberNameOnly = (localMember.namaLengkap || '').replace(/\(.*?\)/g, '').trim();
+
   const displayMemberNameWithRank = formatMemberDisplayName(
     localMember.pangkat,
     localMember.namaLengkap
@@ -349,7 +380,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   const jabatanAngkatanLabel = getJabatanAngkatanLabel(effectiveRole);
 
   const headlineText = formatJabatanWithSatker(
-    localMember.jabatanTerakhir,
+    localMember.jabatanTerakhir === 'Lead Developer' ? 'Staf' : localMember.jabatanTerakhir,
     localMember.satuanKerja
   );
 
@@ -496,7 +527,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             <span>Direktori Personel</span>
             <span>/</span>
             <span className="font-bold text-slate-900 inline-flex items-center gap-1">
-              {displayMemberNameWithRank}
+              {cleanMemberNameOnly}
               <MetaVerifiedBadge nrp={localMember.nrp} role={effectiveRole} size="xs" />
             </span>
           </div>
@@ -766,7 +797,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight inline-flex items-center gap-1.5">
-                      <span>{displayMemberNameWithRank}</span>
+                      <span>{cleanMemberNameOnly}</span>
                       <MetaVerifiedBadge
                         nrp={localMember.nrp}
                         role={effectiveRole}
@@ -779,15 +810,28 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </div>
 
                   <p className="text-sm font-semibold text-slate-700 leading-snug">
-                    {headlineText}
+                    {localMember.pangkat} &bull; {headlineText}
                   </p>
 
-                  {(effectiveRole === 'KETUA' ||
+                  {(effectiveRole === 'SUPERADMIN' ||
+                    effectiveRole === 'KETUA' ||
                     effectiveRole === 'SEKRETARIAT' ||
                     effectiveRole === 'BENDAHARA') && (
                     <div className="pt-0.5">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-xs font-extrabold shadow-2xs">
-                        <span>🎖️ Jabatan Angkatan: {jabatanAngkatanLabel}</span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded border text-[10px] font-extrabold uppercase tracking-wider ${
+                          effectiveRole === 'SUPERADMIN'
+                            ? 'bg-slate-900 text-white border-slate-700'
+                            : effectiveRole === 'KETUA'
+                            ? 'bg-red-50 text-red-800 border-red-200'
+                            : 'bg-amber-50 text-amber-900 border-amber-300'
+                        }`}
+                      >
+                        <span>
+                          {effectiveRole === 'SUPERADMIN'
+                            ? 'SUPERADMIN'
+                            : `🎖️ Jabatan Angkatan: ${jabatanAngkatanLabel}`}
+                        </span>
                       </span>
                     </div>
                   )}

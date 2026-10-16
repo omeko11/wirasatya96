@@ -530,14 +530,6 @@ export function getJabatanGroupsForPangkat(
   }
 
   // Selain IPDA ke atas (Bintara, Tamtama, ASN/PNS) -> cukup Staf atau ADC
-  if (nrp === '98010710') {
-    return [
-      {
-        group: 'Jabatan Pelaksana / Pendamping Dalam Struktur Polri',
-        options: ['Staf', 'ADC', 'Lead Developer'],
-      },
-    ];
-  }
   return NON_OFFICER_JABATAN_GROUPS;
 }
 

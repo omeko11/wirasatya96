@@ -168,8 +168,10 @@ export default function LoginPage() {
   };
 
   const handleLoginSuccess = (user: AuthUser, mfaMethod?: MfaMethod) => {
+    localStorage.setItem('ws96_auth_user', JSON.stringify(user));
     localStorage.setItem('ws96_active_user', JSON.stringify(user));
     localStorage.setItem('wirasatya96_current_user', JSON.stringify(user));
+    localStorage.removeItem('ws96_impersonator_user');
     if (mfaMethod) {
       localStorage.setItem('ws96_mfa_verified', 'true');
     }
@@ -180,7 +182,8 @@ export default function LoginPage() {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!username.trim()) {
+    const cleanIdentifier = username.trim();
+    if (!cleanIdentifier) {
       setErrorMessage('Harap masukkan NRP atau Email dinas Anda.');
       return;
     }
@@ -192,14 +195,38 @@ export default function LoginPage() {
 
     setLoading(true);
 
+    let matchedClientOverride: (AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }) | undefined;
     try {
-      // Call internal login API with entered credentials
+      const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+      if (rawOverrides) {
+        const parsedOverrides: Record<string, AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }> =
+          JSON.parse(rawOverrides);
+        const lowerId = cleanIdentifier.toLowerCase();
+        matchedClientOverride =
+          parsedOverrides[cleanIdentifier] ||
+          Object.values(parsedOverrides).find(
+            (ov) =>
+              ov &&
+              (ov.nrp === cleanIdentifier ||
+                ov.oldNrp === cleanIdentifier ||
+                ov.email?.toLowerCase() === lowerId ||
+                ov.secondaryEmail?.toLowerCase() === lowerId ||
+                ov.nama?.trim().toLowerCase() === lowerId)
+          );
+      }
+    } catch {
+      // ignore storage parse error
+    }
+
+    try {
+      // Call internal login API with entered credentials + local override for serverless cold-start sync
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          identifier: username.trim(), 
-          password: password.trim() 
+        body: JSON.stringify({
+          identifier: cleanIdentifier,
+          password: password.trim(),
+          ...(matchedClientOverride ? { clientOverride: matchedClientOverride } : {}),
         }),
       });
       const data = await res.json();
@@ -207,7 +234,7 @@ export default function LoginPage() {
       // Case 1: Account approved by Superadmin, needs to set password for the first time
       if (data.requiresPasswordSetup) {
         setActivationData({
-          nrp: data.nrp || username.trim(),
+          nrp: data.nrp || cleanIdentifier,
           nama: data.nama || 'Perwira Alumni Wira Satya 96',
           pangkat: data.pangkat || 'Kombes Pol',
         });
@@ -217,10 +244,18 @@ export default function LoginPage() {
 
       // Case 2: Login success
       if (data.success && data.user) {
+        const mergedUser: AuthUser = matchedClientOverride
+          ? {
+              ...data.user,
+              ...matchedClientOverride,
+              nrp: matchedClientOverride.nrp || data.user.nrp,
+            }
+          : data.user;
+
         // Check if this user has self-enabled 2FA in their settings
-        let is2FAEnabled = Boolean(data.user.mfaEnabled);
+        let is2FAEnabled = Boolean(mergedUser.mfaEnabled);
         try {
-          const local2FA = localStorage.getItem(`ws96_2fa_${data.user.nrp}`);
+          const local2FA = localStorage.getItem(`ws96_2fa_${mergedUser.nrp}`);
           if (local2FA !== null) {
             is2FAEnabled = local2FA === 'true';
           }
@@ -229,17 +264,44 @@ export default function LoginPage() {
         }
 
         if (is2FAEnabled) {
-          setPending2FAUser(data.user);
+          setPending2FAUser(mergedUser);
           setOtpInput('');
         } else {
-          handleLoginSuccess(data.user, 'PIN');
+          handleLoginSuccess(mergedUser, 'PIN');
         }
+      } else if (
+        matchedClientOverride &&
+        matchedClientOverride.password &&
+        matchedClientOverride.password === password.trim()
+      ) {
+        // Fallback if server instance rejected before override sync
+        handleLoginSuccess(
+          {
+            ...matchedClientOverride,
+            status: 'AKTIF',
+          },
+          'PIN'
+        );
       } else {
         setErrorMessage(data.message || 'NRP atau kata sandi tidak cocok. Silakan periksa kembali.');
         resetCaptcha();
       }
     } catch {
-      setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
+      if (
+        matchedClientOverride &&
+        matchedClientOverride.password &&
+        matchedClientOverride.password === password.trim()
+      ) {
+        handleLoginSuccess(
+          {
+            ...matchedClientOverride,
+            status: 'AKTIF',
+          },
+          'PIN'
+        );
+      } else {
+        setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
+      }
     } finally {
       setLoading(false);
     }
