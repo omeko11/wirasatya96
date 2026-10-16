@@ -369,14 +369,30 @@ export type ReactionType = 'like' | 'celebrate' | 'support' | 'love' | 'insightf
 // ==============================================================
 // MODUL RIWAYAT JABATAN & PENUGASAN INTERNAL LETING 96
 // ==============================================================
-export type FungsiPolri = 
-  | 'RESERSE' 
-  | 'INTELKAM' 
-  | 'LANTAS' 
-  | 'BRIMOB_SABHARA' 
-  | 'LEMDIKLAT' 
-  | 'KEWILAYAHAN' 
-  | 'LUAR_STRUKTUR';
+export type FungsiPolri =
+  | 'WASUM'
+  | 'RENA'
+  | 'OPS'
+  | 'LEMDIKLAT'
+  | 'RESERSE'
+  | 'INTELKAM'
+  | 'HARKAM'
+  | 'BRIMOB'
+  | 'SLOG'
+  | 'LANTAS'
+  | 'DENSUS'
+  | 'HUMAS'
+  | 'PROPAM'
+  | 'HUKUM'
+  | 'HUBINTER'
+  | 'TIK'
+  | 'SDM'
+  | 'TASPIDKOR'
+  | 'KEU'
+  | 'DOKKES'
+  | 'LITBANG'
+  | 'SETUM'
+  | 'SPRIPIM';
 
 export interface RiwayatJabatanLeting {
   id: string;

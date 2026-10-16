@@ -57,27 +57,63 @@ interface LinkedInJobsPageProps {
   onUpdateMemberJabatan?: (nrp: string, jabatan: string, satker: string, polda: string) => void;
 }
 
+const DAFTAR_FUNGSI_POLRI: {
+  key: FungsiPolri;
+  label: string;
+  badgeBg: string;
+}[] = [
+  { key: 'WASUM', label: 'Wasum', badgeBg: 'bg-slate-100 text-slate-800 border-slate-300' },
+  { key: 'RENA', label: 'Rena', badgeBg: 'bg-cyan-50 text-cyan-800 border-cyan-200' },
+  { key: 'OPS', label: 'Ops', badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  { key: 'LEMDIKLAT', label: 'Lemdiklat', badgeBg: 'bg-purple-50 text-purple-800 border-purple-200' },
+  { key: 'RESERSE', label: 'Reserse', badgeBg: 'bg-red-50 text-red-800 border-red-200' },
+  { key: 'INTELKAM', label: 'Intelkam', badgeBg: 'bg-amber-50 text-amber-800 border-amber-200' },
+  { key: 'HARKAM', label: 'Harkam', badgeBg: 'bg-teal-50 text-teal-800 border-teal-200' },
+  { key: 'BRIMOB', label: 'Brimob', badgeBg: 'bg-zinc-100 text-zinc-800 border-zinc-300' },
+  { key: 'SLOG', label: 'Slog', badgeBg: 'bg-orange-50 text-orange-800 border-orange-200' },
+  { key: 'LANTAS', label: 'Lantas', badgeBg: 'bg-blue-50 text-blue-800 border-blue-200' },
+  { key: 'DENSUS', label: 'Densus', badgeBg: 'bg-rose-50 text-rose-900 border-rose-300' },
+  { key: 'HUMAS', label: 'Humas', badgeBg: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
+  { key: 'PROPAM', label: 'Propam', badgeBg: 'bg-sky-50 text-sky-900 border-sky-300' },
+  { key: 'HUKUM', label: 'Hukum', badgeBg: 'bg-violet-50 text-violet-800 border-violet-200' },
+  { key: 'HUBINTER', label: 'Hubinter', badgeBg: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200' },
+  { key: 'TIK', label: 'TIK', badgeBg: 'bg-blue-50 text-blue-900 border-blue-200' },
+  { key: 'SDM', label: 'SDM', badgeBg: 'bg-lime-50 text-lime-900 border-lime-200' },
+  { key: 'TASPIDKOR', label: 'Taspidkor', badgeBg: 'bg-red-100 text-red-900 border-red-300' },
+  { key: 'KEU', label: 'Keu', badgeBg: 'bg-emerald-50 text-emerald-900 border-emerald-200' },
+  { key: 'DOKKES', label: 'Dokkes', badgeBg: 'bg-pink-50 text-pink-800 border-pink-200' },
+  { key: 'LITBANG', label: 'Litbang', badgeBg: 'bg-amber-50 text-amber-900 border-amber-200' },
+  { key: 'SETUM', label: 'Setum', badgeBg: 'bg-stone-100 text-stone-800 border-stone-300' },
+  { key: 'SPRIPIM', label: 'Spripim', badgeBg: 'bg-yellow-50 text-yellow-900 border-yellow-300' },
+];
+
+const VALID_FUNGSI_KEYS = new Set<string>(DAFTAR_FUNGSI_POLRI.map((f) => f.key));
+
 function inferFungsiPolri(jabatan: string, satker: string, polda: string): FungsiPolri {
-  const text = `${jabatan} ${satker} ${polda}`.toUpperCase();
-  if (text.includes('RESKRIM') || text.includes('BARESKRIM') || text.includes('NARKOBA') || text.includes('DITTIPID') || text.includes('SIBER') || text.includes('DENSUS')) {
-    return 'RESERSE';
-  }
-  if (text.includes('INTEL') || text.includes('BAINTELKAM')) {
-    return 'INTELKAM';
-  }
-  if (text.includes('LANTAS') || text.includes('KORLANTAS') || text.includes('PJR')) {
-    return 'LANTAS';
-  }
-  if (text.includes('BRIMOB') || text.includes('SAMAPTA') || text.includes('SABHARA') || text.includes('BAHARKAM') || text.includes('POLAIR') || text.includes('GEGANA') || text.includes('PELOPOR')) {
-    return 'BRIMOB_SABHARA';
-  }
-  if (text.includes('LEMDIKLAT') || text.includes('SESPIM') || text.includes('AKPOL') || text.includes('STIK') || text.includes('WIDYAISWARA') || text.includes('SPN') || text.includes('PUSDIK')) {
-    return 'LEMDIKLAT';
-  }
-  if (text.includes('KEMENTERIAN') || text.includes('BNN') || text.includes('KPK') || text.includes('BNPT') || text.includes('DIVHUMAS') || text.includes('HUBINTER') || text.includes('PURNA')) {
-    return 'LUAR_STRUKTUR';
-  }
-  return 'KEWILAYAHAN';
+  const t = `${jabatan} ${satker} ${polda}`.toUpperCase();
+  if (t.includes('TASPIDKOR') || t.includes('KORTASTIPIDKOR') || t.includes('TIPIDKOR')) return 'TASPIDKOR';
+  if (t.includes('DENSUS') || t.includes('BNPT')) return 'DENSUS';
+  if (t.includes('ITWAS') || t.includes('WASUM') || t.includes('IRWAS') || t.includes('IRWIL') || t.includes('AUDITOR KEPOLISIAN') || t.includes('ITJEN') || t.includes('INSPEKTUR')) return 'WASUM';
+  if (t.includes('RENA') || t.includes('STAMARENA') || t.includes('SRENA')) return 'RENA';
+  if (t.includes('LEMDIKLAT') || t.includes('SESPIM') || t.includes('AKPOL') || t.includes('STIK') || t.includes('SPN') || t.includes('PUSDIK') || t.includes('WIDYAISWARA') || t.includes('DOSEN')) return 'LEMDIKLAT';
+  if (t.includes('PROPAM') || t.includes('WABPROF') || t.includes('PAMINAL') || t.includes('PROVOS')) return 'PROPAM';
+  if (t.includes('HUMAS') || t.includes('PENMAS') || t.includes('PID')) return 'HUMAS';
+  if (t.includes('HUKUM') || t.includes('DIVKUM') || t.includes('BIDKUM') || t.includes('DPD RI')) return 'HUKUM';
+  if (t.includes('HUBINTER') || t.includes('INTERPOL') || t.includes('MHI') || t.includes('IMIGRASI') || t.includes('IMIPAS')) return 'HUBINTER';
+  if (t.includes('TIK') || t.includes('KOMDIGI')) return 'TIK';
+  if (t.includes('SDM') || t.includes('SSDM') || t.includes('BINKAR') || t.includes('DALPERS') || t.includes('WATPERS') || t.includes('ROPSI') || t.includes('PSI BIRO')) return 'SDM';
+  if (t.includes('KEU') || t.includes('PUSKEU') || t.includes('BIDKEU')) return 'KEU';
+  if (t.includes('DOKKES') || t.includes('PUSDOKKES') || t.includes('BIDDOKKES') || t.includes('RS BHAYANGKARA') || t.includes('KESEHATAN')) return 'DOKKES';
+  if (t.includes('LITBANG') || t.includes('PUSLITBANG')) return 'LITBANG';
+  if (t.includes('SETUM') || t.includes('PUSJARAH')) return 'SETUM';
+  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('YANMA') || t.includes('AJUDAN') || t.includes('SEKMIL')) return 'SPRIPIM';
+  if (t.includes('SLOG') || t.includes('ROLOG') || t.includes('SARPRAS') || t.includes('FASKON') || t.includes('BEKUM') || t.includes('ADA BARANG')) return 'SLOG';
+  if (t.includes('BRIMOB') || t.includes('GEGANA') || t.includes('PELOPOR')) return 'BRIMOB';
+  if (t.includes('LANTAS') || t.includes('KORLANTAS') || t.includes('PJR')) return 'LANTAS';
+  if (t.includes('INTEL') || t.includes('BAINTELKAM') || t.includes('BINDA') || t.includes('BIN ')) return 'INTELKAM';
+  if (t.includes('RESKRIM') || t.includes('BARESKRIM') || t.includes('NARKOBA') || t.includes('DITTIPID') || t.includes('SIBER') || t.includes('PUSIKNAS') || t.includes('BNN') || t.includes('KPK')) return 'RESERSE';
+  if (t.includes('BAHARKAM') || t.includes('HARKAM') || t.includes('SAMAPTA') || t.includes('SABHARA') || t.includes('PAMOBVIT') || t.includes('POLAIR') || t.includes('BINMAS') || t.includes('BAKAMLA')) return 'HARKAM';
+  return 'OPS';
 }
 
 export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
@@ -106,6 +142,9 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             return parsed.map((j: RiwayatJabatanLeting) => ({
               ...j,
               avatarUrl: getAvatarUrl(j.avatarUrl),
+              fungsiPolri: VALID_FUNGSI_KEYS.has(j.fungsiPolri)
+                ? j.fungsiPolri
+                : inferFungsiPolri(j.jabatan || '', j.satker || '', j.polda || ''),
             }));
           }
         } catch (e) {
@@ -371,24 +410,11 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   };
 
   const getFungsiBadge = (fungsi: FungsiPolri) => {
-    switch (fungsi) {
-      case 'RESERSE':
-        return { label: '🔍 Reserse', bg: 'bg-red-50 text-red-800 border-red-200' };
-      case 'INTELKAM':
-        return { label: '🛡️ Intelkam', bg: 'bg-amber-50 text-amber-800 border-amber-200' };
-      case 'LANTAS':
-        return { label: '🚦 Lantas', bg: 'bg-blue-50 text-blue-800 border-blue-200' };
-      case 'BRIMOB_SABHARA':
-        return { label: '⚡ Brimob', bg: 'bg-slate-100 text-slate-800 border-slate-300' };
-      case 'KEWILAYAHAN':
-        return { label: '🏛️ Wilayah', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
-      case 'LEMDIKLAT':
-        return { label: '🎓 Lemdiklat', bg: 'bg-purple-50 text-purple-800 border-purple-200' };
-      case 'LUAR_STRUKTUR':
-        return { label: '🇮🇩 Luar Struktur', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
-      default:
-        return { label: 'Polri', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
+    const found = DAFTAR_FUNGSI_POLRI.find((f) => f.key === fungsi);
+    if (found) {
+      return { label: found.label, bg: found.badgeBg };
     }
+    return { label: 'Ops', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
   };
 
   return (
@@ -459,7 +485,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
           </div>
 
-          {/* Statistik Tour of Duty (Dynamic from Real Data & Synced with 7 Fungsi Filter) */}
+          {/* Statistik Tour of Duty (Dynamic from Real Data & Synced with 23 Fungsi Filter) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
             <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
               <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
@@ -478,7 +504,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   </button>
                 )}
                 <span
-                  title="Statistik penempatan dan riwayat jabatan personel (Klik untuk memfilter)"
+                  title="Statistik penempatan dan riwayat jabatan personel per fungsi Polri (Klik untuk memfilter)"
                   className="text-slate-400 hover:text-slate-600 cursor-help"
                 >
                   <Info className="w-3.5 h-3.5" />
@@ -486,80 +512,18 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
               </div>
             </div>
 
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5 text-xs">
               {[
                 {
                   key: 'SEMUA',
                   label: 'Semua',
                   count: jabatanList.length,
-                  baseCls: 'bg-slate-50 hover:bg-slate-100 text-slate-700',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-slate-600 font-medium',
-                  countCls: 'text-slate-900',
                 },
-                {
-                  key: 'RESERSE',
-                  label: '🔍 Reserse',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'RESERSE').length,
-                  baseCls: 'bg-red-50 hover:bg-red-100/80 text-red-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-red-900 font-medium',
-                  countCls: 'text-red-900',
-                },
-                {
-                  key: 'INTELKAM',
-                  label: '🛡️ Intelkam',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'INTELKAM').length,
-                  baseCls: 'bg-amber-50 hover:bg-amber-100/80 text-amber-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-amber-900 font-medium',
-                  countCls: 'text-amber-900',
-                },
-                {
-                  key: 'LANTAS',
-                  label: '🚦 Lantas',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'LANTAS').length,
-                  baseCls: 'bg-blue-50 hover:bg-blue-100/80 text-blue-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-blue-900 font-medium',
-                  countCls: 'text-blue-900',
-                },
-                {
-                  key: 'BRIMOB_SABHARA',
-                  label: '⚡ Brimob',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'BRIMOB_SABHARA').length,
-                  baseCls: 'bg-slate-100 hover:bg-slate-200/80 text-slate-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-slate-800 font-medium',
-                  countCls: 'text-slate-900',
-                },
-                {
-                  key: 'KEWILAYAHAN',
-                  label: '🏛️ Wilayah',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'KEWILAYAHAN').length,
-                  baseCls: 'bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-emerald-900 font-medium',
-                  countCls: 'text-emerald-900',
-                },
-                {
-                  key: 'LEMDIKLAT',
-                  label: '🎓 Lemdiklat',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'LEMDIKLAT').length,
-                  baseCls: 'bg-purple-50 hover:bg-purple-100/80 text-purple-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-purple-900 font-medium',
-                  countCls: 'text-purple-900',
-                },
-                {
-                  key: 'LUAR_STRUKTUR',
-                  label: '🇮🇩 Luar Struktur',
-                  count: jabatanList.filter((j) => j.fungsiPolri === 'LUAR_STRUKTUR').length,
-                  baseCls: 'bg-indigo-50 hover:bg-indigo-100/80 text-indigo-900',
-                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-indigo-900 font-medium',
-                  countCls: 'text-indigo-900',
-                },
+                ...DAFTAR_FUNGSI_POLRI.map((f) => ({
+                  key: f.key,
+                  label: f.label,
+                  count: jabatanList.filter((j) => j.fungsiPolri === f.key).length,
+                })),
               ].map((row) => {
                 const isSelected = selectedFungsi === row.key;
                 return (
@@ -569,14 +533,20 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     onClick={() =>
                       setSelectedFungsi(isSelected && row.key !== 'SEMUA' ? 'SEMUA' : row.key)
                     }
-                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
-                      isSelected ? row.activeCls : row.baseCls
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-red-800 text-white font-bold shadow-xs'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <span className={`truncate pr-2 ${isSelected ? 'text-white font-bold' : row.textCls}`}>
+                    <span className={`truncate pr-2 ${isSelected ? 'text-white font-bold' : 'text-slate-700 font-medium'}`}>
                       {row.label}
                     </span>
-                    <span className={`font-bold flex-shrink-0 ${isSelected ? 'text-white' : row.countCls}`}>
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
+                      }`}
+                    >
                       {row.count} Jabatan
                     </span>
                   </button>
@@ -711,13 +681,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold pt-1 pb-1">
               {[
                 { key: 'SEMUA', label: 'Semua' },
-                { key: 'RESERSE', label: '🔍 Reserse' },
-                { key: 'INTELKAM', label: '🛡️ Intelkam' },
-                { key: 'LANTAS', label: '🚦 Lantas' },
-                { key: 'BRIMOB_SABHARA', label: '⚡ Brimob' },
-                { key: 'KEWILAYAHAN', label: '🏛️ Wilayah' },
-                { key: 'LEMDIKLAT', label: '🎓 Lemdiklat' },
-                { key: 'LUAR_STRUKTUR', label: '🇮🇩 Luar Struktur' },
+                ...DAFTAR_FUNGSI_POLRI.map((f) => ({ key: f.key, label: f.label })),
               ].map((f) => (
                 <button
                   key={f.key}
@@ -967,10 +931,14 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                           const val = e.target.value;
                           if (val === EXTERNAL_JABATAN_SENTINEL) {
                             setIsNewExternalJabatan(true);
-                            setNewJabatan({ ...newJabatan, jabatan: '', fungsiPolri: 'LUAR_STRUKTUR' });
+                            setNewJabatan({ ...newJabatan, jabatan: '', fungsiPolri: 'OPS' });
                           } else {
                             setIsNewExternalJabatan(false);
-                            setNewJabatan({ ...newJabatan, jabatan: val });
+                            setNewJabatan({
+                              ...newJabatan,
+                              jabatan: val,
+                              fungsiPolri: inferFungsiPolri(val, newJabatan.satkerUtama, newJabatan.polda),
+                            });
                           }
                         }}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
@@ -1072,13 +1040,11 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     onChange={(e) => setNewJabatan({ ...newJabatan, fungsiPolri: e.target.value as FungsiPolri })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
                   >
-                    <option value="RESERSE">Reserse / Bareskrim</option>
-                    <option value="INTELKAM">Intelijen Keamanan</option>
-                    <option value="LANTAS">Lalu Lintas</option>
-                    <option value="BRIMOB_SABHARA">Brimob & Sabhara</option>
-                    <option value="KEWILAYAHAN">Kewilayahan (Polda/Polres)</option>
-                    <option value="LEMDIKLAT">Lemdiklat / Sespim</option>
-                    <option value="LUAR_STRUKTUR">Luar Struktur / Humas</option>
+                    {DAFTAR_FUNGSI_POLRI.map((f) => (
+                      <option key={f.key} value={f.key}>
+                        {f.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
