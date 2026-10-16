@@ -205,13 +205,13 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
       items.push({
         id,
         type: 'SOCIAL',
-        title: `💬 Kabar Leting dari ${post.authorName}`,
+        title: `💬 Postingan: ${post.authorName}`,
         description:
           post.content.length > 140 ? `${post.content.slice(0, 140)}...` : post.content,
         timeAgo: post.createdAt,
         isRead: readSet.has(id),
         avatarUrl: getAvatarUrl(post.authorAvatar),
-        actionLabel: 'Lihat di Beranda',
+        actionLabel: 'Lihat di Linimasa',
         targetTab: 'direktori',
       });
     });
@@ -341,8 +341,8 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
               {[
                 { key: 'semua', label: `Semua (${countByType.semua})` },
                 { key: 'health', label: `❤️ Kesehatan (${countByType.health})` },
-                { key: 'treasury', label: `💰 Kas (${countByType.treasury})` },
-                { key: 'social', label: `💬 Aktivitas (${countByType.social})` },
+                { key: 'treasury', label: `💰 Kas & Aset (${countByType.treasury})` },
+                { key: 'social', label: `💬 Linimasa (${countByType.social})` },
               ].map((f) => (
                 <button
                   key={f.key}
@@ -451,7 +451,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
                 <Bell className="w-8 h-8 text-slate-300 mx-auto" />
                 <p className="font-semibold text-slate-700">Belum ada notifikasi pada kategori ini.</p>
                 <p className="text-slate-400 text-[11px]">
-                  Pemberitahuan terkait atensi medis, mutasi arus kas, dan kabar leting akan muncul di sini.
+                  Pemberitahuan terkait kesehatan, kas &amp; aset, dan linimasa akan muncul di sini.
                 </p>
               </div>
             )}

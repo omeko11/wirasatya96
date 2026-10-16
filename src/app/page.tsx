@@ -118,6 +118,7 @@ export default function Home() {
         const list = data.members || data.data;
         if (data.success && Array.isArray(list) && list.length > 0) {
           let authUser: AuthUser | null = null;
+          let memberOverrides: Record<string, AnggotaWiraSatya> = {};
           if (typeof window !== 'undefined') {
             const rawAuth = localStorage.getItem('ws96_auth_user');
             if (rawAuth) {
@@ -127,21 +128,43 @@ export default function Home() {
                 authUser = null;
               }
             }
+            const rawOverrides = localStorage.getItem('ws96_member_overrides_v1');
+            if (rawOverrides) {
+              try {
+                memberOverrides = JSON.parse(rawOverrides) || {};
+              } catch {
+                memberOverrides = {};
+              }
+            }
           }
 
           const sanitizedMembers = list.map((m: AnggotaWiraSatya) => {
-            if (authUser && m.nrp === authUser.nrp) {
+            const localOverride = memberOverrides[m.nrp];
+            const baseMember: AnggotaWiraSatya = localOverride
+              ? {
+                  ...m,
+                  ...localOverride,
+                  fotoUrl: resolveAvatarUrl(localOverride.fotoUrl, m.fotoUrl),
+                  coverUrl:
+                    localOverride.coverUrl && localOverride.coverUrl !== '/default-cover.jpg'
+                      ? localOverride.coverUrl
+                      : m.coverUrl || localOverride.coverUrl,
+                }
+              : m;
+
+            if (authUser && baseMember.nrp === authUser.nrp) {
               const merged: AnggotaWiraSatya = {
-                ...m,
-                fotoUrl: resolveAvatarUrl(m.fotoUrl, authUser.fotoUrl),
+                ...baseMember,
+                fotoUrl: resolveAvatarUrl(baseMember.fotoUrl, authUser.fotoUrl),
                 coverUrl:
-                  m.coverUrl && m.coverUrl !== '/default-cover.jpg'
-                    ? m.coverUrl
-                    : authUser.coverUrl || m.coverUrl,
+                  baseMember.coverUrl && baseMember.coverUrl !== '/default-cover.jpg'
+                    ? baseMember.coverUrl
+                    : authUser.coverUrl || baseMember.coverUrl,
               };
               if (
-                isCustomAvatarUrl(authUser.fotoUrl) &&
-                (!m.fotoUrl || m.fotoUrl === '/default-avatar.png' || !isCustomAvatarUrl(m.fotoUrl))
+                localOverride ||
+                (isCustomAvatarUrl(authUser.fotoUrl) &&
+                  (!m.fotoUrl || m.fotoUrl === '/default-avatar.png' || !isCustomAvatarUrl(m.fotoUrl)))
               ) {
                 fetch('/api/members', {
                   method: 'PUT',
@@ -151,9 +174,18 @@ export default function Home() {
               }
               return merged;
             }
+
+            if (localOverride) {
+              fetch('/api/members', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(baseMember),
+              }).catch(() => {});
+            }
+
             return {
-              ...m,
-              fotoUrl: getAvatarUrl(m.fotoUrl),
+              ...baseMember,
+              fotoUrl: getAvatarUrl(baseMember.fotoUrl),
             };
           });
           setMembers(sanitizedMembers);
@@ -166,9 +198,34 @@ export default function Home() {
       .then((res) => res.json())
       .then((res) => {
         if (res.success && res.data) {
-          if (res.data.summary) setFinanceSummary(res.data.summary);
-          if (Array.isArray(res.data.transactions)) setTransactions(res.data.transactions);
-          if (Array.isArray(res.data.assets)) setAssets(res.data.assets);
+          let localFin: any = null;
+          if (typeof window !== 'undefined') {
+            try {
+              const rawFin = localStorage.getItem('wirasatya96_finance');
+              if (rawFin) localFin = JSON.parse(rawFin);
+            } catch {
+              localFin = null;
+            }
+          }
+          const serverTrx: KasTransaction[] = Array.isArray(res.data.transactions) ? res.data.transactions : [];
+          const localTrx: KasTransaction[] = Array.isArray(localFin?.transactions) ? localFin.transactions : [];
+          // If server cold-started with 0 transactions while local browser has saved transactions, keep local & re-sync
+          if (serverTrx.length === 0 && localTrx.length > 0) {
+            setTransactions(localTrx);
+            if (localFin?.summary) setFinanceSummary(localFin.summary);
+          } else {
+            if (res.data.summary) setFinanceSummary(res.data.summary);
+            if (Array.isArray(res.data.transactions)) setTransactions(res.data.transactions);
+          }
+
+          const serverAssets: AssetPortfolioItem[] = Array.isArray(res.data.assets) ? res.data.assets : [];
+          const localAssets: AssetPortfolioItem[] = Array.isArray(localFin?.assets) ? localFin.assets : [];
+          if (serverAssets.length === 0 && localAssets.length > 0) {
+            setAssets(localAssets);
+          } else if (Array.isArray(res.data.assets)) {
+            setAssets(res.data.assets);
+          }
+
           if (Array.isArray(res.data.iuranList) && res.data.iuranList.length > 0) {
             setIuranList(res.data.iuranList);
           }
@@ -179,14 +236,9 @@ export default function Home() {
 
   // Load from localStorage or API on initial mount
   useEffect(() => {
-    // Purge stale dummy caches from previous versions
+    // Non-destructively record storage version without wiping user edits
     const currentVersion = localStorage.getItem('ws96_storage_version');
     if (currentVersion !== STORAGE_VERSION) {
-      localStorage.removeItem('wirasatya96_members');
-      localStorage.removeItem('wirasatya96_feed_posts');
-      localStorage.removeItem('wirasatya96_riwayat_jabatan');
-      localStorage.removeItem('wirasatya96_finance');
-      localStorage.removeItem('ws96_messages_cache');
       localStorage.setItem('ws96_storage_version', STORAGE_VERSION);
     }
 
@@ -408,6 +460,19 @@ export default function Home() {
     setActiveTab('pesan');
   };
 
+  // Persist member override in localStorage so Vercel cold-starts never wipe user edits
+  const persistMemberOverride = (member: AnggotaWiraSatya) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('ws96_member_overrides_v1');
+      const map: Record<string, AnggotaWiraSatya> = raw ? JSON.parse(raw) : {};
+      map[member.nrp] = member;
+      localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(map));
+    } catch {
+      // ignore
+    }
+  };
+
   // Save member profile
   const handleSaveMember = async (newMember: AnggotaWiraSatya) => {
     const cleanMember: AnggotaWiraSatya = {
@@ -427,6 +492,7 @@ export default function Home() {
       updatedList = [createdMember, ...members];
     }
     setMembers(updatedList);
+    persistMemberOverride(cleanMember);
     if (typeof window !== 'undefined') {
       localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
     }
@@ -814,6 +880,7 @@ export default function Home() {
     };
     const updatedList = members.map((m) => (m.nrp === nrp ? updatedMember : m));
     setMembers(updatedList);
+    persistMemberOverride(updatedMember);
     if (typeof window !== 'undefined') {
       localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
     }
@@ -915,9 +982,14 @@ export default function Home() {
             allMembers={members}
             onSelectMember={(m) => setViewingMember(m)}
             onUpdateMemberDirect={(updated) => {
-              setMembers((prev) =>
-                prev.map((m) => (m.nrp === updated.nrp || m.id === updated.id ? updated : m))
-              );
+              persistMemberOverride(updated);
+              setMembers((prev) => {
+                const nextList = prev.map((m) => (m.nrp === updated.nrp || m.id === updated.id ? updated : m));
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem('wirasatya96_members', JSON.stringify(nextList));
+                }
+                return nextList;
+              });
               setViewingMember(updated);
               if (updated.nrp === currentUser.nrp) {
                 const nextUser: AuthUser = {

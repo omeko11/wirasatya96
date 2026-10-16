@@ -965,11 +965,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 const cleanSatker = (u.satker || 'Mabes Polri').split(' / ')[0].trim();
                 const dynamicJabatanAngkatan =
                   u.role === 'KETUA'
-                    ? 'Ketua Angkatan'
+                    ? 'Jabatan Angkatan: Ketua'
                     : u.role === 'SEKRETARIAT'
-                    ? 'Sekretaris Angkatan'
+                    ? 'Jabatan Angkatan: Sekretaris'
                     : u.role === 'BENDAHARA'
-                    ? 'Bendahara Angkatan'
+                    ? 'Jabatan Angkatan: Bendahara'
                     : null;
                 const showPangkat =
                   Boolean(u.pangkat) &&
@@ -1035,7 +1035,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
                     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                       <div className="flex flex-col">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Ubah Hak Akses / Role</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">JABATAN ANGKATAN / ROLE</label>
                         <select
                           value={u.role}
                           disabled={updatingUserNrp === u.nrp}

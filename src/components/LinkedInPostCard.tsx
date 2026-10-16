@@ -94,7 +94,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
 
   const handleRepostClick = () => {
     onRepost(post.id);
-    showToast('Postingan dibagikan ke linimasa Batalyon Wira Satya 96!');
+    showToast('Postingan dibagikan ke linimasa!');
   };
 
   const handleCommentSubmit = (e: React.FormEvent) => {
@@ -102,7 +102,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
     if (!newCommentText.trim()) return;
     onAddComment(post.id, newCommentText.trim());
     setNewCommentText('');
-    showToast('Komentar leting berhasil dipublikasikan!');
+    showToast('Komentar ditambahkan');
   };
 
   // Render text with clickable hashtags
@@ -114,7 +114,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
           <span 
             key={idx} 
             className="text-red-900 font-bold hover:underline cursor-pointer"
-            onClick={() => showToast(`Filter topik leting: ${part}`)}
+            onClick={() => showToast(`Filter topik: ${part}`)}
           >
             {part}
           </span>
@@ -141,7 +141,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
       {post.pinned && (
         <div className="px-4 pt-3 pb-1 text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 border-b border-slate-50 bg-red-50/50">
           <Pin className="w-3 h-3 text-red-800 fill-red-800" />
-          <span className="text-red-950">Disematkan oleh Pengurus Batalyon Wira Satya 96</span>
+          <span className="text-red-950">Disematkan oleh Pengurus</span>
         </div>
       )}
 
@@ -185,7 +185,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
               <span>&bull;</span>
               <span className="inline-flex items-center gap-0.5 text-slate-500 font-medium">
                 <Globe className="w-2.5 h-2.5 text-red-800" />
-                Leting 96 #SelaluBahagia
+                #SelaluBahagia
               </span>
             </div>
           </div>
@@ -226,7 +226,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
               <button
                 onClick={() => {
                   setShowMoreMenu(false);
-                  showToast('Laporan atensi konten diterima oleh Pengurus Batalyon.');
+                  showToast('Laporan konten diterima oleh Pengurus.');
                 }}
                 className="w-full px-3.5 py-2 text-left hover:bg-slate-50 text-slate-500 flex items-center gap-2 border-t border-slate-100 mt-1"
               >
@@ -248,7 +248,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={post.imageUrl}
-            alt="Dokumentasi Batalyon"
+            alt="Dokumentasi"
             className="w-full h-full object-cover max-h-[460px] hover:opacity-95 transition-opacity"
           />
         </div>
@@ -382,7 +382,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Tambahkan komentar leting..."
+                  placeholder="Tulis komentar..."
                   value={newCommentText}
                   onChange={(e) => setNewCommentText(e.target.value)}
                   className="w-full pl-3.5 pr-20 py-2 bg-white border border-slate-300 rounded-full text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-800/40 focus:border-red-800"
@@ -444,7 +444,7 @@ export const LinkedInPostCard: React.FC<LinkedInPostCardProps> = ({
             </div>
           ) : (
             <p className="text-[11px] text-slate-400 text-center py-2">
-              Belum ada komentar. Berikan apresiasi dan semangat untuk rekan leting!
+              Belum ada komentar.
             </p>
           )}
         </div>

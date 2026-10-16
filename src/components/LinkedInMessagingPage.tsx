@@ -455,7 +455,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
             <button
               onClick={handleOpenDirectoryPicker}
               className="px-2.5 py-1 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1 transition-all shadow-xs"
-              title="Mulai obrolan dengan perwira leting lain"
+              title="Mulai obrolan baru"
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>+ Obrolan</span>
@@ -471,7 +471,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari perwira leting, jabatan, atau satker..."
+                placeholder="Cari nama, NRP, atau satker..."
                 className="w-full pl-9 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
               />
               {(searchQuery || showDirectoryPicker) && (
@@ -550,14 +550,14 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   <div className="space-y-1 max-w-[240px]">
                     <p className="text-xs font-bold text-slate-800">Belum ada obrolan disematkan</p>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Klik ikon pin pada obrolan aktif untuk menyematkan rekan leting prioritas Anda.
+                      Klik ikon pin pada obrolan untuk menyematkan kontak prioritas.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-1 max-w-[250px]">
                     <p className="text-xs font-bold text-slate-800">Belum ada obrolan aktif</p>
                     <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Daftar di samping hanya menampilkan rekan yang sedang atau pernah berbalas pesan dengan Anda.
+                      Klik + Obrolan untuk memulai percakapan baru.
                     </p>
                   </div>
                 )}
@@ -614,7 +614,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                         </h4>
                         <div className="flex items-center gap-1 flex-shrink-0">
                           <span className="text-[10px] text-slate-400">
-                            {lastMessage ? lastMessage.timestamp : 'Leting'}
+                            {lastMessage ? lastMessage.timestamp : 'Kontak'}
                           </span>
                           <button
                             type="button"
@@ -636,7 +636,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                       </p>
 
                       <p className={`text-xs truncate mt-0.5 ${unread > 0 ? 'font-bold text-slate-900' : 'text-slate-600'}`}>
-                        {lastMessage ? lastMessage.text : 'Klik untuk memulai obrolan langsung...'}
+                        {lastMessage ? lastMessage.text : 'Mulai obrolan...'}
                       </p>
                     </div>
 
@@ -663,9 +663,9 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 <MessageSquare className="w-8 h-8" />
               </div>
               <div className="max-w-sm space-y-1">
-                <h3 className="text-sm font-bold text-slate-900">Pesan Wira Satya 96</h3>
+                <h3 className="text-sm font-bold text-slate-900">Pesan</h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Pilih rekan perwira dari daftar di sebelah kiri atau mulai obrolan baru untuk berkomunikasi langsung.
+                  Pilih kontak di sebelah kiri atau klik + Obrolan untuk mengirim pesan.
                 </p>
               </div>
               <button
@@ -754,7 +754,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
               <div className="bg-slate-50 px-4 py-1.5 border-b border-slate-100 flex items-center justify-between text-[11px] text-slate-500 flex-shrink-0">
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Kanal Komunikasi Terverifikasi Personel Batalyon Wira Satya Akpol 1996</span>
+                  <span>Pesan Internal Terverifikasi</span>
                 </span>
                 <span className="text-[10px] font-semibold text-red-900">#SelaluBahagia</span>
               </div>
@@ -771,14 +771,14 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                         Mulai Obrolan dengan {activePartner.namaLengkap.split(',')[0]}
                       </h4>
                       <p className="text-xs text-slate-500 mt-1">
-                        Silakan sampaikan salam hormat, koordinasi dinas, atau silaturahmi satu letting.
+                        Kirim pesan atau pilih balasan cepat di bawah.
                       </p>
                     </div>
                     <div className="flex flex-wrap justify-center gap-1.5 pt-2">
                       {[
                         'Siap Komandan, mohon izin koordinasi.',
-                        'Salam hormat satu letting Wira Satya 96!',
-                        'Mohon info tindak lanjut agenda leting.',
+                        'Salam hormat, mohon izin menghubungi.',
+                        'Mohon info tindak lanjut agenda.',
                       ].map((preset, idx) => (
                         <button
                           key={idx}
@@ -889,7 +889,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-red-950 text-white">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-sm">Mulai Obrolan Baru Leting 96</h3>
+                <h3 className="font-bold text-sm">Mulai Obrolan Baru</h3>
               </div>
               <button
                 onClick={() => setIsNewChatModalOpen(false)}
@@ -906,7 +906,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   type="text"
                   value={newChatSearch}
                   onChange={(e) => setNewChatSearch(e.target.value)}
-                  placeholder="Ketik NRP atau cari nama perwira di direktori..."
+                  placeholder="Cari nama, NRP, atau satker..."
                   autoFocus
                   className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
                 />
@@ -918,8 +918,8 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 <div className="p-6 text-center space-y-3">
                   <p className="text-xs text-slate-500">
                     {newChatSearch.trim()
-                      ? `Perwira "${newChatSearch}" belum ada di daftar direktori.`
-                      : 'Belum ada perwira lain di direktori.'}
+                      ? `Personel "${newChatSearch}" belum ada di daftar direktori.`
+                      : 'Belum ada personel lain di direktori.'}
                   </p>
                   {newChatSearch.trim() && (
                     <button
@@ -976,7 +976,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
 
             <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
               <span className="text-[11px] text-slate-500">
-                Menampilkan <b>{searchableMembers.length}</b> perwira terdaftar di Batalyon Wira Satya 1996
+                Menampilkan <b>{searchableMembers.length}</b> personel terdaftar
               </span>
             </div>
 

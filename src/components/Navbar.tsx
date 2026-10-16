@@ -284,7 +284,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Mobile text title */}
               <div className="sm:hidden min-w-0">
                 <span className="font-black text-xs text-red-900 block leading-tight truncate">WIRA SATYA 96</span>
-                <span className="text-[10px] text-slate-500 font-semibold truncate block">Alumni Akpol 1996</span>
+                <span className="text-[10px] text-slate-500 font-semibold truncate block">Portal Internal</span>
               </div>
             </div>
 
@@ -394,11 +394,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {/* 6. User (Full-Page Tab for Superadmin & Sekretaris Only) */}
+              {/* 6. User (Full-Page Tab for Superadmin & Sekretaris Only - Desktop/Tablet) */}
               {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
                 <button
                   onClick={() => setActiveTab('users')}
-                  className={`flex flex-col items-center justify-center px-2 py-1 min-w-[48px] text-center transition-all border-b-2 ${
+                  className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[48px] text-center transition-all border-b-2 ${
                     activeTab === 'users'
                       ? 'border-red-900 text-red-900 font-bold'
                       : 'border-transparent text-slate-600 hover:text-red-900'
@@ -424,17 +424,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex flex-col sm:flex-row items-center gap-1 px-1.5 py-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-700"
+                  className="flex flex-col sm:flex-row items-center gap-1 p-0.5 sm:px-1.5 sm:py-1 rounded-full sm:rounded-lg hover:bg-slate-100 transition-colors text-slate-700"
                   title="Menu Akun Saya"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={myAvatarUrl}
                     alt={cleanDisplayName}
-                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 flex-shrink-0 bg-white"
+                    className="w-8 h-8 sm:w-7 sm:h-7 rounded-full object-cover border border-slate-300 flex-shrink-0 bg-white"
                   />
-                  <div className="flex items-center gap-0.5">
-                    <span className="text-[10px] font-semibold text-slate-700 hidden sm:block whitespace-nowrap">
+                  <div className="hidden sm:flex items-center gap-0.5">
+                    <span className="text-[10px] font-semibold text-slate-700 whitespace-nowrap">
                       Saya
                     </span>
                     <ChevronDown className="w-3 h-3 text-slate-500" />
@@ -576,23 +576,23 @@ export const Navbar: React.FC<NavbarProps> = ({
                 )}
               </div>
 
-              {/* 8. 9-Dots Launcher: Layanan & Aplikasi Leting */}
+              {/* 8. 9-Dots Launcher: Layanan */}
               <div className="relative hidden sm:block" ref={appsMenuRef}>
                 <button
                   onClick={() => setIsAppsMenuOpen(!isAppsMenuOpen)}
                   className="flex flex-col items-center justify-center px-1.5 py-1 text-slate-500 hover:text-slate-900 transition-colors"
-                  title="Layanan & Aplikasi Batalyon"
+                  title="Layanan"
                 >
                   <LayoutGrid className="w-5 h-5" />
                   <span className="text-[10px] mt-0.5 whitespace-nowrap">Layanan</span>
                 </button>
 
                 {isAppsMenuOpen && (
-                  <div className="absolute right-0 top-12 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 text-xs text-slate-700 animate-fadeIn space-y-4">
+                  <div className="absolute right-0 top-12 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 text-xs text-slate-700 animate-fadeIn space-y-4">
                     <div>
                       <h4 className="font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-1.5">
                         <LayoutGrid className="w-4 h-4 text-red-800" />
-                        <span>Aplikasi Mandiri Leting 96</span>
+                        <span>Layanan</span>
                       </h4>
                       <div className="grid grid-cols-2 gap-2 pt-2">
                         <button
@@ -603,8 +603,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="p-2.5 rounded-xl border border-slate-100 hover:border-red-800/40 hover:bg-red-50/50 text-left transition-all"
                         >
                           <Home className="w-4 h-4 text-red-800 mb-1" />
-                          <div className="font-bold text-slate-800 text-[11px]">Feed Beranda</div>
-                          <div className="text-[10px] text-slate-500">Kabar &amp; silaturahmi leting</div>
+                          <div className="font-bold text-slate-800 text-[11px] truncate">Beranda</div>
+                          <div className="text-[10px] text-slate-500 truncate">Linimasa</div>
                         </button>
 
                         <button
@@ -615,8 +615,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="p-2.5 rounded-xl border border-slate-100 hover:border-red-800/40 hover:bg-red-50/50 text-left transition-all"
                         >
                           <Briefcase className="w-4 h-4 text-amber-700 mb-1" />
-                          <div className="font-bold text-slate-800 text-[11px]">Riwayat Jabatan</div>
-                          <div className="text-[10px] text-slate-500">Tour of duty & promosi</div>
+                          <div className="font-bold text-slate-800 text-[11px] truncate">Jabatan</div>
+                          <div className="text-[10px] text-slate-500 truncate">Tour of Duty</div>
                         </button>
 
                         <button
@@ -627,8 +627,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="p-2.5 rounded-xl border border-slate-100 hover:border-red-800/40 hover:bg-red-50/50 text-left transition-all"
                         >
                           <Wallet className="w-4 h-4 text-emerald-700 mb-1" />
-                          <div className="font-bold text-slate-800 text-[11px]">Arus Kas</div>
-                          <div className="text-[10px] text-slate-500">Mutasi kas & iuran</div>
+                          <div className="font-bold text-slate-800 text-[11px] truncate">Kas &amp; Aset</div>
+                          <div className="text-[10px] text-slate-500 truncate">Kas &amp; portofolio</div>
                         </button>
 
                         <button
@@ -639,8 +639,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           className="p-2.5 rounded-xl border border-slate-100 hover:border-red-800/40 hover:bg-red-50/50 text-left transition-all"
                         >
                           <Lock className="w-4 h-4 text-purple-700 mb-1" />
-                          <div className="font-bold text-slate-800 text-[11px]">Keamanan FIDO2</div>
-                          <div className="text-[10px] text-slate-500">Passkey & Biometrik</div>
+                          <div className="font-bold text-slate-800 text-[11px] truncate">Pengaturan</div>
+                          <div className="text-[10px] text-slate-500 truncate">Akun &amp; keamanan</div>
                         </button>
                       </div>
                     </div>
@@ -648,21 +648,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <div>
                       <h4 className="font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-1.5 text-[11px]">
                         <ShieldCheck className="w-3.5 h-3.5 text-red-800" />
-                        <span>Sinergi Paguyuban Batalyon</span>
+                        <span>Dukungan</span>
                       </h4>
                       <div className="space-y-1.5 pt-2 text-[11px]">
-                        <div className="p-2 rounded-lg bg-slate-50 flex items-center gap-2">
+                        <div
+                          className="p-2 rounded-lg bg-slate-50 flex items-center gap-2"
+                          title="Pendampingan medis personel dan keluarga"
+                        >
                           <Heart className="w-3.5 h-3.5 text-rose-600 flex-shrink-0" />
-                          <div>
+                          <div className="truncate">
                             <span className="font-semibold text-slate-800">Satgas Kesehatan: </span>
-                            <span className="text-slate-500">Pendampingan medis rekan dan keluarga</span>
+                            <span className="text-slate-500">Pendampingan medis</span>
                           </div>
                         </div>
-                        <div className="p-2 rounded-lg bg-slate-50 flex items-center gap-2">
+                        <div
+                          className="p-2 rounded-lg bg-slate-50 flex items-center gap-2"
+                          title="Advokasi dan konsultasi hukum personel"
+                        >
                           <Scale className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
-                          <div>
-                            <span className="font-semibold text-slate-800">LBH Wira Satya: </span>
-                            <span className="text-slate-500">Advokasi dan perlindungan hukum perwira</span>
+                          <div className="truncate">
+                            <span className="font-semibold text-slate-800">Bantuan Hukum: </span>
+                            <span className="text-slate-500">Advokasi &amp; konsultasi</span>
                           </div>
                         </div>
                       </div>
@@ -679,7 +685,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Bottom Mobile Tab Bar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 pt-1.5 pb-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
-        <div className="grid grid-cols-5 gap-0.5 text-[9px]">
+        <div
+          className={`grid ${
+            currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT'
+              ? 'grid-cols-6'
+              : 'grid-cols-5'
+          } gap-0.5 text-[9px]`}
+        >
           {/* 1. Beranda */}
           <button
             onClick={() => setActiveTab('direktori')}
@@ -707,7 +719,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Jabatan</span>
           </button>
 
-          {/* 3. Arus Kas */}
+          {/* 3. Kas & Aset */}
           <button
             onClick={() => setActiveTab('bendahara')}
             className={`flex flex-col items-center justify-center py-1 transition-colors ${
@@ -715,7 +727,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Wallet className="w-5 h-5 mb-0.5" />
-            <span>Arus Kas</span>
+            <span>Kas &amp; Aset</span>
           </button>
 
           {/* 4. Pesan */}
@@ -727,6 +739,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <div className="relative">
               <MessageSquare className="w-5 h-5 mb-0.5" />
+              {unreadMessagesCount > 0 && (
+                <span className="w-3.5 h-3.5 rounded-full bg-red-700 text-white text-[8px] font-bold flex items-center justify-center absolute -top-1 -right-2 ring-1 ring-white">
+                  {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+                </span>
+              )}
             </div>
             <span>Pesan</span>
           </button>
@@ -740,9 +757,34 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <div className="relative">
               <Bell className="w-5 h-5 mb-0.5" />
+              {unreadNotificationsCount > 0 && (
+                <span className="w-3.5 h-3.5 rounded-full bg-red-700 text-white text-[8px] font-bold flex items-center justify-center absolute -top-1 -right-2 ring-1 ring-white">
+                  {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                </span>
+              )}
             </div>
             <span>Notif</span>
           </button>
+
+          {/* 6. User (Mobile Bottom Bar for Superadmin & Sekretaris) */}
+          {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`flex flex-col items-center justify-center py-1 transition-colors ${
+                activeTab === 'users' ? 'text-red-900 font-bold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <div className="relative">
+                <Users className="w-5 h-5 mb-0.5" />
+                {pendingVerificationCount > 0 && (
+                  <span className="w-3.5 h-3.5 rounded-full bg-red-700 text-white text-[8px] font-extrabold flex items-center justify-center absolute -top-1 -right-2 ring-1 ring-white animate-pulse">
+                    {pendingVerificationCount}
+                  </span>
+                )}
+              </div>
+              <span>User</span>
+            </button>
+          )}
         </div>
       </div>
     </>

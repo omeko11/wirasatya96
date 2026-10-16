@@ -117,7 +117,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
     a.download = `WiraSatya96_Data_${currentUser.nrp}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Data akun dan profil leting berhasil diunduh!');
+    showToast('Data profil berhasil diunduh.');
   };
 
   return (
@@ -143,7 +143,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900">
-              Pengaturan &amp; Privasi
+              Pengaturan
             </h1>
             <p className="text-xs text-slate-500">
               {currentUser.pangkat} {currentUser.nama} &bull; NRP {currentUser.nrp}
@@ -259,7 +259,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                   <div>
                     <div className="font-semibold text-slate-800">Mode gelap</div>
                     <div className="text-slate-500 text-[11px] mt-0.5">
-                      {isDarkMode ? 'Mode gelap aktif (Tema Taktis Malam)' : 'Mode terang aktif'}
+                      {isDarkMode ? 'Mode gelap aktif' : 'Mode terang aktif'}
                     </div>
                   </div>
                   <button
@@ -284,18 +284,18 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
                   <div 
-                    onClick={() => showToast('Bahasa Indonesia (Resmi Polri) sedang aktif.')}
+                    onClick={() => showToast('Bahasa Indonesia sedang aktif.')}
                     className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">Bahasa aplikasi</div>
-                      <div className="text-slate-500 text-[11px]">Bahasa Indonesia (Resmi Polri)</div>
+                      <div className="font-semibold text-slate-800">Bahasa</div>
+                      <div className="text-slate-500 text-[11px]">Indonesia</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
                   <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
-                      <div className="font-semibold text-slate-800">Putar otomatis video dokumentasi</div>
+                      <div className="font-semibold text-slate-800">Putar otomatis video</div>
                       <div className="text-slate-500 text-[11px]">{isAutoPlayVideo ? 'Aktif' : 'Nonaktif'}</div>
                     </div>
                     <button
@@ -322,8 +322,8 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">Ubah Foto Profil</div>
-                      <div className="text-slate-500 text-[11px]">Perbarui foto profil Anda di Formulir Data Diri</div>
+                      <div className="font-semibold text-slate-800">Foto Profil</div>
+                      <div className="text-slate-500 text-[11px]">Ubah foto &amp; data diri</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
@@ -340,9 +340,9 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
                   <div>
-                    <h3 className="text-xs font-bold text-slate-900">Akses akun & Keamanan Tingkat Tinggi</h3>
+                    <h3 className="text-xs font-bold text-slate-900">Keamanan Akun</h3>
                     <p className="text-[11px] text-slate-500">
-                      Standar keamanan multi-faktor, FIDO2 Biometrik & Passkey Bareskrim
+                      Autentikasi, Passkey Biometrik &amp; 2FA
                     </p>
                   </div>
                   <Shield className="w-5 h-5 text-red-800" />
@@ -374,9 +374,9 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     <div>
                       <div className="font-semibold text-slate-800 flex items-center gap-1.5">
                         <Smartphone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Nomor telepon WhatsApp / OTP</span>
+                        <span>Nomor WhatsApp / OTP</span>
                       </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">Klik untuk memperbarui nomor kontak di Data Diri</div>
+                      <div className="text-slate-500 text-[11px] mt-0.5">Perbarui nomor kontak di Data Diri</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
@@ -388,7 +388,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                         <KeyRound className="w-3.5 h-3.5 text-slate-400" />
                         <span>Ubah kata sandi</span>
                       </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">Gunakan kata sandi kuat minimal 6 karakter</div>
+                      <div className="text-slate-500 text-[11px] mt-0.5">Minimal 6 karakter</div>
                     </div>
                     <button
                       onClick={() => setActivePasswordModal(true)}
@@ -403,10 +403,10 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     <div>
                       <div className="font-semibold text-slate-800 flex items-center gap-1.5">
                         <Fingerprint className="w-4 h-4 text-red-800" />
-                        <span>Kunci sandi (Passkey / FIDO2 / Biometrik)</span>
+                        <span>Passkey / FIDO2 Biometrik</span>
                       </div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Login instan menggunakan Windows Hello, Touch ID, atau Face ID tanpa mengetik password
+                        Login cepat dengan sidik jari atau pengenalan wajah
                       </div>
                     </div>
                     <button
@@ -424,9 +424,9 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                   {/* Where you are logged in */}
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-800">Di mana Anda login</div>
+                      <div className="font-semibold text-slate-800">Sesi aktif</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Perangkat Web Browser &bull; Sesi Aktif Sekarang (NRP {currentUser.nrp})
+                        Browser Web &bull; NRP {currentUser.nrp}
                       </div>
                     </div>
                     <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
@@ -439,7 +439,7 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
                     <div>
                       <div className="font-semibold text-slate-800">Autentikasi dua faktor (2FA)</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Default login cukup Password &amp; Captcha. Aktifkan 2FA jika Anda ingin proteksi OTP tambahan saat login.
+                        Proteksi OTP tambahan saat login
                       </div>
                     </div>
                     <button
@@ -465,30 +465,30 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
             <div className="space-y-4 animate-fadeIn">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <h3 className="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100 mb-3">
-                  Visibilitas profil dan direktori Anda
+                  Visibilitas Profil &amp; Direktori
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
                   <div 
-                    onClick={() => showToast('Visibilitas profil diatur ke: Nama, pangkat, dan foto ditampilkan untuk rekan leting.')}
+                    onClick={() => showToast('Pengaturan disimpan.')}
                     className="py-2.5 flex items-center justify-between hover:bg-slate-50 px-2 rounded-lg cursor-pointer"
                   >
                     <div>
-                      <div className="font-semibold text-slate-800">Visibilitas saat mengunjungi profil rekan</div>
+                      <div className="font-semibold text-slate-800">Tampilan profil</div>
                       <div className="text-slate-500 text-[11px]">Nama, pangkat, dan foto ditampilkan</div>
                     </div>
                     <ChevronRight className="w-4 h-4 text-slate-400" />
                   </div>
                   <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
-                      <div className="font-semibold text-slate-800">Pengaturan profil internal</div>
-                      <div className="text-slate-500 text-[11px]">Hanya dapat diakses oleh Perwira Wira Satya 96 terverifikasi</div>
+                      <div className="font-semibold text-slate-800">Akses profil internal</div>
+                      <div className="text-slate-500 text-[11px]">Hanya anggota terverifikasi</div>
                     </div>
-                    <span className="font-bold text-emerald-600 text-[11px]">Terkunci Internal</span>
+                    <span className="font-bold text-emerald-600 text-[11px]">Internal</span>
                   </div>
                   <div className="py-2.5 flex items-center justify-between px-2">
                     <div>
-                      <div className="font-semibold text-slate-800">Kelola status aktif / online</div>
-                      <div className="text-slate-500 text-[11px]">{activeStatusVisible ? 'Terlihat oleh leting' : 'Disembunyikan'}</div>
+                      <div className="font-semibold text-slate-800">Status online</div>
+                      <div className="text-slate-500 text-[11px]">{activeStatusVisible ? 'Ditampilkan' : 'Disembunyikan'}</div>
                     </div>
                     <button
                       onClick={() => setActiveStatusVisible(!activeStatusVisible)}
@@ -509,14 +509,14 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
             <div className="space-y-4 animate-fadeIn">
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <h3 className="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100 mb-3">
-                  Cara Paguyuban Wira Satya 96 mengelola data Anda
+                  Pengelolaan Data &amp; Privasi
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-800">Unduh data profil Anda (Export JSON)</div>
+                      <div className="font-semibold text-slate-800">Unduh data profil (JSON)</div>
                       <div className="text-slate-500 text-[11px] mt-0.5">
-                        Dapatkan salinan arsip data kedinasan dan profil akun Anda
+                        Salinan arsip data kedinasan dan profil akun
                       </div>
                     </div>
                     <button
@@ -530,11 +530,11 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
 
                   <div className="py-3 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-800">Hapus riwayat pencarian direktori</div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">Bersihkan riwayat pencarian rekan perwira & satker</div>
+                      <div className="font-semibold text-slate-800">Riwayat pencarian</div>
+                      <div className="text-slate-500 text-[11px] mt-0.5">Bersihkan riwayat pencarian direktori</div>
                     </div>
                     <button
-                      onClick={() => showToast('Riwayat pencarian direktori berhasil dibersihkan.')}
+                      onClick={() => showToast('Riwayat pencarian berhasil dibersihkan.')}
                       className="px-3 py-1 rounded border border-slate-300 font-semibold hover:bg-slate-50"
                     >
                       Hapus
@@ -554,22 +554,22 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
               <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3 text-xs text-red-950">
                 <Bell className="w-4 h-4 text-red-800 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <span className="font-bold">Pengaturan notifikasi terpusat Batalyon: </span>
-                  <span>Notifikasi penting seperti Atensi Kesehatan dan Arus Kas otomatis dikirimkan ke akun leting.</span>
+                  <span className="font-bold">Notifikasi terpusat: </span>
+                  <span>Pemberitahuan penting seperti Atensi Kesehatan dan Kas otomatis dikirimkan ke akun Anda.</span>
                 </div>
               </div>
 
               <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
                 <h3 className="text-xs font-bold text-slate-900 pb-3 border-b border-slate-100 mb-3">
-                  Pintasan Modul & Notifikasi
+                  Kategori Notifikasi
                 </h3>
                 <div className="divide-y divide-slate-100 text-xs">
                   {[
-                    { title: 'Atensi Kesehatan Leting', desc: 'Pemberitahuan bila ada rekan leting atau keluarga yang sakit/dirawat', tab: 'direktori' },
-                    { title: 'Arus Kas & Iuran', desc: 'Laporan rekapitulasi kebendaharaan bulanan dan konfirmasi pembayaran', tab: 'bendahara' },
-                    { title: 'Karier & Purna Tugas', desc: 'Informasi transisi karier dan peluang wirausaha purna tugas', tab: 'purnaTugas' },
-                    { title: 'Pesan & Obrolan Masuk', desc: 'Notifikasi chat langsung dari perwira leting', tab: 'pesan' },
-                    { title: 'Linimasa & Postingan Beranda', desc: 'Komentar dan respon suka pada postingan Anda', tab: 'direktori' },
+                    { title: 'Atensi Kesehatan', desc: 'Info medis personel atau keluarga yang dirawat', tab: 'direktori' },
+                    { title: 'Kas & Aset', desc: 'Rekapitulasi kas bulanan dan konfirmasi pembayaran', tab: 'bendahara' },
+                    { title: 'Jabatan & Karier', desc: 'Mutasi jabatan dan info purna tugas', tab: 'purnaTugas' },
+                    { title: 'Pesan Masuk', desc: 'Notifikasi pesan langsung', tab: 'pesan' },
+                    { title: 'Pengumuman & Linimasa', desc: 'Komentar dan aktivitas pada postingan', tab: 'direktori' },
                   ].map((notif, idx) => (
                     <div 
                       key={idx} 

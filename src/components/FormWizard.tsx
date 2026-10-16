@@ -28,6 +28,7 @@ import {
   Image as ImageIcon,
   Mail,
 } from 'lucide-react';
+import { processSecureImageUpload } from '@/lib/mediaSecurity';
 
 interface FormWizardProps {
   onSave: (newMember: AnggotaWiraSatya) => void;
@@ -76,43 +77,18 @@ const DAFTAR_PENYAKIT = [
   'PENYAKIT LIVER',
 ];
 
-function resizeImageFile(
+async function resizeImageFile(
   file: File,
-  maxWidth: number,
-  maxHeight: number,
-  quality = 0.82
+  preset: 'AVATAR' | 'COVER',
+  actorNrp?: string,
+  ownerNrp?: string
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result;
-      if (typeof result !== 'string') {
-        reject(new Error('Gagal membaca file gambar'));
-        return;
-      }
-      const img = new window.Image();
-      img.onload = () => {
-        let { width, height } = img;
-        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(result);
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = () => resolve(result);
-      img.src = result;
-    };
-    reader.onerror = () => reject(new Error('Gagal membaca file'));
-    reader.readAsDataURL(file);
+  const processed = await processSecureImageUpload(file, {
+    preset,
+    actorNrp,
+    ownerNrp,
   });
+  return processed.dataUrl;
 }
 
 function resolveDefaultJenisAnggota(member?: AnggotaWiraSatya, user?: AuthUser): JenisAnggotaOption {
@@ -446,6 +422,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
           polda: memberToSave.polda,
         };
         localStorage.setItem('ws96_auth_user', JSON.stringify(updatedAuth));
+        localStorage.setItem('ws96_active_user', JSON.stringify(updatedAuth));
+        localStorage.setItem('wirasatya96_current_user', JSON.stringify(updatedAuth));
         window.dispatchEvent(new Event('ws96_user_updated'));
       } catch {
         // Ignore storage errors
@@ -635,15 +613,15 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 </button>
               </div>
 
-              {/* Jabatan Saat Ini & Keterangan Satker Lengkap */}
+              {/* Jabatan Organisasi Polri Saat Ini & Keterangan Satker Lengkap */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Jabatan Saat Ini <span className="text-red-500">*</span>
+                    Jabatan Organisasi Polri Saat Ini <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Lead Developer / Dirreskrimsus / Kapolres"
+                    placeholder="Contoh: Lead Developer / Irwil I Itwasum Polri / Dirreskrimsus"
                     value={formData.jabatanTerakhir || ''}
                     onChange={(e) => handleInputChange('jabatanTerakhir', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
@@ -697,7 +675,12 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                             const file = e.target.files?.[0];
                             if (!file) return;
                             try {
-                              const resized = await resizeImageFile(file, 400, 400, 0.85);
+                              const resized = await resizeImageFile(
+                                file,
+                                'AVATAR',
+                                currentUser.nrp,
+                                formData.nrp || currentUser.nrp
+                              );
                               setAvatarCleared(false);
                               handleInputChange('fotoUrl', resized);
                             } catch {
@@ -730,7 +713,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     <img
                       src={getCoverUrl(formData.coverUrl)}
                       alt="Sampul Profil"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover object-center"
                     />
                   </div>
                   <div className="flex-1 min-w-0 space-y-1.5">
@@ -746,7 +729,12 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                             const file = e.target.files?.[0];
                             if (!file) return;
                             try {
-                              const resized = await resizeImageFile(file, 1200, 450, 0.82);
+                              const resized = await resizeImageFile(
+                                file,
+                                'COVER',
+                                currentUser.nrp,
+                                formData.nrp || currentUser.nrp
+                              );
                               handleInputChange('coverUrl', resized);
                             } catch {
                               // ignore

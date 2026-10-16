@@ -18,7 +18,7 @@ import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
-import { AKPOL_1996_REGISTRATIONS, AKPOL_1996_USERS } from '@/data/akpol1996Alumni';
+import { AKPOL_1996_MEMBERS, AKPOL_1996_REGISTRATIONS, AKPOL_1996_USERS } from '@/data/akpol1996Alumni';
 
 export interface FinanceCategoryOption {
   code: string;
@@ -277,6 +277,7 @@ export function readDb(): GlobalStore {
 
       // Build reference lookup for 164 AKPOL 1996 alumni (for Brigjen Pol promotions & canonical names)
       const akpolRefMap = new Map(AKPOL_1996_USERS.map((u) => [u.nrp, u]));
+      const akpolMemberRefMap = new Map(AKPOL_1996_MEMBERS.map((m) => [m.nrp, m]));
       const annualTagihan = (loadedFinanceConfig.iuranWajibPerBulan || 250000) * 12;
 
       loadedUsers.forEach((u) => {
@@ -312,7 +313,11 @@ export function readDb(): GlobalStore {
             m.namaLengkap = 'Eko Agung Krisdianto, S.Kom.';
           }
           m.pangkat = m.pangkat || 'Briptu';
-          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Superadmin / Lead Developer')) {
+          if (
+            !m.jabatanTerakhir ||
+            m.jabatanTerakhir.includes('Superadmin / Lead Developer') ||
+            m.jabatanTerakhir === 'Bareskrim Polri'
+          ) {
             m.jabatanTerakhir = 'Lead Developer — Bareskrim Polri';
           }
           m.satuanKerja = m.satuanKerja || 'Bareskrim Polri';
@@ -326,6 +331,34 @@ export function readDb(): GlobalStore {
             m.bio =
               'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
           }
+        } else if (m.nrp === '980107102') {
+          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Ketua')) {
+            m.jabatanTerakhir = 'Irwil I Itwasum Polri';
+          }
+          m.satuanKerja = m.satuanKerja || 'Itwasum Polri';
+          m.polda = m.polda || 'MABES POLRI';
+        } else if (m.nrp === '980107103') {
+          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Sekretar')) {
+            m.jabatanTerakhir = 'Karobinkar SSDM Polri';
+          }
+          m.satuanKerja = m.satuanKerja || 'SSDM Polri';
+          m.polda = m.polda || 'MABES POLRI';
+        } else if (m.nrp === '980107104') {
+          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Bendahara')) {
+            m.jabatanTerakhir = 'Kabagrenmin Puskeu Polri';
+          }
+          m.satuanKerja = m.satuanKerja || 'Puskeu Polri';
+          m.polda = m.polda || 'MABES POLRI';
+        } else if (
+          m.jabatanTerakhir &&
+          (m.jabatanTerakhir.includes('Ketua Batalyon') ||
+            m.jabatanTerakhir.includes('Sekretaris Batalyon') ||
+            m.jabatanTerakhir.includes('Sekretariat Batalyon') ||
+            m.jabatanTerakhir.includes('Bendahara Batalyon'))
+        ) {
+          const memberRef = akpolMemberRefMap.get(m.nrp);
+          m.jabatanTerakhir =
+            memberRef?.jabatanTerakhir || `Perwira ${m.satuanKerja || 'Polri'}`;
         }
         const ref = akpolRefMap.get(m.nrp);
         if (ref) {
@@ -341,22 +374,6 @@ export function readDb(): GlobalStore {
           if (syncedCover) {
             m.coverUrl = syncedCover;
             matchedUser.coverUrl = syncedCover;
-          }
-          if (
-            matchedUser.role === 'ANGGOTA' &&
-            m.jabatanTerakhir &&
-            (m.jabatanTerakhir.includes('Ketua Batalyon') ||
-              m.jabatanTerakhir.includes('Sekretaris') ||
-              m.jabatanTerakhir.includes('Sekretariat Batalyon') ||
-              m.jabatanTerakhir.includes('Bendahara'))
-          ) {
-            m.jabatanTerakhir = 'Perwira ' + (m.satuanKerja || 'Mabes Polri');
-          } else if (matchedUser.role === 'KETUA') {
-            m.jabatanTerakhir = 'Ketua Batalyon Wira Satya 96';
-          } else if (matchedUser.role === 'SEKRETARIAT') {
-            m.jabatanTerakhir = 'Sekretaris Batalyon Wira Satya 96';
-          } else if (matchedUser.role === 'BENDAHARA') {
-            m.jabatanTerakhir = 'Bendahara Batalyon Wira Satya 96';
           }
         }
       });
@@ -672,10 +689,9 @@ export const serverStore = {
     // Ensure directory member exists
     const existingMember = globalStore.members.find((m) => m.nrp === user.nrp);
     if (!existingMember) {
-      let defaultJabatan = user.satker || 'Perwira Alumni Akpol 1996';
-      if (user.role === 'KETUA') defaultJabatan = 'Ketua Batalyon Wira Satya 96';
-      else if (user.role === 'SEKRETARIAT') defaultJabatan = 'Sekretaris Batalyon Wira Satya 96';
-      else if (user.role === 'BENDAHARA') defaultJabatan = 'Bendahara Batalyon Wira Satya 96';
+      const defaultJabatan = user.satker
+        ? `Perwira ${user.satker}`
+        : 'Perwira Polri';
 
       globalStore.members.unshift({
         id: 'ws-' + user.nrp,
@@ -758,7 +774,7 @@ export const serverStore = {
     }
     const updatedUser = globalStore.users[idx];
 
-    // Sync member name/pangkat/satker/noHp/emails/role if changed
+    // Sync member name/pangkat/satker/noHp/emails if changed (NEVER overwrite jabatanTerakhir with angkatan role!)
     const mIdx = globalStore.members.findIndex((m) => m.nrp === nrp);
     if (mIdx >= 0) {
       if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
@@ -766,28 +782,28 @@ export const serverStore = {
       if (updates.satker) {
         globalStore.members[mIdx].satuanKerja = updates.satker;
         (globalStore.members[mIdx] as unknown as Record<string, unknown>).satker = updates.satker;
-        (globalStore.members[mIdx] as unknown as Record<string, unknown>).jabatan = updates.satker;
-        if (!updates.role || updates.role === 'ANGGOTA') {
-          globalStore.members[mIdx].jabatanTerakhir = updates.satker;
+        if (!globalStore.members[mIdx].jabatanTerakhir) {
+          globalStore.members[mIdx].jabatanTerakhir = `Perwira ${updates.satker}`;
         }
       }
-      if (updates.role) {
-        if (
-          updates.role === 'ANGGOTA' &&
-          globalStore.members[mIdx].jabatanTerakhir &&
-          (globalStore.members[mIdx].jabatanTerakhir.includes('Ketua Batalyon') ||
-            globalStore.members[mIdx].jabatanTerakhir.includes('Sekretaris') ||
-            globalStore.members[mIdx].jabatanTerakhir.includes('Sekretariat Batalyon') ||
-            globalStore.members[mIdx].jabatanTerakhir.includes('Bendahara'))
-        ) {
+      const currentJabatan = globalStore.members[mIdx].jabatanTerakhir || '';
+      if (
+        currentJabatan.includes('Ketua Batalyon') ||
+        currentJabatan.includes('Sekretaris Batalyon') ||
+        currentJabatan.includes('Sekretariat Batalyon') ||
+        currentJabatan.includes('Bendahara Batalyon')
+      ) {
+        if (nrp === '980107102') {
+          globalStore.members[mIdx].jabatanTerakhir = 'Irwil I Itwasum Polri';
+        } else if (nrp === '980107103') {
+          globalStore.members[mIdx].jabatanTerakhir = 'Karobinkar SSDM Polri';
+        } else if (nrp === '980107104') {
+          globalStore.members[mIdx].jabatanTerakhir = 'Kabagrenmin Puskeu Polri';
+        } else {
+          const refMember = AKPOL_1996_MEMBERS.find((am) => am.nrp === nrp);
           globalStore.members[mIdx].jabatanTerakhir =
-            'Perwira ' + (globalStore.members[mIdx].satuanKerja || 'Mabes Polri');
-        } else if (updates.role === 'KETUA') {
-          globalStore.members[mIdx].jabatanTerakhir = 'Ketua Batalyon Wira Satya 96';
-        } else if (updates.role === 'SEKRETARIAT') {
-          globalStore.members[mIdx].jabatanTerakhir = 'Sekretaris Batalyon Wira Satya 96';
-        } else if (updates.role === 'BENDAHARA') {
-          globalStore.members[mIdx].jabatanTerakhir = 'Bendahara Batalyon Wira Satya 96';
+            refMember?.jabatanTerakhir ||
+            `Perwira ${globalStore.members[mIdx].satuanKerja || 'Polri'}`;
         }
       }
       if (updates.polda) globalStore.members[mIdx].polda = updates.polda;

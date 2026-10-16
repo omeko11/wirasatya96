@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { AuthUser, FeedPost } from '@/types';
 import { PRESET_POST_IMAGES } from '@/data/mockPosts';
 import { getAvatarUrl } from '@/lib/avatarUtils';
+import { processSecureImageUpload } from '@/lib/mediaSecurity';
 import { 
   X, 
   Image as ImageIcon, 
@@ -59,17 +60,28 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     setShowEmojiPicker(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        setSelectedImage(reader.result);
-        setCustomImageUrl('');
-      }
-    };
-    reader.readAsDataURL(file);
+    e.target.value = '';
+    try {
+      const processed = await processSecureImageUpload(file, {
+        preset: 'POST',
+        actorNrp: currentUser.nrp,
+        ownerNrp: currentUser.nrp,
+      });
+      setSelectedImage(processed.dataUrl);
+      setCustomImageUrl('');
+    } catch {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          setSelectedImage(reader.result);
+          setCustomImageUrl('');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -85,10 +97,10 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     onSubmitPost({
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       authorPangkat: currentUser.pangkat,
-      authorJabatan: `${currentUser.satker || 'Alumni Akpol 1996'} • Leting 96`,
+      authorJabatan: currentUser.satker || 'Mabes Polri',
       authorAvatar: getAvatarUrl(currentUser.fotoUrl),
       authorNrp: currentUser.nrp,
-      badgeLabel: currentUser.role === 'SUPERADMIN' ? 'Admin Leting' : currentUser.role === 'KETUA' ? 'Ketua Batalyon 96' : currentUser.role === 'BENDAHARA' ? 'Bendahara 96' : 'Alumni Akpol 1996',
+      badgeLabel: currentUser.role === 'SUPERADMIN' ? 'Admin' : currentUser.role === 'KETUA' ? 'Ketua' : currentUser.role === 'BENDAHARA' ? 'Bendahara' : 'Anggota',
       content: content.trim(),
       imageUrl: imageToUse || undefined,
       tags: Array.from(new Set(extractedTags)),
@@ -130,7 +142,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
                   <Globe className="w-3 h-3 text-red-800" />
-                  <span>Semua Rekan Leting 96</span>
+                  <span>Semua Anggota</span>
                 </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
                   <MessageSquare className="w-3 h-3 text-slate-500" />
@@ -154,7 +166,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Bagikan kabar, motivasi tugas dinas, ucapan selamat kenaikan pangkat, atau atensi solidaritas untuk rekan leting 96..."
+            placeholder="Tulis informasi, kegiatan, atau pengumuman..."
             className="w-full h-36 resize-none text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 leading-relaxed font-normal"
             autoFocus
           />

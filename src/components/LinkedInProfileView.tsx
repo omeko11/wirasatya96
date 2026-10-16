@@ -39,7 +39,12 @@ import {
   Copy,
   Check,
   Sparkles,
+  Download,
 } from 'lucide-react';
+import {
+  processSecureImageUpload,
+  triggerTrackedDownload,
+} from '@/lib/mediaSecurity';
 
 export interface LinkedInProfileViewProps {
   member: AnggotaWiraSatya;
@@ -251,68 +256,48 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
     }
   };
 
-  // Client-side image resize helper for Cover Banner (max 1280x420, JPEG 0.82)
-  const handleCoverFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Secure client-side auto-crop, storage compression, and WS-hash_enkripsi-date tracking for Cover Banner
+  const handleCoverFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const targetW = Math.min(img.width, 1280);
-        const scale = targetW / img.width;
-        const targetH = Math.min(Math.round(img.height * scale), 420);
-        canvas.width = targetW;
-        canvas.height = targetH;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          // Center crop vertically if tall image
-          const sourceH = targetH / scale;
-          const sy = Math.max(0, (img.height - sourceH) / 2);
-          ctx.drawImage(img, 0, sy, img.width, sourceH, 0, 0, targetW, targetH);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          persistMemberUpdate({ coverUrl: dataUrl }, 'Gambar sampul profil berhasil diperbarui');
-        }
-        setShowCoverMenu(false);
-      };
-      if (typeof reader.result === 'string') {
-        img.src = reader.result;
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    try {
+      const processed = await processSecureImageUpload(file, {
+        preset: 'COVER',
+        actorNrp: currentUser.nrp,
+        ownerNrp: localMember.nrp,
+      });
+      await persistMemberUpdate(
+        { coverUrl: processed.dataUrl },
+        `Sampul diperbarui (${processed.encryptedFileName} • ${Math.max(1, Math.round(processed.compressedBytes / 1024))} KB)`
+      );
+    } catch {
+      triggerToast('Gagal memproses file sampul');
+    } finally {
+      setShowCoverMenu(false);
+    }
   };
 
-  // Client-side image resize helper for Avatar (square 320x320, JPEG 0.85)
-  const handleAvatarFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Secure client-side auto-crop, storage compression, and WS-hash_enkripsi-date tracking for Avatar
+  const handleAvatarFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const size = 320;
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          const minSide = Math.min(img.width, img.height);
-          const sx = (img.width - minSide) / 2;
-          const sy = (img.height - minSide) / 2;
-          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          persistMemberUpdate({ fotoUrl: dataUrl }, 'Foto profil berhasil diperbarui');
-        }
-        setShowAvatarMenu(false);
-      };
-      if (typeof reader.result === 'string') {
-        img.src = reader.result;
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = '';
+    try {
+      const processed = await processSecureImageUpload(file, {
+        preset: 'AVATAR',
+        actorNrp: currentUser.nrp,
+        ownerNrp: localMember.nrp,
+      });
+      await persistMemberUpdate(
+        { fotoUrl: processed.dataUrl },
+        `Foto profil diperbarui (${processed.encryptedFileName} • ${Math.max(1, Math.round(processed.compressedBytes / 1024))} KB)`
+      );
+    } catch {
+      triggerToast('Gagal memproses foto profil');
+    } finally {
+      setShowAvatarMenu(false);
+    }
   };
 
   const displayMemberNameWithRank = formatMemberDisplayName(
@@ -341,13 +326,29 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
     if (!isAkpol96Alumni) {
       return `${displayMemberNameWithRank} (NRP ${localMember.nrp}) berdinas aktif pada ${localMember.satuanKerja} (${localMember.polda}) dengan jabatan ${localMember.jabatanTerakhir}. Lulusan ${localMember.pendidikanTerakhir || 'Pendidikan Polri'}.`;
     }
-    return `${displayMemberNameWithRank} adalah Perwira Polri alumni Akademi Kepolisian (Akpol) Tahun 1996 Batalyon Wira Satya yang saat ini mengemban amanah sebagai ${localMember.jabatanTerakhir} pada ${localMember.satuanKerja} (${localMember.polda}).`;
+    return `${displayMemberNameWithRank} adalah Perwira Polri alumni Akademi Kepolisian Negara Republik Indonesia (Akpol) Tahun 1996 Batalyon Wira Satya yang saat ini mengemban amanah sebagai ${localMember.jabatanTerakhir} pada ${localMember.satuanKerja} (${localMember.polda}).`;
   };
 
   const displayedBio =
     localMember.bio && localMember.bio.trim().length > 0
       ? localMember.bio
       : getDefaultBioText();
+
+  const getJabatanAngkatanLabel = (role?: UserRole): string => {
+    if (role === 'KETUA') return 'Ketua Angkatan';
+    if (role === 'SEKRETARIAT') return 'Sekretaris Angkatan';
+    if (role === 'BENDAHARA') return 'Bendahara Angkatan';
+    if (role === 'SUPERADMIN') return 'Lead Developer / Superadmin';
+    return 'Anggota Angkatan';
+  };
+
+  const jabatanAngkatanLabel = getJabatanAngkatanLabel(effectiveRole);
+
+  const headlineText = (localMember.jabatanTerakhir || '')
+    .toLowerCase()
+    .includes((localMember.satuanKerja || '').toLowerCase())
+    ? localMember.jabatanTerakhir
+    : `${localMember.jabatanTerakhir} — ${localMember.satuanKerja}`;
 
   const getPersonnelCategoryLabel = (): string => {
     if (isSuperadminDev) return 'PERSONEL POLRI • LEAD DEVELOPER / SUPERADMIN';
@@ -452,7 +453,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
       <img
         src={imgSrc}
         alt="Sampul Profil"
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover object-center"
       />
     );
   };
@@ -609,7 +610,31 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const coverSrc =
+                        localMember.coverUrl &&
+                        localMember.coverUrl !== 'none' &&
+                        !localMember.coverUrl.startsWith('preset:')
+                          ? localMember.coverUrl
+                          : DEFAULT_COVER_URL;
+                      const fileName = triggerTrackedDownload(coverSrc, {
+                        actorNrp: currentUser.nrp,
+                        ownerNrp: localMember.nrp,
+                        preset: 'COVER',
+                        extension: 'jpg',
+                      });
+                      triggerToast(`Diunduh: ${fileName}`);
+                      setShowCoverMenu(false);
+                    }}
+                    className="text-slate-700 hover:text-slate-900 font-bold flex items-center gap-1.5 py-1 px-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                    title="Unduh dengan nama terenkripsi WS-hash-date"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Unduh</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -689,6 +714,24 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                       <button
                         type="button"
                         onClick={() => {
+                          const fileName = triggerTrackedDownload(resolvedMemberAvatar, {
+                            actorNrp: currentUser.nrp,
+                            ownerNrp: localMember.nrp,
+                            preset: 'AVATAR',
+                            extension: 'jpg',
+                          });
+                          triggerToast(`Diunduh: ${fileName}`);
+                          setShowAvatarMenu(false);
+                        }}
+                        className="w-full py-2 px-3 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                        title="Unduh dengan nama terenkripsi WS-hash-date"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Unduh Foto</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           persistMemberUpdate(
                             { fotoUrl: DEFAULT_AVATAR_URL },
                             'Foto profil direset ke standar'
@@ -717,7 +760,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
               {/* Name & Headline */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight inline-flex items-center gap-1.5">
                       <span>{displayMemberNameWithRank}</span>
@@ -733,12 +776,18 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   </div>
 
                   <p className="text-sm font-semibold text-slate-700 leading-snug">
-                    {(localMember.jabatanTerakhir || '')
-                      .toLowerCase()
-                      .includes((localMember.satuanKerja || '').toLowerCase())
-                      ? localMember.jabatanTerakhir
-                      : `${localMember.jabatanTerakhir} — ${localMember.satuanKerja}`}
+                    {headlineText}
                   </p>
+
+                  {(effectiveRole === 'KETUA' ||
+                    effectiveRole === 'SEKRETARIAT' ||
+                    effectiveRole === 'BENDAHARA') && (
+                    <div className="pt-0.5">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300 text-xs font-extrabold shadow-2xs">
+                        <span>🎖️ Jabatan Angkatan: {jabatanAngkatanLabel}</span>
+                      </span>
+                    </div>
+                  )}
 
                   <p className="text-xs text-slate-500 flex flex-wrap items-center gap-1.5 pt-1">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1284,6 +1333,24 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
             <div>
               <span className="text-slate-500 block text-[11px]">
+                Jabatan Organisasi Polri:
+              </span>
+              <span className="font-bold text-slate-900">
+                {localMember.jabatanTerakhir} ({localMember.satuanKerja})
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 block text-[11px]">
+                Jabatan dalam Angkatan:
+              </span>
+              <span className="font-extrabold text-amber-800">
+                {jabatanAngkatanLabel}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 block text-[11px]">
                 Pendidikan Terakhir:
               </span>
               <span className="font-bold text-slate-800">
@@ -1339,43 +1406,60 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
             <div className="space-y-3 pt-1">
               {peersInSamePolda.length > 0 ? (
-                peersInSamePolda.map((peer) => (
-                  <div
-                    key={peer.id}
-                    className="flex items-start gap-2.5 pb-2 border-b border-slate-100 last:border-0 last:pb-0"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={getAvatarUrl(peer.fotoUrl)}
-                      alt={peer.namaLengkap}
-                      className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p
-                        onClick={() => onSelectMember && onSelectMember(peer)}
-                        className="text-xs font-bold text-slate-900 truncate hover:text-red-900 cursor-pointer inline-flex items-center gap-1 max-w-full"
-                      >
-                        <span className="truncate">
-                          {formatMemberDisplayName(peer.pangkat, peer.namaLengkap)}
-                        </span>
-                        <MetaVerifiedBadge nrp={peer.nrp} size="sm" />
-                      </p>
-                      <p className="text-[10px] text-slate-500 truncate">
-                        {peer.jabatanTerakhir} &bull; {peer.satuanKerja}
-                      </p>
-                      {peer.noHp && (
-                        <a
-                          href={getWaUrl(peer.noHp)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-red-900 hover:underline"
+                peersInSamePolda.map((peer) => {
+                  const peerRole = resolveRoleForBadge(peer.nrp);
+                  const peerAngkatanLabel =
+                    peerRole === 'KETUA'
+                      ? 'Ketua Angkatan'
+                      : peerRole === 'SEKRETARIAT'
+                      ? 'Sekretaris Angkatan'
+                      : peerRole === 'BENDAHARA'
+                      ? 'Bendahara Angkatan'
+                      : null;
+
+                  return (
+                    <div
+                      key={peer.id}
+                      className="flex items-start gap-2.5 pb-2 border-b border-slate-100 last:border-0 last:pb-0"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={getAvatarUrl(peer.fotoUrl)}
+                        alt={peer.namaLengkap}
+                        className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p
+                          onClick={() => onSelectMember && onSelectMember(peer)}
+                          className="text-xs font-bold text-slate-900 truncate hover:text-red-900 cursor-pointer inline-flex items-center gap-1 max-w-full"
                         >
-                          <Phone className="w-2.5 h-2.5" /> Hubungi WA
-                        </a>
-                      )}
+                          <span className="truncate">
+                            {formatMemberDisplayName(peer.pangkat, peer.namaLengkap)}
+                          </span>
+                          <MetaVerifiedBadge nrp={peer.nrp} size="sm" />
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate">
+                          {peer.jabatanTerakhir} &bull; {peer.satuanKerja}
+                        </p>
+                        {peerAngkatanLabel && (
+                          <span className="mt-0.5 inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold">
+                            {peerAngkatanLabel}
+                          </span>
+                        )}
+                        {peer.noHp && (
+                          <a
+                            href={getWaUrl(peer.noHp)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-red-900 hover:underline block"
+                          >
+                            <Phone className="w-2.5 h-2.5" /> Hubungi WA
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <p className="text-xs text-slate-400 italic">
                   Belum ada personel lain di wilayah {localMember.polda}.

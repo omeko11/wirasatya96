@@ -7,7 +7,8 @@ import {
   getSatkerUtamaByWilayah,
   getSubSatkerOptionsBySatker,
 } from '@/data/polriStructure';
-import { getAvatarUrl, getOrBuildUserProfile } from '@/lib/avatarUtils';
+import { getAvatarUrl, getOrBuildUserProfile, resolveAvatarUrl } from '@/lib/avatarUtils';
+import { MetaVerifiedBadge, resolveRoleForBadge } from './MetaVerifiedBadge';
 import { 
   Briefcase, 
   Building2, 
@@ -20,6 +21,7 @@ import {
   ExternalLink,
   MessageSquare,
   Phone,
+  Info,
   X
 } from 'lucide-react';
 
@@ -66,6 +68,10 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
   const [selectedPolda, setSelectedPolda] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
+  const myProfile = useMemo(() => getOrBuildUserProfile(currentUser, members), [currentUser, members]);
+  const myAvatarUrl = resolveAvatarUrl(myProfile.fotoUrl, currentUser.fotoUrl);
+  const canSeeSuperadmin = currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN';
+
   const [customJabatanList, setCustomJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('wirasatya96_riwayat_jabatan_v4');
@@ -87,7 +93,14 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   });
 
   const jabatanList = useMemo(() => {
-    const memberEntries: RiwayatJabatanLeting[] = members.map((m) => {
+    const visibleMembers = canSeeSuperadmin
+      ? members
+      : members.filter((m) => m.nrp !== '98010710');
+    const visibleCustom = canSeeSuperadmin
+      ? customJabatanList
+      : customJabatanList.filter((j) => j.perwiraNrp !== '98010710');
+
+    const memberEntries: RiwayatJabatanLeting[] = visibleMembers.map((m) => {
       const jab = m.jabatanTerakhir || m.jabatan || 'Perwira Menengah Polri';
       const stk = m.satuanKerja || m.satker || 'Mabes Polri';
       const pld = m.polda || 'MABES POLRI';
@@ -103,12 +116,12 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
         fungsiPolri: inferFungsiPolri(jab, stk, pld),
         tahunMulai: 2024,
         isCurrent: m.statusDinas !== 'PURNA_TUGAS',
-        uraianTugas: `Penugasan aktif Perwira Batalyon Wira Satya 96 pada ${stk} (${pld}).`,
-        dasarTR: 'Data Direktori & UKP Batalyon Wira Satya 96',
+        uraianTugas: `Penugasan aktif pada ${stk} (${pld}).`,
+        dasarTR: 'Data Direktori & UKP',
       };
     });
-    return [...customJabatanList, ...memberEntries];
-  }, [customJabatanList, members]);
+    return [...visibleCustom, ...memberEntries];
+  }, [customJabatanList, members, canSeeSuperadmin]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newJabatan, setNewJabatan] = useState({
@@ -223,40 +236,43 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           
           {/* User Career Card */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            {/* Default Polri Cover Header */}
-            <div className="h-16 bg-slate-900 relative overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/default-cover.jpg"
-                alt="Sampul Polri"
-                className="w-full h-full object-cover"
-              />
+            {/* Polri Cover Header synced with Profile */}
+            <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
+              {(myProfile.coverUrl || currentUser.coverUrl) !== 'none' && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={myProfile.coverUrl || currentUser.coverUrl || '/default-cover.jpg'}
+                  alt="Sampul Polri"
+                  className="w-full h-full object-cover object-center"
+                />
+              )}
             </div>
 
             <div className="px-5 pb-5 relative">
               <div 
-                onClick={() => onSelectMember && onSelectMember(getOrBuildUserProfile(currentUser, members))}
+                onClick={() => onSelectMember && onSelectMember(myProfile)}
                 className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={getAvatarUrl(currentUser.fotoUrl)}
-                  alt={currentUser.nama}
+                  src={myAvatarUrl}
+                  alt={myProfile.namaLengkap || currentUser.nama}
                   className="w-full h-full object-cover"
                 />
               </div>
 
               <h3 
-                onClick={() => onSelectMember && onSelectMember(getOrBuildUserProfile(currentUser, members))}
-                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight"
+                onClick={() => onSelectMember && onSelectMember(myProfile)}
+                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight flex items-center justify-center gap-1"
               >
-                {currentUser.nama.replace(/\(.*?\)/g, '').trim()}
+                <span className="truncate">{(myProfile.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}</span>
+                <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
               </h3>
-              <p className="text-xs font-semibold text-red-800 mt-0.5">
-                {currentUser.pangkat} &bull; {currentUser.satker || 'Bareskrim Polri'}
+              <p className="text-xs font-semibold text-red-800 mt-0.5 truncate">
+                {myProfile.pangkat || currentUser.pangkat} &bull; {myProfile.jabatanTerakhir || myProfile.satuanKerja || 'Bareskrim Polri'}
               </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Alumni Batalyon Wira Satya Akpol 1996
+              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                {myProfile.polda || 'MABES POLRI'}
               </p>
 
               {/* Action: Tambah Jabatan Baru */}
@@ -265,7 +281,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 className="w-full mt-4 py-2 px-3 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>+ Catat Riwayat Jabatan Baru</span>
+                <span>Tambah Jabatan</span>
               </button>
 
               <button
@@ -277,20 +293,29 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
           </div>
 
-          {/* Statistik Penugasan Letting 96 (Dynamic from Real Data) */}
+          {/* Statistik Tour of Duty (Dynamic from Real Data) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 pb-2 border-b border-slate-100">
-              <Building2 className="w-4 h-4 text-red-800" />
-              Statistik Tour of Duty Letting 96
+            <h4 className="text-xs font-bold text-slate-900 flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+              <span className="flex items-center gap-1.5 truncate">
+                <Building2 className="w-4 h-4 text-red-800 flex-shrink-0" />
+                <span className="sm:hidden">TOD</span>
+                <span className="hidden sm:inline">Tour of Duty</span>
+              </span>
+              <span
+                title="Statistik penempatan dan riwayat jabatan personel"
+                className="text-slate-400 hover:text-slate-600 cursor-help flex-shrink-0"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
             </h4>
 
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
-                <span className="text-slate-600">Total Riwayat Tercatat:</span>
+                <span className="text-slate-600">Total Tercatat:</span>
                 <span className="font-bold text-slate-900">{jabatanList.length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-red-50">
-                <span className="text-red-900 font-medium">Bareskrim & Reserse:</span>
+                <span className="text-red-900 font-medium">Bareskrim &amp; Reserse:</span>
                 <span className="font-bold text-red-900">{jabatanList.filter(j => j.fungsiPolri === 'RESERSE').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50">
@@ -302,17 +327,17 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 <span className="font-bold text-blue-900">{jabatanList.filter(j => j.fungsiPolri === 'LANTAS').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50">
-                <span className="text-emerald-900 font-medium">Kapolres & Kewilayahan:</span>
+                <span className="text-emerald-900 font-medium">Kapolres &amp; Kewilayahan:</span>
                 <span className="font-bold text-emerald-900">{jabatanList.filter(j => j.fungsiPolri === 'KEWILAYAHAN').length} Jabatan</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50">
-                <span className="text-purple-900 font-medium">Lemdiklat & Sespim:</span>
+                <span className="text-purple-900 font-medium">Lemdiklat &amp; Sespim:</span>
                 <span className="font-bold text-purple-900">{jabatanList.filter(j => j.fungsiPolri === 'LEMDIKLAT').length} Jabatan</span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-              Sumber: Surat Telegram Kapolri (TR Mutasi) & Data Mandiri Leting 96.
+            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
+              Sumber: TR Mutasi &amp; Data Mandiri
             </div>
           </div>
         </div>
@@ -325,13 +350,13 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           {/* Top Search & Filter Bar */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div>
-                <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-red-800" />
-                  Jabatan &amp; Sebaran Penugasan Perwira Wira Satya 96 ({filteredJabatan.length})
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 truncate">
+                  <Briefcase className="w-5 h-5 text-red-800 flex-shrink-0" />
+                  <span className="truncate">Riwayat Jabatan ({filteredJabatan.length})</span>
                 </h1>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Sebaran jabatan aktif 164 Perwira di Mabes Polri &amp; 38 Polda beserta tombol WA &amp; Obrolan cepat
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  Penempatan aktif di Mabes Polri &amp; 38 Polda
                 </p>
               </div>
 
@@ -341,7 +366,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   onChange={(e) => setSelectedPolda(e.target.value)}
                   className="px-3 py-2 text-xs font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800/30"
                 >
-                  <option value="SEMUA">Semua Wilayah (Mabes &amp; 38 Polda)</option>
+                  <option value="SEMUA">Filter Wilayah (Semua)</option>
                   {DAFTAR_38_POLDA.map((p) => (
                     <option key={p} value={p}>{p}</option>
                   ))}
@@ -397,6 +422,15 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
               filteredJabatan.map((item) => {
                 const badge = getFungsiBadge(item.fungsiPolri);
                 const matchedMember = members.find((m) => m.nrp === item.perwiraNrp);
+                const angkatanRole = resolveRoleForBadge(item.perwiraNrp);
+                const jabatanAngkatanBadge =
+                  angkatanRole === 'KETUA'
+                    ? { label: 'Jabatan Angkatan: Ketua Angkatan', cls: 'bg-red-100 text-red-900 border-red-300' }
+                    : angkatanRole === 'SEKRETARIAT'
+                    ? { label: 'Jabatan Angkatan: Sekretaris Angkatan', cls: 'bg-amber-100 text-amber-900 border-amber-300' }
+                    : angkatanRole === 'BENDAHARA'
+                    ? { label: 'Jabatan Angkatan: Bendahara Angkatan', cls: 'bg-amber-100 text-amber-900 border-amber-300' }
+                    : null;
 
                 return (
                   <div
@@ -404,7 +438,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 hover:border-red-800/40 transition-all hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3.5">
+                      <div className="flex items-start gap-3.5 min-w-0">
                         {/* Perwira Avatar */}
                         <div 
                           onClick={() => matchedMember && onSelectMember && onSelectMember(matchedMember)}
@@ -418,18 +452,28 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                           />
                         </div>
 
-                        <div>
-                          {/* Jabatan Title */}
-                          <h2 className="text-sm sm:text-base font-bold text-slate-900 hover:text-red-800 transition-colors">
-                            {item.jabatan}
-                          </h2>
+                        <div className="min-w-0">
+                          {/* Jabatan Organisasi Polri + Jabatan dalam Angkatan */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-sm sm:text-base font-bold text-slate-900 hover:text-red-800 transition-colors">
+                              {item.jabatan}
+                            </h2>
+                            {jabatanAngkatanBadge && (
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${jabatanAngkatanBadge.cls}`}
+                              >
+                                {jabatanAngkatanBadge.label}
+                              </span>
+                            )}
+                          </div>
 
                           {/* Perwira Name & Rank */}
                           <div 
                             onClick={() => matchedMember && onSelectMember && onSelectMember(matchedMember)}
-                            className="text-xs font-semibold text-red-900 hover:underline cursor-pointer flex items-center gap-1.5 mt-0.5"
+                            className="text-xs font-semibold text-red-900 hover:underline cursor-pointer flex items-center gap-1.5 mt-0.5 flex-wrap"
                           >
                             <span>{item.namaPerwira}</span>
+                            <MetaVerifiedBadge nrp={item.perwiraNrp} size="xs" />
                             <span className="text-slate-400 font-normal">&bull;</span>
                             <span className="text-slate-600 font-normal">NRP {item.perwiraNrp}</span>
                           </div>
@@ -542,7 +586,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-red-900 text-white">
               <div className="flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-amber-300" />
-                <h3 className="font-bold text-base">Catat Riwayat Jabatan / Mutasi Baru</h3>
+                <h3 className="font-bold text-base">Tambah Jabatan</h3>
               </div>
               <button 
                 onClick={() => setIsAddModalOpen(false)}
@@ -696,7 +740,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   type="submit"
                   className="px-5 py-2 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold shadow-md"
                 >
-                  Simpan Riwayat Penugasan
+                  Simpan Jabatan
                 </button>
               </div>
             </form>

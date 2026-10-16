@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { AnggotaWiraSatya, AuthUser } from '@/types';
 import { DAFTAR_38_POLDA } from '@/data/polriStructure';
+import { generateLeakageTrackedFileName } from '@/lib/mediaSecurity';
 import { 
   BarChart3, 
   Heart, 
@@ -15,7 +16,8 @@ import {
   MapPin,
   GraduationCap,
   Wallet,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 
 interface ExecutiveDashboardProps {
@@ -143,10 +145,17 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       'data:text/csv;charset=utf-8,\uFEFF' +
       [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
 
+    const trackedName = generateLeakageTrackedFileName({
+      actorNrp: currentUser.nrp,
+      ownerNrp: 'EXPORT-ANEV',
+      preset: 'EXPORT',
+      extension: 'csv',
+      extraEntropy: String(members.length),
+    });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Data_WiraSatya96_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', trackedName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -155,28 +164,30 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
   return (
     <div className="space-y-6 pb-24 md:pb-12">
       {/* Executive Header Banner */}
-      <div className="bg-gradient-to-r from-polri-navy via-slate-900 to-polri-navyLight p-6 rounded-2xl border border-polri-gold/40 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-polri-gold/20 text-polri-gold text-xs font-bold mb-2">
-            <BarChart3 className="w-3.5 h-3.5" />
-            Panel Khusus: {currentUser.role === 'KETUA' ? 'Ketua Batalyon' : currentUser.role === 'BENDAHARA' ? 'Bendahara Paguyuban' : 'Kesekretariatan'}
+      <div className="bg-gradient-to-r from-polri-navy via-slate-900 to-polri-navyLight p-4 sm:p-5 rounded-2xl border border-polri-gold/40 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="p-2.5 rounded-xl bg-polri-gold/20 text-polri-gold border border-polri-gold/30">
+            <BarChart3 className="w-5 h-5" />
+          </span>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-extrabold text-white">
+              Anev &amp; Statistik
+            </h2>
+            <span
+              className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-help text-[11px] font-bold"
+              title="Ikhtisar kesehatan personel, kesiapan hunian purna tugas, katalog usaha, dan sebaran penugasan se-Indonesia."
+            >
+              <Info className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white">
-            Executive Dashboard Wira Satya 96
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-            {currentUser.role === 'KETUA' && 'Ikhtisar komprehensif kondisi kesehatan leting, kesiapan hunian masa pensiun, dan pemetaan keanggotaan se-Indonesia.'}
-            {currentUser.role === 'SEKRETARIAT' && 'Pemetaan sebaran penugasan leting di seluruh Polda (termasuk wilayah perbatasan/terluar) dan manajemen pembaruan data.'}
-            {currentUser.role === 'BENDAHARA' && 'Pemetaan beban tanggungan pendidikan putra/putri leting, alokasi santunan kesehatan, dan kesiapan finansial purna tugas.'}
-          </p>
         </div>
 
         <button
           onClick={handleExportCSV}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-bold text-xs shadow-lg transition-all self-start md:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-bold text-xs shadow-lg transition-all self-start sm:self-auto"
         >
           <Download className="w-4 h-4" />
-          <span>Unduh Rekap Excel / CSV</span>
+          <span>Unduh CSV</span>
         </button>
       </div>
 
@@ -188,7 +199,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-slate-500 font-semibold block">Total Alumni Terdata</span>
+            <span className="text-xs text-slate-500 font-semibold block">Total Personel</span>
             <span className="text-2xl font-black text-slate-900">{total}</span>
             <span className="text-[11px] text-slate-400 block">Kombes / Pati</span>
           </div>
@@ -218,13 +229,13 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
           </div>
         </div>
 
-        {/* Sinergi Usaha */}
+        {/* Katalog Usaha */}
         <div className="bg-white p-5 rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
             <Briefcase className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-xs text-emerald-600 font-bold block">Sinergi Bisnis Leting</span>
+            <span className="text-xs text-emerald-600 font-bold block">Katalog Usaha</span>
             <span className="text-2xl font-black text-emerald-900">{withBusiness.length}</span>
             <span className="text-[11px] text-emerald-600 block">Usaha Berjalan/Siap</span>
           </div>
@@ -256,7 +267,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
             }`}
           >
             <Home className="w-4 h-4" />
-            Hunian ({stillRenting.length})
+            Hunian &amp; Purna Tugas ({stillRenting.length})
           </button>
 
           <button
@@ -268,7 +279,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
             }`}
           >
             <Briefcase className="w-4 h-4" />
-            Usaha ({withBusiness.length})
+            Katalog Usaha ({withBusiness.length})
           </button>
 
           <button
@@ -280,7 +291,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
             }`}
           >
             <MapPin className="w-4 h-4" />
-            Pemetaan ({regionalStats.length})
+            Sebaran Wilayah ({regionalStats.length})
           </button>
 
           <button
@@ -292,16 +303,15 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
             }`}
           >
             <Wallet className="w-4 h-4" />
-            Beban Sosial
+            Pendidikan &amp; Pensiun
           </button>
         </div>
 
         {/* Tab 1: ATENSI KESEHATAN */}
         {activeSubTab === 'kesehatan' && (
           <div className="p-5 sm:p-6 space-y-4">
-            <div className="p-4 rounded-xl bg-red-50/70 border border-red-200 text-red-900 text-xs">
-              <span className="font-bold block mb-1">📌 Catatan untuk Pengurus & Ketua Angkatan:</span>
-              Daftar rekan di bawah ini sedang dalam masa pengobatan atau membutuhkan perhatian khusus. Sangat disarankan bagi pengurus untuk mengagendakan kunjungan silaturahmi, memfasilitasi kemudahan faskes, atau doa bersama.
+            <div className="p-3.5 rounded-xl bg-red-50/70 border border-red-200 text-red-900 text-xs">
+              <span className="font-bold">📌 Atensi Kesehatan:</span> Daftar personel dalam masa pengobatan atau memerlukan perhatian medis khusus.
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -320,7 +330,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors"
-                      title="Hubungi Rekan"
+                      title="Hubungi Personel"
                     >
                       <MessageCircle className="w-4 h-4" />
                     </a>
@@ -355,9 +365,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
         {/* Tab 2: HUNIAN PURNA TUGAS */}
         {activeSubTab === 'hunian' && (
           <div className="p-5 sm:p-6 space-y-4">
-            <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs">
-              <span className="font-bold block mb-1">📌 Pemetaan Kesiapan Tempat Tinggal Pasca Dinas:</span>
-              Berikut daftar rekan yang status tempat tinggal setelah pensiun masih sewa/kontrak atau belum memiliki hunian tetap pribadi.
+            <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs">
+              <span className="font-bold">📌 Hunian Purna Tugas:</span> Daftar personel dengan status tempat tinggal pasca dinas masih sewa/kontrak.
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -402,12 +411,11 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
           </div>
         )}
 
-        {/* Tab 3: KATALOG USAHA LETING */}
+        {/* Tab 3: KATALOG USAHA */}
         {activeSubTab === 'usaha' && (
           <div className="p-5 sm:p-6 space-y-4">
-            <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-900 text-xs">
-              <span className="font-bold block mb-1">📌 Direktori Sinergi Usaha Alumni Akpol 1996:</span>
-              Mari kita saling membeli, menggunakan produk/jasa rekan satu leting, serta mendukung permodalan sesama keluarga besar Wira Satya.
+            <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-900 text-xs">
+              <span className="font-bold">📌 Katalog Usaha:</span> Direktori produk, jasa, dan unit bisnis milik anggota.
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -442,12 +450,11 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
           </div>
         )}
 
-        {/* Tab 4: PEMETAAN WILAYAH (KESEKRETARIATAN) */}
+        {/* Tab 4: PEMETAAN WILAYAH */}
         {activeSubTab === 'pemetaan' && (
           <div className="p-5 sm:p-6 space-y-5">
-            <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs">
-              <span className="font-bold block mb-1">🗺️ Pemetaan Keanggotaan Wilayah (Kesekretariatan):</span>
-              Memudahkan pengurus mendeteksi keberadaan rekan perwira di wilayah yang selama ini sulit dijangkau (seperti DOB Papua, Maluku, Kaltara, NTT) serta jajaran Mabes dan Lemdiklat.
+            <div className="p-3.5 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs">
+              <span className="font-bold">🗺️ Sebaran Wilayah:</span> Pemetaan penempatan personel di jajaran Mabes Polri, 38 Polda, dan Luar Struktur.
             </div>
 
             {/* Coverage Summary Cards */}
@@ -461,10 +468,10 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
               </div>
 
               <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
-                <span className="text-[11px] font-semibold text-emerald-700 block">Total Perwira Terpetakan</span>
+                <span className="text-[11px] font-semibold text-emerald-700 block">Total Personel Terpetakan</span>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-xl font-black text-emerald-900">{members.length}</span>
-                  <span className="text-xs text-emerald-700 font-semibold">Perwira Leting 96</span>
+                  <span className="text-xs text-emerald-700 font-semibold">Personel Aktif</span>
                 </div>
               </div>
 
@@ -489,7 +496,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                     <div key={polda} className="px-4 py-2 flex justify-between text-xs items-center hover:bg-slate-50">
                       <span className="font-medium text-slate-800">{polda}</span>
                       <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold text-[11px]">
-                        {count} Perwira
+                        {count} Personel
                       </span>
                     </div>
                   ))}
@@ -500,7 +507,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
               <div className="rounded-xl border border-slate-200 overflow-hidden">
                 <div className="bg-slate-100 px-4 py-2.5 border-b font-bold text-xs text-slate-800 flex justify-between">
                   <span>Personel Terdaftar</span>
-                  <span>Satker & Status</span>
+                  <span>Satker &amp; Status</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
                   {members.map((m) => (
@@ -526,11 +533,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
               <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/60 space-y-2">
                 <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
                   <AlertCircle className="w-4 h-4 text-amber-700" />
-                  <span>Target Penjangkauan & Pendataan Wilayah Belum Terisi ({unreachedPoldas.length} Polda):</span>
+                  <span>Wilayah Belum Terisi ({unreachedPoldas.length} Polda):</span>
                 </div>
-                <p className="text-[11px] text-slate-600">
-                  Rekan perwira di wilayah berikut belum melakukan registrasi mandiri. Kesekretariatan dapat berkoordinasi dengan perwakilan leting setempat:
-                </p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {unreachedPoldas.map((p) => (
                     <span key={p} className="px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 text-[10px] font-medium">
@@ -543,12 +547,11 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
           </div>
         )}
 
-        {/* Tab 5: ANALISIS KEUANGAN & BEBAN PENDIDIKAN (BENDAHARA) */}
+        {/* Tab 5: ANALISIS KEUANGAN & BEBAN PENDIDIKAN */}
         {activeSubTab === 'keuangan' && (
           <div className="p-5 sm:p-6 space-y-5">
-            <div className="p-4 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 text-xs">
-              <span className="font-bold block mb-1">💰 Analisis Sosial & Beban Keuangan (Bendahara Paguyuban):</span>
-              Data agregat untuk merancang program subsidi pendidikan putra/putri, dana darurat kesehatan, serta iuran paguyuban Wira Satya 96.
+            <div className="p-3.5 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 text-xs">
+              <span className="font-bold">💰 Pendidikan &amp; Pensiun:</span> Data agregat tanggungan pendidikan anak dan kesiapan dana purna tugas.
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -558,7 +561,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                   <span className="text-xs font-bold">Total Pelajar / Mahasiswa</span>
                 </div>
                 <span className="text-2xl font-black">{financialStats.collegeCount} Anak</span>
-                <span className="text-[11px] text-purple-700 block mt-1">Dalam tanggungan leting</span>
+                <span className="text-[11px] text-purple-700 block mt-1">Dalam tanggungan pendidikan</span>
               </div>
 
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
@@ -575,7 +578,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                   <ShieldAlert className="w-4 h-4 text-red-700" />
                   <span className="text-xs font-bold">Kesiapan Dana Pensiun Kurang</span>
                 </div>
-                <span className="text-2xl font-black">{financialStats.needFinancialAidPension} Rekan</span>
+                <span className="text-2xl font-black">{financialStats.needFinancialAidPension} Personel</span>
                 <span className="text-[11px] text-red-700 block mt-1">Butuh dukungan usaha</span>
               </div>
             </div>

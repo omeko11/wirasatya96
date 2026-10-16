@@ -12,6 +12,7 @@ import {
   AssetPortfolioItem,
   AssetCategory,
 } from '@/types';
+import { generateLeakageTrackedFileName } from '@/lib/mediaSecurity';
 import {
   Wallet,
   ArrowUpRight,
@@ -54,22 +55,22 @@ const DEFAULT_FINANCE_CONFIG: FinanceConfig = {
   tahunBuku: 2026,
   subKategoriMasuk: [
     { code: 'IURAN_WAJIB_BULANAN', label: 'Iuran Wajib Bulanan Anggota' },
-    { code: 'SUMBANGAN_SUKARELA', label: 'Sumbangan Sukarela / Donasi Leting' },
+    { code: 'SUMBANGAN_SUKARELA', label: 'Sumbangan Sukarela / Donasi Anggota' },
     { code: 'PENCAIRAN_ASET_INVESTASI', label: 'Bagi Hasil / Pencairan Aset Berharga (SBN/Valas/Crypto)' },
     { code: 'DANA_KEGIATAN_REUNI', label: 'Sumbangan Khusus Kegiatan / Reuni' },
     { code: 'PEMASUKAN_LAINNYA', label: 'Penerimaan Kas Lainnya' },
   ],
   subKategoriKeluar: [
-    { code: 'SANTUNAN_KESEHATAN', label: 'Santunan Kesehatan / Rekan Sakit' },
+    { code: 'SANTUNAN_KESEHATAN', label: 'Santunan Kesehatan / Personel Sakit' },
     { code: 'SANTUNAN_DUKA_CITA', label: 'Santunan Duka Cita Keluarga Besar' },
-    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Bantuan Pendidikan Putra-Putri Leting' },
+    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Bantuan Pendidikan Putra-Putri Anggota' },
     { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Pembelian Aset Berharga (SBN / Valas / Crypto / Emas)' },
-    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Operasional & Kesekretariatan Paguyuban' },
-    { code: 'KEGIATAN_REUNI_LETING', label: 'Biaya Kegiatan Reuni & Silaturahmi Leting' },
+    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Operasional & Kesekretariatan' },
+    { code: 'KEGIATAN_REUNI_LETING', label: 'Biaya Kegiatan Reuni & Silaturahmi' },
     { code: 'PENGELUARAN_LAINNYA', label: 'Pengeluaran Kas Lainnya' },
   ],
   updatedAt: new Date().toISOString(),
-  updatedBy: 'Sistem Default Kebendaharaan WS96',
+  updatedBy: 'Bendahara',
 };
 
 interface BendaharaPortalProps {
@@ -685,10 +686,17 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     const csvContent =
       'data:text/csv;charset=utf-8,\uFEFF' +
       [trxHeaders.join(','), ...trxRows.map((e) => e.join(',')), ...assetRows.map((e) => e.join(','))].join('\n');
+    const trackedName = generateLeakageTrackedFileName({
+      actorNrp: currentUser.nrp,
+      ownerNrp: 'EXPORT-FINANCE',
+      preset: 'EXPORT',
+      extension: 'csv',
+      extraEntropy: `${localTransactions.length}-${localAssets.length}`,
+    });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rekap_Kas_dan_Aset_WiraSatya96_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', trackedName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1097,13 +1105,13 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         {/* ============================================================== */}
         {activeTab === 'aset' && (
           <div className="p-5 sm:p-6 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-3.5">
               <div>
                 <h4 className="text-xs font-extrabold text-blue-950">
-                  Inventaris Aset Likuid Non-Rupiah &amp; Surat Berharga
+                  Portofolio Aset &amp; Surat Berharga
                 </h4>
                 <p className="text-[11px] text-blue-800 mt-0.5">
-                  Pencatatan kepemilikan Surat Berharga (SBN/Deposito), Valuta Asing (USD/SGD/EUR), Aset Kripto (BTC/USDT), dan Logam Mulia milik paguyuban.
+                  Inventaris Surat Berharga (SBN/Deposito), Valuta Asing, Aset Digital, dan Logam Mulia.
                 </p>
               </div>
               {canInputKas && (
@@ -1239,17 +1247,19 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* TAB 3: MANAJEMEN IURAN WAJIB LETING                            */}
+        {/* TAB 3: MANAJEMEN IURAN WAJIB                                   */}
         {/* ============================================================== */}
         {activeTab === 'iuran' && (
           <div className="p-5 sm:p-6 space-y-5">
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="font-bold block mb-1">
-                  📌 Iuran Wajib Leting ({formatRupiah(financeConfig.iuranWajibPerBulan)} / Bulan &bull;{' '}
-                  {formatRupiah(financeConfig.iuranWajibPerBulan * 12)} / Tahun {financeConfig.tahunBuku}):
+                <span className="font-bold block">
+                  Iuran Wajib ({formatRupiah(financeConfig.iuranWajibPerBulan)} / Bulan &bull;{' '}
+                  {formatRupiah(financeConfig.iuranWajibPerBulan * 12)} / Tahun {financeConfig.tahunBuku})
                 </span>
-                Pencatatan penerimaan iuran dan perubahan tarif iuran bulanan dikelola oleh <b>Bendahara / Superadmin</b>. Anggota dapat memantau status pembayarannya secara langsung di tabel ini.
+                <span className="text-[11px] text-emerald-800">
+                  Pencatatan setoran iuran dan tarif bulanan dikelola oleh <b>Bendahara</b>.
+                </span>
               </div>
               <div className="flex items-center gap-3 flex-shrink-0">
                 {canInputKas && (
@@ -1272,7 +1282,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Nama Perwira &amp; NRP</th>
+                    <th className="px-4 py-3">Nama Personel &amp; NRP</th>
                     <th className="px-4 py-3">Pangkat &amp; Satker</th>
                     <th className="px-4 py-3">Target Iuran {financeConfig.tahunBuku}</th>
                     <th className="px-4 py-3">Terbayar</th>
@@ -1348,7 +1358,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                   {localIuranList.length === 0 && (
                     <tr>
                       <td colSpan={canInputKas ? 6 : 5} className="px-4 py-8 text-center text-slate-400">
-                        Belum ada data kewajiban iuran perwira yang tercatat.
+                        Belum ada data kewajiban iuran personel yang tercatat.
                       </td>
                     </tr>
                   )}
@@ -1363,9 +1373,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         {/* ============================================================== */}
         {activeTab === 'santunan' && (
           <div className="p-5 sm:p-6 space-y-5">
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs">
-              <span className="font-bold block mb-1">❤️ Alokasi Santunan Medis dari Kas:</span>
-              Daftar rekan yang membutuhkan atensi medis. Pencatatan penyaluran dana santunan dilakukan oleh <b>Bendahara / Superadmin</b>.
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs">
+              <span className="font-bold">❤️ Santunan Medis:</span> Daftar personel yang membutuhkan atensi medis dan alokasi santunan dari kas.
             </div>
 
             {chronicIllMembers.length > 0 ? (
@@ -1420,7 +1429,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               </div>
             ) : (
               <div className="p-8 text-center text-xs text-slate-400 border border-slate-200 rounded-xl">
-                Tidak ada rekan yang terdaftar membutuhkan atensi medis khusus saat ini.
+                Tidak ada personel yang terdaftar membutuhkan atensi medis khusus saat ini.
               </div>
             )}
           </div>
@@ -1457,7 +1466,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Nama Putra / Putri</th>
-                    <th className="px-4 py-3">Orang Tua (Leting)</th>
+                    <th className="px-4 py-3">Orang Tua (Personel)</th>
                     <th className="px-4 py-3">Penempatan</th>
                     <th className="px-4 py-3">Estimasi Biaya Tahunan</th>
                   </tr>
@@ -1617,7 +1626,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                   <div className="p-3.5 rounded-xl bg-emerald-50/90 border border-emerald-200 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="font-extrabold text-emerald-950 text-[11px]">
-                        🔄 Sinkronisasi Otomatis Buku Iuran Perwira (Opsional)
+                        🔄 Sinkronisasi Otomatis Buku Iuran Personel (Opsional)
                       </span>
                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
                         Tarif: {formatRupiah(financeConfig.iuranWajibPerBulan)} / bln
@@ -1627,7 +1636,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
                         <label className="block text-[11px] font-bold text-emerald-900 mb-1">
-                          Cari / Pilih Perwira Penyetor
+                          Cari / Pilih Personel Penyetor
                         </label>
                         <input
                           type="text"
@@ -1651,7 +1660,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                           }}
                           className="w-full px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-white font-semibold text-xs"
                         >
-                          <option value="">-- Pilih Perwira (Atau Isi Manual) --</option>
+                          <option value="">-- Pilih Personel (Atau Isi Manual) --</option>
                           {filteredMemberOptions.slice(0, 170).map((m) => (
                             <option key={m.nrp} value={m.nrp}>
                               {m.namaLengkap} ({m.nrp})
@@ -1775,10 +1784,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Pihak / Perwira Terkait</label>
+                    <label className="block font-bold text-slate-700 mb-1">Pihak / Personel Terkait</label>
                     <input
                       type="text"
-                      placeholder="Contoh: Nama Perwira / Bank / Vendor"
+                      placeholder="Contoh: Nama Personel / Bank / Vendor"
                       value={trxPihak}
                       onChange={(e) => setTrxPihak(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300"
@@ -2004,7 +2013,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             <div className="bg-emerald-800 p-4 text-white flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-emerald-300" />
-                Catat Pembayaran Iuran (Bendahara / Superadmin)
+                Catat Pembayaran Iuran
               </h3>
               <button onClick={() => setPayIuranModal(null)} className="text-slate-300 hover:text-white">
                 <X className="w-5 h-5" />
@@ -2013,7 +2022,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
             <form onSubmit={handleConfirmPayIuran} className="p-5 space-y-4 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-slate-500 block text-[11px]">Nama Perwira:</span>
+                <span className="text-slate-500 block text-[11px]">Nama Personel:</span>
                 <span className="font-bold text-slate-900 text-sm block">{payIuranModal.namaLengkap}</span>
                 <span className="text-slate-400 text-[11px]">
                   NRP: {payIuranModal.nrp} &bull; {payIuranModal.polda}

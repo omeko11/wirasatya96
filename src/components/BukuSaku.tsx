@@ -465,7 +465,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 <img
                   src={miniCardCoverUrl || '/default-cover.jpg'}
                   alt="Sampul Polri"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-center"
                 />
               )}
             </div>
@@ -492,10 +492,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </span>
                 <MetaVerifiedBadge role={currentUser?.role} nrp={currentUser?.nrp} size="md" />
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                {currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN'
-                  ? `${currentUser.pangkat || 'Briptu'} • ${currentMemberObj?.jabatanTerakhir || 'Lead Developer — Bareskrim Polri'}`
-                  : `${currentUser.pangkat} • Alumni Akpol 1996`}
+              <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2" title={`${currentMemberObj?.pangkat || currentUser.pangkat} • ${currentMemberObj?.jabatanTerakhir || currentMemberObj?.satuanKerja || currentUser.satker || 'Mabes Polri'}`}>
+                {`${currentMemberObj?.pangkat || currentUser.pangkat} • ${currentMemberObj?.jabatanTerakhir || currentMemberObj?.satuanKerja || currentUser.satker || 'Mabes Polri'}`}
               </p>
 
               {/* Metrics */}
@@ -504,12 +502,32 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   <span>NRP:</span>
                   <span className="font-mono font-bold text-slate-800">{currentUser.nrp}</span>
                 </div>
-                <div className="flex items-center justify-between text-slate-500">
-                  <span>Satker / Wilayah:</span>
-                  <span className="font-bold text-slate-700 truncate max-w-[130px]">
-                    {currentUser.polda || 'MABES POLRI'}
+                <div className="flex items-center justify-between gap-2 text-slate-500">
+                  <span className="shrink-0">Jabatan Polri:</span>
+                  <span className="font-bold text-slate-800 truncate text-right" title={currentMemberObj?.jabatanTerakhir || currentUser.satker || '-'}>
+                    {currentMemberObj?.jabatanTerakhir || currentUser.satker || '-'}
                   </span>
                 </div>
+                <div className="flex items-center justify-between gap-2 text-slate-500">
+                  <span className="shrink-0">Satker / Wilayah:</span>
+                  <span className="font-bold text-slate-700 truncate text-right" title={currentMemberObj?.satuanKerja || currentUser.polda || 'MABES POLRI'}>
+                    {currentMemberObj?.satuanKerja || currentUser.polda || 'MABES POLRI'}
+                  </span>
+                </div>
+                {(currentUser.role === 'KETUA' ||
+                  currentUser.role === 'SEKRETARIAT' ||
+                  currentUser.role === 'BENDAHARA') && (
+                  <div className="flex items-center justify-between gap-2 text-slate-500">
+                    <span className="shrink-0">Jabatan Angkatan:</span>
+                    <span className="font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
+                      {currentUser.role === 'KETUA'
+                        ? 'Ketua Angkatan'
+                        : currentUser.role === 'SEKRETARIAT'
+                        ? 'Sekretaris Angkatan'
+                        : 'Bendahara Angkatan'}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Hak Akses:</span>
                   <span className="font-bold text-slate-900">
@@ -551,7 +569,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   className="w-full mt-2 py-1.5 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                 >
                   <Briefcase className="w-3.5 h-3.5 text-red-800" />
-                  <span>Lihat Daftar Jabatan ({publicMembers.length})</span>
+                  <span>Direktori Jabatan ({publicMembers.length})</span>
                 </button>
               )}
             </div>
@@ -626,7 +644,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </div>
               ) : (
                 <p className="text-xs text-slate-500 py-2">
-                  Tidak ditemukan perwira dengan kata kunci tersebut.
+                  Tidak ditemukan personel dengan kata kunci tersebut.
                 </p>
               )}
             </div>
@@ -643,9 +661,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               />
               <button
                 onClick={() => setIsCreatePostModalOpen(true)}
-                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 rounded-full text-left text-xs text-slate-500 font-medium transition-colors border border-slate-200 hover:text-slate-800"
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 rounded-full text-left text-xs text-slate-500 font-medium transition-colors border border-slate-200 hover:text-slate-800 truncate"
               >
-                Mulai buat posting atau bagikan kabar leting...
+                Tulis postingan...
               </button>
             </div>
 
@@ -752,10 +770,6 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </span>
             </div>
 
-            <p className="text-[11px] text-slate-500 leading-snug">
-              Program kepedulian bagi rekan yang memerlukan doa, atensi medis, dan bantuan:
-            </p>
-
             {healthAttentionMembers.length > 0 ? (
               <div className="space-y-2.5">
                 {healthAttentionMembers.map((m) => {
@@ -814,7 +828,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             ) : (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs">
-                Tidak ada rekan yang membutuhkan atensi medis khusus.
+                Tidak ada personel yang membutuhkan atensi medis khusus.
               </div>
             )}
           </div>
@@ -852,7 +866,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Iuran Wajib / Bulan:</span>
                 <span className="font-bold text-slate-800">
-                  Rp {(iuranWajibPerBulan || 250000).toLocaleString('id-ID')} / Perwira
+                  Rp {(iuranWajibPerBulan || 250000).toLocaleString('id-ID')} / Anggota
                 </span>
               </div>
             </div>
@@ -868,7 +882,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               )}
               <span
                 className="text-[11px] text-slate-400 flex items-center justify-center gap-1"
-                title="Pencatatan kas masuk, kas keluar, iuran wajib, dan portofolio aset dikelola secara transparan oleh Bendahara Batalyon Wira Satya 96."
+                title="Pencatatan kas masuk, kas keluar, iuran wajib, dan portofolio aset dikelola oleh Bendahara."
               >
                 <span>Dikelola oleh Bendahara</span>
                 <Info className="w-3 h-3 text-slate-400 inline" />
@@ -888,7 +902,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </span>
               </span>
               <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
-                {publicMembers.length} Perwira
+                {publicMembers.length} Personel
               </span>
             </div>
             {onNavigateToJabatan && (
@@ -902,10 +916,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           </div>
 
           {/* Widget 4: Info Footer */}
-          <div className="text-[11px] text-slate-400 text-center space-y-1 p-2">
-            <p className="font-bold text-slate-600">BATALYON WIRA SATYA 1996</p>
-            <p>Akademi Kepolisian Republik Indonesia</p>
-            <p className="text-[10px]">Portal Internal Alumni &copy; 2026</p>
+          <div className="text-center text-[10px] text-slate-400 space-y-0.5 py-2">
+            <p className="font-extrabold text-slate-500 tracking-wide">BATALYON WIRA SATYA 1996</p>
+            <p>Akademi Kepolisian Negara Republik Indonesia</p>
+            <p>Portal Internal Alumni 1996 &copy; 2026</p>
           </div>
         </div>
       </div>
