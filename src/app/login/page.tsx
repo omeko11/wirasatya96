@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthUser, MfaMethod, DAFTAR_PANGKAT_POLRI } from '@/types';
 import { WSLogo } from '@/components/WSLogo';
@@ -21,404 +21,73 @@ import {
   CheckCircle2,
   Lock,
   Building2,
-  Volume2
+  Check
 } from 'lucide-react';
 
-function generateCaptchaCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let result = '';
-  for (let i = 0; i < 5; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+interface CheckboxSecurityCaptchaProps {
+  checked: boolean;
+  verifying: boolean;
+  onToggle: () => void;
 }
 
-function createSeededRng(seedStr: string) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < seedStr.length; i++) {
-    h ^= seedStr.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return () => {
-    h += 0x6d2b79f5;
-    let t = Math.imul(h ^ (h >>> 15), 1 | h);
-    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-interface GraphicSecurityCaptchaProps {
-  code: string;
-  seed: number;
-  inputValue: string;
-  onInputChange: (val: string) => void;
-  onRefresh: () => void;
-}
-
-const CAPTCHA_CHAR_COLORS = [
-  '#fbbf24', // Amber
-  '#38bdf8', // Sky Blue
-  '#4ade80', // Emerald Green
-  '#fb7185', // Rose Red
-  '#c084fc', // Purple
-  '#facc15', // Yellow Gold
-  '#2dd4bf', // Teal
-  '#f87171', // Coral Red
-];
-
-const CAPTCHA_FONTS = [
-  "'Courier New', Courier, monospace",
-  "Georgia, 'Times New Roman', serif",
-  "'Consolas', 'Lucida Console', monospace",
-  "'Trebuchet MS', Verdana, sans-serif",
-  "Impact, 'Arial Black', sans-serif",
-];
-
-function GraphicSecurityCaptcha({
-  code,
-  seed,
-  inputValue,
-  onInputChange,
-  onRefresh,
-}: GraphicSecurityCaptchaProps) {
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const isMatched =
-    inputValue.trim().length === code.length &&
-    inputValue.trim().toUpperCase() === code.toUpperCase();
-
-  const visualData = useMemo(() => {
-    const rng = createSeededRng(`${code}-${seed}`);
-    const chars = code.split('').map((ch, idx) => {
-      const baseX = 28 + idx * 38;
-      const jitterX = (rng() - 0.5) * 8;
-      const jitterY = 40 + (rng() - 0.5) * 10;
-      const rotate = (rng() - 0.5) * 40; // -20deg to +20deg
-      const skewX = (rng() - 0.5) * 24; // -12deg to +12deg
-      const scale = 0.96 + rng() * 0.18;
-      const color =
-        CAPTCHA_CHAR_COLORS[
-          Math.floor(rng() * CAPTCHA_CHAR_COLORS.length)
-        ];
-      const fontFamily =
-        CAPTCHA_FONTS[Math.floor(rng() * CAPTCHA_FONTS.length)];
-      return {
-        ch,
-        x: Number((baseX + jitterX).toFixed(1)),
-        y: Number(jitterY.toFixed(1)),
-        rotate: Number(rotate.toFixed(1)),
-        skewX: Number(skewX.toFixed(1)),
-        scale: Number(scale.toFixed(2)),
-        color,
-        fontFamily,
-      };
-    });
-
-    // Interference bezier curves & strike lines
-    const noiseLines = Array.from({ length: 6 }).map((_, i) => {
-      const x1 = Number((rng() * 35).toFixed(1));
-      const y1 = Number((8 + rng() * 48).toFixed(1));
-      const cx1 = Number((50 + rng() * 60).toFixed(1));
-      const cy1 = Number((rng() * 64).toFixed(1));
-      const cx2 = Number((110 + rng() * 60).toFixed(1));
-      const cy2 = Number((rng() * 64).toFixed(1));
-      const x2 = Number((180 + rng() * 35).toFixed(1));
-      const y2 = Number((8 + rng() * 48).toFixed(1));
-      const color =
-        CAPTCHA_CHAR_COLORS[(i + Math.floor(rng() * 4)) % CAPTCHA_CHAR_COLORS.length];
-      const width = Number((1.0 + rng() * 0.9).toFixed(2));
-      const opacity = Number((0.35 + rng() * 0.3).toFixed(2));
-      const dash = rng() > 0.5 ? '4 2' : undefined;
-      return {
-        d: `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`,
-        color,
-        width,
-        opacity,
-        dash,
-      };
-    });
-
-    // Guilloche background security waves
-    const waveOffset1 = Number((18 + rng() * 10).toFixed(1));
-    const waveOffset2 = Number((38 + rng() * 12).toFixed(1));
-    const waves = [
-      `M 0 ${waveOffset1} Q 54 ${waveOffset1 - 14}, 108 ${waveOffset1} T 216 ${waveOffset1}`,
-      `M 0 ${waveOffset2} Q 54 ${waveOffset2 + 14}, 108 ${waveOffset2} T 216 ${waveOffset2}`,
-    ];
-
-    // Interference dots / speckles
-    const noiseDots = Array.from({ length: 34 }).map(() => ({
-      cx: Number((6 + rng() * 204).toFixed(1)),
-      cy: Number((6 + rng() * 52).toFixed(1)),
-      r: Number((0.8 + rng() * 1.5).toFixed(2)),
-      color:
-        CAPTCHA_CHAR_COLORS[
-          Math.floor(rng() * CAPTCHA_CHAR_COLORS.length)
-        ],
-      opacity: Number((0.25 + rng() * 0.45).toFixed(2)),
-    }));
-
-    return { chars, noiseLines, waves, noiseDots };
-  }, [code, seed]);
-
-  const handleRefreshClick = () => {
-    setIsSpinning(true);
-    onRefresh();
-    setTimeout(() => setIsSpinning(false), 380);
-  };
-
-  const handleSpeakCaptcha = () => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel();
-      const spelled = code.split('').join(' ... ');
-      const utterance = new SpeechSynthesisUtterance(
-        `Kode keamanan Captcha: ${spelled}`
-      );
-      utterance.lang = 'id-ID';
-      utterance.rate = 0.85;
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      setIsSpeaking(false);
-    }
-  };
-
+function CheckboxSecurityCaptcha({
+  checked,
+  verifying,
+  onToggle,
+}: CheckboxSecurityCaptchaProps) {
   return (
     <div
-      className={`rounded-xl border transition-all p-3 space-y-2.5 ${
-        isMatched
-          ? 'bg-[#f0fdf4] border-[#16a34a]/70 shadow-2xs'
-          : 'bg-[#f8fafc] border-slate-300/90'
+      onClick={onToggle}
+      role="checkbox"
+      aria-checked={checked}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      className={`rounded-xl border px-4 py-3 flex items-center justify-between cursor-pointer select-none transition-all ${
+        checked
+          ? 'bg-slate-50/90 border-emerald-500/60 shadow-2xs'
+          : 'bg-slate-50/70 hover:bg-slate-100/70 border-slate-200'
       }`}
     >
-      {/* Top Row: Graphic SVG Captcha Box + Action Buttons (Refresh & Audio) */}
-      <div className="flex items-stretch gap-2">
-        {/* SVG Graphic Captcha Canvas */}
+      {/* Left: Checkbox + "I'm not a robot" */}
+      <div className="flex items-center gap-3">
         <div
-          onClick={handleRefreshClick}
-          title="Klik gambar untuk memuat ulang kode Captcha"
-          className="relative flex-1 h-[60px] rounded-lg overflow-hidden border border-slate-700 bg-[#0b1524] shadow-inner cursor-pointer select-none group"
+          className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+            verifying
+              ? 'border-2 border-slate-300 bg-white'
+              : checked
+              ? 'border-2 border-emerald-600 bg-emerald-600 text-white shadow-2xs'
+              : 'border-2 border-slate-300 bg-white hover:border-slate-400'
+          }`}
         >
-          <svg
-            viewBox="0 0 216 64"
-            className="w-full h-full block"
-            preserveAspectRatio="none"
-            role="img"
-            aria-label="Kode Keamanan Captcha Grafis"
-          >
-            <defs>
-              <linearGradient id="casBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#0b1524" />
-                <stop offset="50%" stopColor="#17253b" />
-                <stop offset="100%" stopColor="#0f172a" />
-              </linearGradient>
-              <pattern
-                id="casSecGrid"
-                width="12"
-                height="12"
-                patternUnits="userSpaceOnUse"
-              >
-                <path
-                  d="M 12 0 L 0 0 0 12"
-                  fill="none"
-                  stroke="#334155"
-                  strokeWidth="0.45"
-                  strokeOpacity="0.45"
-                />
-              </pattern>
-            </defs>
+          {verifying ? (
+            <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 border-t-red-800 animate-spin" />
+          ) : checked ? (
+            <Check className="w-4 h-4 stroke-[3]" />
+          ) : null}
+        </div>
+        <span className="text-xs font-medium text-slate-700">
+          I&apos;m not a robot
+        </span>
+      </div>
 
-            {/* Security Plate Gradient + Grid Mesh */}
-            <rect width="216" height="64" fill="url(#casBgGrad)" />
-            <rect width="216" height="64" fill="url(#casSecGrid)" />
-
-            {/* Micro-text Security Watermark */}
-            <text
-              x="108"
-              y="13"
-              textAnchor="middle"
-              fill="#94a3b8"
-              fillOpacity="0.13"
-              fontSize="6.5"
-              fontWeight="800"
-              letterSpacing="2.5"
-              fontFamily="monospace"
-            >
-              CAS • BDB • POLRI SECURITY
-            </text>
-            <text
-              x="108"
-              y="58"
-              textAnchor="middle"
-              fill="#94a3b8"
-              fillOpacity="0.11"
-              fontSize="6"
-              fontWeight="700"
-              letterSpacing="2"
-              fontFamily="monospace"
-            >
-              WIRA SATYA 96 VERIFICATION
-            </text>
-
-            {/* Guilloche Background Waves */}
-            {visualData.waves.map((d, i) => (
-              <path
-                key={`wave-${i}`}
-                d={d}
-                fill="none"
-                stroke="#38bdf8"
-                strokeWidth="0.9"
-                strokeOpacity="0.22"
-              />
-            ))}
-
-            {/* Interference Speckles / Dots */}
-            {visualData.noiseDots.map((dot, idx) => (
-              <circle
-                key={`dot-${idx}`}
-                cx={dot.cx}
-                cy={dot.cy}
-                r={dot.r}
-                fill={dot.color}
-                fillOpacity={dot.opacity}
-              />
-            ))}
-
-            {/* Background Interference Lines */}
-            {visualData.noiseLines.slice(0, 3).map((line, idx) => (
-              <path
-                key={`bline-${idx}`}
-                d={line.d}
-                fill="none"
-                stroke={line.color}
-                strokeWidth={line.width}
-                strokeOpacity={line.opacity}
-                strokeDasharray={line.dash}
-              />
-            ))}
-
-            {/* Distorted Multi-Color / Rotated / Skewed Captcha Characters */}
-            {visualData.chars.map((item, idx) => (
-              <g
-                key={`char-${idx}`}
-                transform={`translate(${item.x}, ${item.y}) rotate(${item.rotate}) skewX(${item.skewX}) scale(${item.scale})`}
-              >
-                <text
-                  x="0"
-                  y="0"
-                  textAnchor="middle"
-                  fill={item.color}
-                  stroke="#020617"
-                  strokeWidth="1.2"
-                  paintOrder="stroke"
-                  fontSize="26"
-                  fontWeight="900"
-                  fontFamily={item.fontFamily}
-                  style={{
-                    filter: 'drop-shadow(0px 2px 2px rgba(0,0,0,0.65))',
-                    userSelect: 'none',
-                  }}
-                >
-                  {item.ch}
-                </text>
-              </g>
-            ))}
-
-            {/* Foreground Interference Strike Curves */}
-            {visualData.noiseLines.slice(3).map((line, idx) => (
-              <path
-                key={`fline-${idx}`}
-                d={line.d}
-                fill="none"
-                stroke={line.color}
-                strokeWidth={line.width}
-                strokeOpacity={line.opacity}
-                strokeDasharray={line.dash}
-              />
-            ))}
-          </svg>
-
-          {/* Subtle corner badge inside graphic box */}
-          <span className="absolute bottom-1 right-1.5 text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-black/50 text-slate-300 border border-white/10 pointer-events-none">
-            SVG CAPTCHA
+      {/* Right: Shield Emblem + Captcha / Privasi & Ketentuan */}
+      <div className="flex items-center gap-2 pl-3">
+        <div className="w-7 h-7 rounded-lg bg-[#0f172a] border border-slate-700 flex items-center justify-center shadow-2xs shrink-0">
+          <ShieldCheck className="w-4 h-4 text-red-500" />
+        </div>
+        <div className="text-left leading-tight">
+          <span className="block text-[10px] font-bold text-slate-600">
+            Captcha
+          </span>
+          <span className="block text-[9px] text-slate-400">
+            Privasi &amp; Ketentuan
           </span>
         </div>
-
-        {/* Action Buttons: Reload (↻) & Audio Readability (🔊) */}
-        <div className="flex flex-col gap-1.5 justify-between">
-          <button
-            type="button"
-            onClick={handleRefreshClick}
-            className="flex-1 px-3 rounded-lg bg-white hover:bg-slate-100 active:scale-95 text-slate-700 hover:text-red-800 border border-slate-300 shadow-2xs flex items-center justify-center transition-all"
-            title="Ganti Kode Captcha (Muat Ulang ↻)"
-            aria-label="Ganti Kode Captcha"
-          >
-            <RotateCw
-              className={`w-4 h-4 transition-transform duration-300 ${
-                isSpinning ? 'rotate-180 text-red-700' : ''
-              }`}
-            />
-          </button>
-          <button
-            type="button"
-            onClick={handleSpeakCaptcha}
-            className={`flex-1 px-3 rounded-lg border shadow-2xs flex items-center justify-center transition-all ${
-              isSpeaking
-                ? 'bg-amber-50 border-amber-400 text-amber-700'
-                : 'bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-300'
-            }`}
-            title="Dengarkan Audio Kode Captcha"
-            aria-label="Dengarkan Audio Kode Captcha"
-          >
-            <Volume2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Bottom Row: Input Field + Live Verification Indicator */}
-      <div className="relative flex items-center">
-        <input
-          type="text"
-          required
-          maxLength={5}
-          value={inputValue}
-          onChange={(e) => onInputChange(e.target.value.toUpperCase())}
-          placeholder="Masukkan kode captcha..."
-          autoComplete="off"
-          spellCheck={false}
-          className={`w-full pl-3.5 pr-28 py-2.5 rounded-lg border bg-white text-slate-900 text-xs font-mono font-extrabold uppercase tracking-[0.22em] placeholder:font-sans placeholder:font-medium placeholder:tracking-normal placeholder:normal-case placeholder:text-slate-400 focus:outline-none transition-all ${
-            isMatched
-              ? 'border-[#16a34a] ring-2 ring-[#16a34a]/20 text-emerald-950'
-              : 'border-slate-300 focus:ring-2 focus:ring-red-800/20 focus:border-red-800'
-          }`}
-        />
-        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
-          {isMatched ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold tracking-normal">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              <span>Terverifikasi</span>
-            </span>
-          ) : (
-            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-              {inputValue.trim().length}/5 Karakter
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* CAS / BDB Style Footer Metadata */}
-      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-        <div className="flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-red-800 shrink-0" />
-          <span>Proteksi Keamanan Grafis CAS / Polri</span>
-        </div>
-        <span className="text-[9px] text-slate-400 font-medium">
-          Privasi &amp; Ketentuan
-        </span>
       </div>
     </div>
   );
@@ -430,13 +99,12 @@ export default function LoginPage() {
   // Active view: 'login' | 'register'
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
-  // Login form inputs (Default: Password + Captcha)
+  // Login form inputs (Default: Password + Checkbox Captcha)
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [captchaCode, setCaptchaCode] = useState('WS96A');
-  const [captchaSeed, setCaptchaSeed] = useState(1);
-  const [captchaInput, setCaptchaInput] = useState('');
+  const [isCaptchaChecked, setIsCaptchaChecked] = useState(false);
+  const [isCaptchaVerifying, setIsCaptchaVerifying] = useState(false);
 
   // Optional 2FA Challenge Modal (only shown if user enabled 2FA in their settings)
   const [pending2FAUser, setPending2FAUser] = useState<AuthUser | null>(null);
@@ -480,15 +148,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    setCaptchaCode(generateCaptchaCode());
-    setCaptchaSeed((s) => s + 1);
-  }, []);
+  const handleToggleCaptcha = () => {
+    if (isCaptchaVerifying) return;
+    if (isCaptchaChecked) {
+      setIsCaptchaChecked(false);
+      return;
+    }
+    setIsCaptchaVerifying(true);
+    setErrorMessage('');
+    setTimeout(() => {
+      setIsCaptchaVerifying(false);
+      setIsCaptchaChecked(true);
+    }, 320);
+  };
 
-  const refreshCaptcha = () => {
-    setCaptchaCode(generateCaptchaCode());
-    setCaptchaSeed((s) => s + 1);
-    setCaptchaInput('');
+  const resetCaptcha = () => {
+    setIsCaptchaChecked(false);
+    setIsCaptchaVerifying(false);
   };
 
   const handleLoginSuccess = (user: AuthUser, mfaMethod?: MfaMethod) => {
@@ -509,9 +185,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (captchaInput.trim().toUpperCase() !== captchaCode.toUpperCase()) {
-      setErrorMessage('Kode Keamanan (Captcha) tidak sesuai. Silakan ketik ulang kode yang tampil.');
-      refreshCaptcha();
+    if (!isCaptchaChecked) {
+      setErrorMessage('Harap centang kotak verifikasi keamanan "I\'m not a robot" terlebih dahulu.');
       return;
     }
 
@@ -561,7 +236,7 @@ export default function LoginPage() {
         }
       } else {
         setErrorMessage(data.message || 'NRP atau kata sandi tidak cocok. Silakan periksa kembali.');
-        refreshCaptcha();
+        resetCaptcha();
       }
     } catch {
       setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
@@ -1064,21 +739,16 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Input 3: Security Captcha (Graphic SVG/Canvas Captcha ala CAS/BDB) */}
+                {/* Input 3: Verifikasi Keamanan (Checkbox Captcha) */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Verifikasi Keamanan (Captcha) <span className="text-red-700">*</span>
+                    Verifikasi Keamanan
                   </label>
-                  <GraphicSecurityCaptcha
-                    code={captchaCode}
-                    seed={captchaSeed}
-                    inputValue={captchaInput}
-                    onInputChange={setCaptchaInput}
-                    onRefresh={refreshCaptcha}
+                  <CheckboxSecurityCaptcha
+                    checked={isCaptchaChecked}
+                    verifying={isCaptchaVerifying}
+                    onToggle={handleToggleCaptcha}
                   />
-                  <p className="text-[10px] text-slate-400 mt-1.5">
-                    Standar keamanan wajib: Kata Sandi &amp; Captcha Grafis. Proteksi 2FA dapat diatur mandiri di menu Pengaturan.
-                  </p>
                 </div>
 
                 {/* Submit Button */}
