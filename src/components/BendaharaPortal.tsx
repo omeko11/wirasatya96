@@ -1864,8 +1864,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       {/* MODAL 1: CASCADING CASHFLOW INPUT (CATAT MUTASI KAS)           */}
       {/* ============================================================== */}
       {isModalOpen && canInputKas && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
             <div className="bg-slate-900 p-4 text-white flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold flex items-center gap-2">
@@ -2209,8 +2209,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       {/* MODAL 2: CATAT PORTOFOLIO ASET BARU (BENDAHARA & SUPERADMIN)   */}
       {/* ============================================================== */}
       {isAssetModalOpen && canInputKas && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
             <div className="bg-blue-900 p-4 text-white flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Coins className="w-4 h-4 text-amber-300" />
@@ -2370,8 +2370,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       {/* MODAL 3: CATAT PEMBAYARAN IURAN (BENDAHARA & SUPERADMIN)       */}
       {/* ============================================================== */}
       {payIuranModal && canInputKas && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
             <div className="bg-emerald-800 p-4 text-white flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-emerald-300" />
@@ -2453,8 +2453,8 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       {/* MODAL 4: PENGATURAN KEBENDAHARAAN (TARIF IURAN & KATEGORI)     */}
       {/* ============================================================== */}
       {isConfigModalOpen && canInputKas && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
             <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 p-4 text-white flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold flex items-center gap-2">

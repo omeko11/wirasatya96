@@ -767,7 +767,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         {/* 1. LEFT RAIL (lg:col-span-3): PROFILE SNAPSHOT               */}
         {/* ============================================================ */}
-        <div className="order-2 lg:order-1 lg:col-span-3 space-y-4">
+        <div className="order-1 lg:order-1 lg:col-span-3 space-y-4">
           {/* User Mini Profile Card */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
             <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
@@ -906,19 +906,19 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         {/* ============================================================ */}
         {/* 2. CENTER FEED (lg:col-span-6): MURNI FEED BERANDA           */}
         {/* ============================================================ */}
-        <div className="order-1 lg:order-2 lg:col-span-6 space-y-4">
+        <div className="order-2 lg:order-2 lg:col-span-6 space-y-4 scroll-mt-20">
           {/* Quick Search Results if user typed in Navbar Search */}
           {externalSearch.trim() !== '' && (
-            <div className="bg-white rounded-xl border border-red-200 shadow-sm p-4 space-y-2.5">
-              <div className="flex items-center justify-between text-xs">
+            <div className="bg-white rounded-xl border border-red-200 shadow-sm p-3.5 sm:p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
                 <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                  <Search className="w-3.5 h-3.5 text-red-800" />
-                  Hasil Pencarian Cepat: &ldquo;{externalSearch}&rdquo;
+                  <Search className="w-3.5 h-3.5 text-red-800 shrink-0" />
+                  <span className="truncate">Hasil Pencarian Cepat: &ldquo;{externalSearch}&rdquo;</span>
                 </span>
                 {onNavigateToJabatan && (
                   <button
                     onClick={onNavigateToJabatan}
-                    className="text-red-800 font-bold hover:underline flex items-center gap-0.5"
+                    className="text-red-800 font-bold hover:underline flex items-center gap-0.5 shrink-0"
                   >
                     <span>Buka Menu Jabatan</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -968,8 +968,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           )}
 
           {/* Post/Update Box */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="flex items-center gap-3">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4 space-y-3 scroll-mt-20">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={myResolvedAvatarUrl}
@@ -987,15 +987,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center justify-around pt-2 border-t border-slate-100 text-xs font-semibold text-slate-600 px-1 sm:px-2">
+            <div className="flex items-center justify-around pt-2 border-t border-slate-100 text-[11px] sm:text-xs font-semibold text-slate-600 px-0.5 sm:px-2">
               <button
                 onClick={() => {
                   setOpenCreatePostWithImage(true);
                   setIsCreatePostModalOpen(true);
                 }}
-                className="flex items-center gap-2 hover:text-red-900 transition-colors p-1"
+                className="flex items-center gap-1.5 sm:gap-2 hover:text-red-900 transition-colors p-1 whitespace-nowrap"
               >
-                <ImageIcon className="w-4 h-4 text-red-800" />
+                <ImageIcon className="w-4 h-4 text-red-800 shrink-0" />
                 <span>Foto</span>
               </button>
               <button
@@ -1003,9 +1003,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   setOpenCreatePostWithImage(true);
                   setIsCreatePostModalOpen(true);
                 }}
-                className="flex items-center gap-2 hover:text-emerald-600 transition-colors p-1"
+                className="flex items-center gap-1.5 sm:gap-2 hover:text-emerald-600 transition-colors p-1 whitespace-nowrap"
               >
-                <Video className="w-4 h-4 text-emerald-600" />
+                <Video className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Video</span>
               </button>
               <button
@@ -1013,9 +1013,9 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   setOpenCreatePostWithImage(false);
                   setIsCreatePostModalOpen(true);
                 }}
-                className="flex items-center gap-2 hover:text-amber-600 transition-colors p-1"
+                className="flex items-center gap-1.5 sm:gap-2 hover:text-amber-600 transition-colors p-1 whitespace-nowrap"
               >
-                <PenSquare className="w-4 h-4 text-amber-600" />
+                <PenSquare className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>Tulis Artikel</span>
               </button>
             </div>
@@ -1023,13 +1023,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
           {/* Feed Header & Category Filter Chips */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-900">
-                <Newspaper className="w-4 h-4 text-red-800" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 sm:px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-900 shrink-0">
+                <Newspaper className="w-4 h-4 text-red-800 shrink-0" />
                 <span>Linimasa ({filteredPosts.length})</span>
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 text-xs">
                 {[
                   { key: 'SEMUA', label: 'Semua' },
                   { key: 'MOTIVASI', label: 'Motivasi' },

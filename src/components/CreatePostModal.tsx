@@ -140,33 +140,33 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   const cleanUserName = currentUser.nama.split('(')[0].trim();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-[100] overflow-y-auto flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
       <div 
-        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] animate-scaleUp"
+        className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[calc(100dvh-5.5rem)] sm:max-h-[90vh] my-auto animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div className="p-3.5 sm:p-5 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={getAvatarUrl(currentUser.fotoUrl)}
               alt={cleanUserName}
-              className="w-12 h-12 rounded-full object-cover border border-slate-200 shadow-sm bg-white"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border border-slate-200 shadow-sm bg-white shrink-0"
             />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-900 text-sm">{cleanUserName}</span>
-                <span className="text-xs text-slate-400 font-normal">({currentUser.pangkat})</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">{cleanUserName}</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 font-normal">({currentUser.pangkat})</span>
               </div>
 
               {/* LinkedIn Audience Pills */}
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
                   <Globe className="w-3 h-3 text-red-800" />
                   <span>Semua Anggota</span>
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-300 text-slate-700 bg-slate-50">
                   <MessageSquare className="w-3 h-3 text-slate-500" />
                   <span>Komentar: Terbuka</span>
                 </span>
@@ -176,21 +176,20 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-y-auto p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
           {/* Rich Textarea */}
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Tulis informasi, kegiatan, atau keterangan foto..."
-            className="w-full h-28 resize-none text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 leading-relaxed font-normal"
-            autoFocus
+            className="w-full h-24 sm:h-28 resize-none text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 leading-relaxed font-normal shrink-0"
           />
 
           {/* Active Image Preview (ALWAYS visible whenever an image is selected/uploaded) */}

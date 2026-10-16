@@ -574,13 +574,13 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
                 {/* Sorting Button & Dropdown (Far Left before Filter Wilayah & Searchbox) */}
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 min-w-0 max-w-full">
                   <ArrowUpDown className="w-3.5 h-3.5 text-red-800 flex-shrink-0" />
                   <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">Urutkan:</span>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1"
+                    className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1 min-w-0 flex-1 truncate"
                     title="Urutkan Daftar Riwayat Jabatan"
                   >
                     <option value="DEFAULT">Default (Almarhum [NRP Kecil] → Purna → PTDH → Aktif)</option>
@@ -594,7 +594,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   <button
                     type="button"
                     onClick={() => setSortDesc((prev) => !prev)}
-                    className="px-2 py-0.5 text-[10px] font-bold rounded bg-white border border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-800 hover:border-red-200 transition-colors whitespace-nowrap"
+                    className="px-2 py-0.5 text-[10px] font-bold rounded bg-white border border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-800 hover:border-red-200 transition-colors whitespace-nowrap shrink-0"
                     title={sortDesc ? 'Urutan Menurun (Descending) — Klik untuk Ascending' : 'Urutan Menaik (Ascending) — Klik untuk Descending'}
                   >
                     {sortDesc ? '↓ Desc' : '↑ Asc'}
@@ -840,8 +840,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       {/* MODAL: TAMBAH RIWAYAT JABATAN BARU (MUTASI / PROMOSI)          */}
       {/* ============================================================== */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
+        <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-red-900 text-white">
               <div className="flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-amber-300" />

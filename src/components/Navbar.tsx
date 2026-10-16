@@ -155,17 +155,17 @@ export const Navbar: React.FC<NavbarProps> = ({
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         {/* Superadmin Impersonation Banner */}
         {impersonatorUser && (
-          <div className="bg-amber-500 text-slate-950 px-4 py-1.5 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
-            <span>
-              🎭 Mode Impersonate Superadmin: Anda sedang masuk sebagai {currentUser.nama} ({currentUser.pangkat} &bull; Role: {roleDisplayLabels[currentUser.role] || currentUser.role})
+          <div className="bg-amber-500 text-slate-950 px-3 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold flex items-center justify-between gap-2 flex-wrap leading-snug">
+            <span className="truncate max-w-full">
+              🎭 Mode Impersonate: {currentUser.nama} ({currentUser.pangkat} &bull; {roleDisplayLabels[currentUser.role] || currentUser.role})
             </span>
             {onStopImpersonating && (
               <button
                 type="button"
                 onClick={onStopImpersonating}
-                className="px-3 py-1 rounded-full bg-slate-950 hover:bg-slate-800 text-amber-300 text-[11px] font-extrabold transition-colors shadow-xs"
+                className="px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-slate-950 hover:bg-slate-800 text-amber-300 text-[10px] sm:text-[11px] font-extrabold transition-colors shadow-xs shrink-0"
               >
-                Kembali ke Akun {impersonatorUser.nama} (Superadmin)
+                Kembali ke {impersonatorUser.nama}
               </button>
             )}
           </div>
@@ -173,42 +173,42 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Active Ajudan / ADC Session Banner */}
         {adcSession && (
-          <div className="bg-gradient-to-r from-indigo-950 via-blue-900 to-slate-900 text-amber-300 px-4 py-1.5 text-xs font-bold flex items-center justify-between gap-2 flex-wrap border-b border-amber-400/30">
-            <span>
-              🎖️ Mode Ajudan / ADC: Masuk sebagai {adcSession.adcPangkat} {adcSession.adcNama} (NRP {adcSession.adcNrp}) mewakili Pimpinan {adcSession.pimpinanPangkat} {adcSession.pimpinanNama} &bull; Aktivitas tercatat di Log Audit atas NRP ADC
+          <div className="bg-gradient-to-r from-indigo-950 via-blue-900 to-slate-900 text-amber-300 px-3 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold flex items-center justify-between gap-2 flex-wrap border-b border-amber-400/30 leading-snug">
+            <span className="line-clamp-2 sm:line-clamp-none">
+              🎖️ Mode Ajudan / ADC: {adcSession.adcPangkat} {adcSession.adcNama} (NRP {adcSession.adcNrp}) mewakili {adcSession.pimpinanPangkat} {adcSession.pimpinanNama}
             </span>
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 gap-2 sm:gap-4">
             
             {/* Left: Brand Logo + Bareskrim Red Search Box */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-md">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 max-w-md">
               <WSLogo 
                 size="sm"
                 onClick={() => setActiveTab('direktori')}
               />
 
-              {/* Search Bar with Live Quick-Action Results */}
-              <div className="relative flex-1 hidden sm:block max-w-xs" ref={searchBoxRef}>
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              {/* Search Bar with Live Quick-Action Results (Mobile & Desktop) */}
+              <div className="relative flex-1 min-w-0 max-w-xs" ref={searchBoxRef}>
+                <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchText}
                   onFocus={() => setIsSearchOpen(true)}
-                  placeholder="Cari perwira, NRP, polda, satker..."
+                  placeholder="Cari perwira, NRP, satker..."
                   onChange={(e) => {
                     setSearchText(e.target.value);
                     setIsSearchOpen(true);
                     if (onSearchChange) onSearchChange(e.target.value);
                   }}
-                  className="w-full pl-9 pr-3 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-transparent rounded-lg text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-red-900 transition-all"
+                  className="w-full pl-8 sm:pl-9 pr-2.5 sm:pr-3 py-1.5 bg-slate-100 hover:bg-slate-200/70 border border-transparent rounded-lg text-xs text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-900/30 focus:border-red-900 transition-all"
                 />
 
                 {/* Live Search Dropdown with WA & Obrolan Cepat */}
                 {isSearchOpen && searchText.trim().length > 0 && (
-                  <div className="absolute left-0 top-10 z-50 w-[370px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
+                  <div className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-auto top-14 sm:top-10 z-50 sm:w-[370px] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fadeIn">
                     <div className="px-3.5 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between text-[11px]">
                       <span className="font-bold text-slate-700">
                         Hasil Pencarian Perwira ({quickSearchResults.length})
@@ -296,12 +296,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* Mobile text title */}
-              <div className="sm:hidden min-w-0">
-                <span className="font-black text-xs text-red-900 block leading-tight truncate">WIRA SATYA 96</span>
-                <span className="text-[10px] text-slate-500 font-semibold truncate block">Portal Internal</span>
               </div>
             </div>
 
@@ -462,7 +456,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 {/* Profile Popover Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 top-12 z-50 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-3 text-xs text-slate-700 animate-fadeIn">
+                  <div className="absolute right-0 top-12 z-50 w-72 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-2xl border border-slate-200 py-3 text-xs text-slate-700 animate-fadeIn">
                     
                     {/* Top Mini Card */}
                     <div className="px-4 pb-3 border-b border-slate-100 flex items-start gap-3">
@@ -711,7 +705,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </header>
 
       {/* Bottom Mobile Tab Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 pt-1.5 pb-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 pt-1.5 pb-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
         <div
           className={`grid ${
             currentUser.role === 'SUPERADMIN' ||

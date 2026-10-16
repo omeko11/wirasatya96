@@ -85,6 +85,11 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     return '';
   });
 
+  // Mobile view toggle ('list' vs 'chat') for < md screens
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>(() =>
+    initialTargetMember && initialTargetMember.nrp !== currentUser.nrp ? 'chat' : 'list'
+  );
+
   // All messages in state
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (typeof window !== 'undefined') {
@@ -106,6 +111,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     if (initialTargetMember && initialTargetMember.nrp !== currentUser.nrp) {
       setSelectedNewChatNrp(initialTargetMember.nrp);
       setActivePartnerNrp(initialTargetMember.nrp);
+      setMobileView('chat');
       setShowDirectoryPicker(false);
     }
   }, [initialTargetMember, currentUser.nrp]);
@@ -438,12 +444,16 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
     <div className="max-w-7xl mx-auto py-2 font-sans text-slate-900">
       
       {/* 2-Column LinkedIn Messenger Layout with Fixed Height & Internal Scroll */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-140px)] min-h-[540px] max-h-[760px]">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100dvh-165px)] md:h-[calc(100vh-140px)] min-h-[480px] max-h-[760px]">
         
         {/* ============================================================ */}
         {/* LEFT COLUMN: CONVERSATION LIST (md:col-span-5 lg:col-span-4) */}
         {/* ============================================================ */}
-        <div className="md:col-span-5 lg:col-span-4 border-r border-slate-200 flex flex-col h-full overflow-hidden bg-white">
+        <div
+          className={`${
+            mobileView === 'chat' && activePartner ? 'hidden md:flex' : 'flex'
+          } md:col-span-5 lg:col-span-4 border-r border-slate-200 flex-col h-full overflow-hidden bg-white`}
+        >
           
           {/* Header */}
           <div className="p-3.5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
@@ -579,6 +589,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                     onClick={() => {
                       setActivePartnerNrp(member.nrp);
                       setSelectedNewChatNrp(member.nrp);
+                      setMobileView('chat');
                       if (showDirectoryPicker) {
                         setShowDirectoryPicker(false);
                         setSearchQuery('');
@@ -656,7 +667,11 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
         {/* ============================================================ */}
         {/* RIGHT COLUMN: ACTIVE CHAT CANVAS (md:col-span-7 lg:col-span-8)*/}
         {/* ============================================================ */}
-        <div className="md:col-span-7 lg:col-span-8 flex flex-col h-full overflow-hidden bg-white">
+        <div
+          className={`${
+            mobileView === 'chat' && activePartner ? 'flex' : 'hidden md:flex'
+          } md:col-span-7 lg:col-span-8 flex-col h-full overflow-hidden bg-white`}
+        >
           {!activePartner ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-[#f8fafc]">
               <div className="w-16 h-16 rounded-full bg-red-100 text-red-900 flex items-center justify-center shadow-xs">
@@ -679,13 +694,21 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
           ) : (
             <>
               {/* Top Bar of Active Conversation */}
-              <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white z-10 flex-shrink-0">
-                <div className="flex items-center gap-3 min-w-0">
+              <div className="p-3 sm:p-3.5 border-b border-slate-200 flex items-center justify-between gap-2 bg-white z-10 flex-shrink-0">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setMobileView('list')}
+                    className="md:hidden px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs shrink-0"
+                    title="Kembali ke Daftar Pesan"
+                  >
+                    &larr;
+                  </button>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={getAvatarUrl(activePartner.fotoUrl)}
                     alt={activePartner.namaLengkap}
-                    className="w-10 h-10 rounded-full object-cover border border-slate-200 cursor-pointer flex-shrink-0"
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover border border-slate-200 cursor-pointer flex-shrink-0"
                     onClick={() => onSelectMember && onSelectMember(activePartner)}
                   />
                   <div className="min-w-0">
