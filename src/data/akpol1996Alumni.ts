@@ -126,7 +126,7 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
   { no: 108, nama: 'Singgih Rachmanto, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Kabidkeu Polda Jawa Timur', satker: 'Bidkeu Polda Jatim', polda: 'POLDA JAWA TIMUR', tipeSatker: 'POLDA' },
   { no: 109, nama: 'Bramono Purnomo Nugroho, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Penata Kebijakan Kapolri Madya Tk. III Sahli Kapolri', satker: 'Sahli Kapolri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 110, nama: 'Dwi Yanto Nugroho, S.I.K., M.Han.', pangkat: 'Kombes Pol', jabatan: 'Dansat Brimob Polda Jawa Timur', satker: 'Satbrimob Polda Jatim', polda: 'POLDA JAWA TIMUR', tipeSatker: 'POLDA' },
-  { no: 111, nama: 'Suroso, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Kasubdit 4 Renakta Ditreskrimum Polda Kaltim', satker: 'Ditreskrimum Polda Kaltim', polda: 'POLDA KALIMANTAN TIMUR', tipeSatker: 'POLDA' },
+  { no: 111, nama: 'Suroso, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Auditor Kepolisian Madya Tk. III Itwasda Polda Kaltim', satker: 'Itwasda Polda Kaltim', polda: 'POLDA KALIMANTAN TIMUR', tipeSatker: 'POLDA', statusKedinasan: 'ALMARHUM' },
   { no: 112, nama: 'Brury Soekotjo Adhyakso Putro, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Teknisi KBR Madya Tk. I Korbrimob Polri', satker: 'Korbrimob Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 113, nama: 'Guno Pitoyo, S.I.K., M.H.', pangkat: 'Kombes Pol', jabatan: 'Kabid Rikwastu Puslitbang Polri', satker: 'Puslitbang Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 114, nama: 'Joko Sadono, S.H., S.I.K., M.H., M.Han.', pangkat: 'Kombes Pol', jabatan: 'Kasubdit Patroli Air Ditpolair Korpolairud Baharkam Polri', satker: 'Korpolairud Baharkam Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },

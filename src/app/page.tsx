@@ -35,7 +35,7 @@ import {
   isSuperadminAccount,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v16';
+const STORAGE_VERSION = 'ws96_akpol96_real_v17';
 
 export default function Home() {
   const router = useRouter();
