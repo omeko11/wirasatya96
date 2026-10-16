@@ -1185,12 +1185,18 @@ export default function Home() {
         onSuccess={fetchPendingVerificationCount}
       />
 
-      {/* LinkedIn Floating Messenger Dock at Bottom Right */}
-      <LinkedInChatDock 
-        members={members} 
-        currentUserName={currentUser.nama} 
-        currentUserNrp={currentUser.nrp} 
-      />
+      {/* Floating Messenger Launcher & Pop-up Module at Bottom Right */}
+      {activeTab !== 'pesan' && (
+        <LinkedInChatDock
+          members={members}
+          currentUserName={currentUser.nama}
+          currentUserNrp={currentUser.nrp}
+          onOpenFullMessaging={() => {
+            setViewingMember(null);
+            setActiveTab('pesan');
+          }}
+        />
+      )}
     </div>
   );
 }
