@@ -392,7 +392,9 @@ export type FungsiPolri =
   | 'KEU'
   | 'DOKKES'
   | 'LITBANG'
+  | 'SEJARAH'
   | 'SETUM'
+  | 'YANMA'
   | 'SPRIPIM'
   | 'KEWILAYAHAN'
   | 'LUAR_STRUKTUR';

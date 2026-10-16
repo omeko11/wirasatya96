@@ -84,7 +84,9 @@ const DAFTAR_FUNGSI_POLRI: {
   { key: 'KEU', label: 'Keu', badgeBg: 'bg-emerald-50 text-emerald-900 border-emerald-200' },
   { key: 'DOKKES', label: 'Dokkes', badgeBg: 'bg-pink-50 text-pink-800 border-pink-200' },
   { key: 'LITBANG', label: 'Litbang', badgeBg: 'bg-amber-50 text-amber-900 border-amber-200' },
+  { key: 'SEJARAH', label: 'Sejarah', badgeBg: 'bg-orange-50 text-orange-900 border-orange-200' },
   { key: 'SETUM', label: 'Setum', badgeBg: 'bg-stone-100 text-stone-800 border-stone-300' },
+  { key: 'YANMA', label: 'Yanma', badgeBg: 'bg-slate-100 text-slate-800 border-slate-300' },
   { key: 'SPRIPIM', label: 'Spripim', badgeBg: 'bg-yellow-50 text-yellow-900 border-yellow-300' },
   { key: 'KEWILAYAHAN', label: 'Kewilayahan', badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   { key: 'LUAR_STRUKTUR', label: 'Luar Struktur', badgeBg: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
@@ -93,15 +95,16 @@ const DAFTAR_FUNGSI_POLRI: {
 const VALID_FUNGSI_KEYS = new Set<string>(DAFTAR_FUNGSI_POLRI.map((f) => f.key));
 
 function inferFungsiPolri(jabatan: string, satker: string, polda: string): FungsiPolri {
-  const t = `${jabatan} ${satker} ${polda}`.toUpperCase();
+  const cleanJab = (jabatan || '').replace(/\(Eks[^)]*\)/gi, '');
+  const t = `${cleanJab} ${satker} ${polda}`.toUpperCase();
   if (
     t.includes('LUAR STRUKTUR') ||
     t.includes('BNN') ||
     t.includes('KPK') ||
     t.includes('BNPT') ||
     t.includes('BAKAMLA') ||
-    t.includes('BIN ') ||
     t.includes('BADAN INTELIJEN NEGARA') ||
+    t.includes('BIN RI') ||
     t.includes('KEMENTERIAN') ||
     t.includes('KEMEN') ||
     t.includes('KOMDIGI') ||
@@ -110,7 +113,7 @@ function inferFungsiPolri(jabatan: string, satker: string, polda: string): Fungs
     t.includes('DPD RI') ||
     t.includes('DPR RI') ||
     t.includes('MPR RI') ||
-    t.includes('LEMHANNAS') ||
+    t.includes('LEMHANNAS RI') ||
     t.includes('WANTANNAS') ||
     t.includes('BSSN') ||
     t.includes('PPATK') ||
@@ -136,8 +139,10 @@ function inferFungsiPolri(jabatan: string, satker: string, polda: string): Fungs
   if (t.includes('KEU') || t.includes('PUSKEU') || t.includes('BIDKEU')) return 'KEU';
   if (t.includes('DOKKES') || t.includes('PUSDOKKES') || t.includes('BIDDOKKES') || t.includes('RS BHAYANGKARA') || t.includes('KESEHATAN')) return 'DOKKES';
   if (t.includes('LITBANG') || t.includes('PUSLITBANG')) return 'LITBANG';
-  if (t.includes('SETUM') || t.includes('PUSJARAH')) return 'SETUM';
-  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('YANMA') || t.includes('AJUDAN')) return 'SPRIPIM';
+  if (t.includes('PUSJARAH') || t.includes('SEJARAH')) return 'SEJARAH';
+  if (t.includes('SETUM') || t.includes('KASETUM')) return 'SETUM';
+  if (/\bYANMA\b/.test(t) || t.includes('KAYANMA')) return 'YANMA';
+  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('KORSPRIPIM') || t.includes('SESPRI') || t.includes('KASPRIPIM') || t.includes('AJUDAN')) return 'SPRIPIM';
   if (t.includes('SLOG') || t.includes('ROLOG') || t.includes('SARPRAS') || t.includes('FASKON') || t.includes('BEKUM') || t.includes('ADA BARANG')) return 'SLOG';
   if (t.includes('BRIMOB') || t.includes('GEGANA') || t.includes('PELOPOR') || t.includes('PASBRIMOB')) return 'BRIMOB';
   if (t.includes('LANTAS') || t.includes('KORLANTAS') || t.includes('PJR') || t.includes('REGIDENT') || t.includes('GAKKUM') || t.includes('KAMSEL')) return 'LANTAS';

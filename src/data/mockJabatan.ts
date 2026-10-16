@@ -2,15 +2,16 @@ import { RiwayatJabatanLeting, FungsiPolri } from '@/types';
 import { RAW_AKPOL_1996_ALUMNI } from './akpol1996Alumni';
 
 export function inferFungsiPolri(jabatan: string, satker = '', polda = ''): FungsiPolri {
-  const t = `${jabatan} ${satker} ${polda}`.toUpperCase();
+  const cleanJab = (jabatan || '').replace(/\(Eks[^)]*\)/gi, '');
+  const t = `${cleanJab} ${satker} ${polda}`.toUpperCase();
   if (
     t.includes('LUAR STRUKTUR') ||
     t.includes('BNN') ||
     t.includes('KPK') ||
     t.includes('BNPT') ||
     t.includes('BAKAMLA') ||
-    t.includes('BIN ') ||
     t.includes('BADAN INTELIJEN NEGARA') ||
+    t.includes('BIN RI') ||
     t.includes('KEMENTERIAN') ||
     t.includes('KEMEN') ||
     t.includes('KOMDIGI') ||
@@ -19,7 +20,7 @@ export function inferFungsiPolri(jabatan: string, satker = '', polda = ''): Fung
     t.includes('DPD RI') ||
     t.includes('DPR RI') ||
     t.includes('MPR RI') ||
-    t.includes('LEMHANNAS') ||
+    t.includes('LEMHANNAS RI') ||
     t.includes('WANTANNAS') ||
     t.includes('BSSN') ||
     t.includes('PPATK') ||
@@ -45,8 +46,10 @@ export function inferFungsiPolri(jabatan: string, satker = '', polda = ''): Fung
   if (t.includes('KEU') || t.includes('PUSKEU') || t.includes('BIDKEU')) return 'KEU';
   if (t.includes('DOKKES') || t.includes('PUSDOKKES') || t.includes('BIDDOKKES') || t.includes('RS BHAYANGKARA') || t.includes('KESEHATAN')) return 'DOKKES';
   if (t.includes('LITBANG') || t.includes('PUSLITBANG')) return 'LITBANG';
-  if (t.includes('SETUM') || t.includes('PUSJARAH')) return 'SETUM';
-  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('YANMA') || t.includes('AJUDAN')) return 'SPRIPIM';
+  if (t.includes('PUSJARAH') || t.includes('SEJARAH')) return 'SEJARAH';
+  if (t.includes('SETUM') || t.includes('KASETUM')) return 'SETUM';
+  if (/\bYANMA\b/.test(t) || t.includes('KAYANMA')) return 'YANMA';
+  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('KORSPRIPIM') || t.includes('SESPRI') || t.includes('KASPRIPIM') || t.includes('AJUDAN')) return 'SPRIPIM';
   if (t.includes('SLOG') || t.includes('ROLOG') || t.includes('SARPRAS') || t.includes('FASKON') || t.includes('BEKUM') || t.includes('ADA BARANG')) return 'SLOG';
   if (t.includes('BRIMOB') || t.includes('GEGANA') || t.includes('PELOPOR') || t.includes('PASBRIMOB')) return 'BRIMOB';
   if (t.includes('LANTAS') || t.includes('KORLANTAS') || t.includes('PJR') || t.includes('REGIDENT') || t.includes('GAKKUM') || t.includes('KAMSEL')) return 'LANTAS';
