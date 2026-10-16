@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { AuthUser } from '@/types';
 import { getAvatarUrl } from '@/lib/avatarUtils';
+import { SecuritySettingsPanel } from '@/components/SecuritySettingsModal';
 import { 
   User, 
   Lock, 
@@ -337,124 +338,10 @@ export const LinkedInSettingsPage: React.FC<LinkedInSettingsPageProps> = ({
           {/* ========================================================== */}
           {activeSection === 'security' && (
             <div className="space-y-4 animate-fadeIn">
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900">Keamanan Akun</h3>
-                    <p className="text-[11px] text-slate-500">
-                      Autentikasi, Passkey Biometrik &amp; 2FA
-                    </p>
-                  </div>
-                  <Shield className="w-5 h-5 text-red-800" />
-                </div>
-
-                <div className="divide-y divide-slate-100 text-xs">
-                  {/* Email */}
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Alamat email terdaftar</span>
-                      </div>
-                      <div className="text-slate-500 text-[11px] font-mono mt-0.5">
-                        {currentUser.email || 'Belum diatur (Perbarui di Data Diri)'}
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" />
-                      Terverifikasi
-                    </span>
-                  </div>
-
-                  {/* Phone */}
-                  <div 
-                    onClick={() => onNavigateToTab && onNavigateToTab('form')}
-                    className="py-3 flex items-center justify-between hover:bg-slate-50 px-1 rounded cursor-pointer"
-                  >
-                    <div>
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Smartphone className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Nomor WhatsApp / OTP</span>
-                      </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">Perbarui nomor kontak di Data Diri</div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
-                  </div>
-
-                  {/* Password */}
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <KeyRound className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Ubah kata sandi</span>
-                      </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">Minimal 6 karakter</div>
-                    </div>
-                    <button
-                      onClick={() => setActivePasswordModal(true)}
-                      className="px-3 py-1 rounded-lg border border-slate-300 font-bold text-slate-700 hover:bg-slate-50"
-                    >
-                      Ubah
-                    </button>
-                  </div>
-
-                  {/* Passkey / FIDO2 */}
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                        <Fingerprint className="w-4 h-4 text-red-800" />
-                        <span>Passkey / FIDO2 Biometrik</span>
-                      </div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">
-                        Login cepat dengan sidik jari atau pengenalan wajah
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleTogglePasskey}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                        isPasskeyActive
-                          ? 'bg-red-800 text-white'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {isPasskeyActive ? 'Aktif' : 'Nonaktif'}
-                    </button>
-                  </div>
-
-                  {/* Where you are logged in */}
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800">Sesi aktif</div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">
-                        Browser Web &bull; NRP {currentUser.nrp}
-                      </div>
-                    </div>
-                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                      Sesi Ini
-                    </span>
-                  </div>
-
-                  {/* Two factor authentication */}
-                  <div className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-800">Autentikasi dua faktor (2FA)</div>
-                      <div className="text-slate-500 text-[11px] mt-0.5">
-                        Proteksi OTP tambahan saat login
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleToggle2FA}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
-                        isTwoFactorActive
-                          ? 'bg-red-800 text-white'
-                          : 'bg-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {isTwoFactorActive ? 'Aktif (2FA ON)' : 'Nonaktif (Default)'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <SecuritySettingsPanel
+                currentUser={currentUser}
+                onOpenFullWizard={() => onNavigateToTab && onNavigateToTab('form')}
+              />
             </div>
           )}
 

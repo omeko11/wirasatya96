@@ -19,6 +19,7 @@ import {
   DEFAULT_COVER_URL,
 } from '@/lib/avatarUtils';
 import { MetaVerifiedBadge, resolveRoleForBadge } from '@/components/MetaVerifiedBadge';
+import { SecuritySettingsPanel } from '@/components/SecuritySettingsModal';
 import {
   Shield,
   MapPin,
@@ -119,6 +120,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
   const [showCoverMenu, setShowCoverMenu] = useState(false);
   const [showAvatarMenu, setShowAvatarMenu] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [draftBio, setDraftBio] = useState(member.bio || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -781,15 +783,28 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   )}
                 </div>
 
-                {canEdit && (
-                  <button
-                    onClick={() => onEditProfile && onEditProfile(localMember)}
-                    className="p-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
-                    title="Edit Profil"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {isSelf && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSecurityModal(true)}
+                      className="px-3.5 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                      title="Pengaturan Profil & Keamanan (2FA, PIN, TOTP, Passkey)"
+                    >
+                      <Shield className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Pengaturan &amp; Keamanan</span>
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      onClick={() => onEditProfile && onEditProfile(localMember)}
+                      className="p-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                      title="Edit Profil"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Name & Headline */}
@@ -889,6 +904,17 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   <span className="text-xs text-slate-500 font-medium px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200">
                     Mode Lihat
                   </span>
+                )}
+
+                {isSelf && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSecurityModal(true)}
+                    className="px-4 py-2 rounded-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                  >
+                    <Shield className="w-4 h-4 text-blue-600" />
+                    <span>Keamanan &amp; 2FA</span>
+                  </button>
                 )}
 
                 {localMember.kontakAdc && (
@@ -1802,6 +1828,21 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL PENGATURAN PROFIL & KEAMANAN KEDINASAN (2FA & PASSKEY) */}
+      {/* ============================================================ */}
+      {showSecurityModal && (
+        <SecuritySettingsPanel
+          currentUser={currentUser}
+          isModal={true}
+          onClose={() => setShowSecurityModal(false)}
+          onOpenFullWizard={() => {
+            setShowSecurityModal(false);
+            onEditProfile?.(localMember);
+          }}
+        />
       )}
     </div>
   );

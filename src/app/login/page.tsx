@@ -8,6 +8,11 @@ import {
   SatkerBerjenjangModal,
   SatkerSelectionResult,
 } from '@/components/SatkerBerjenjangModal';
+import {
+  getUserSecurityConfig,
+  getActive2FAMethodsCount,
+  UserSecurityConfig,
+} from '@/components/SecuritySettingsModal';
 import { 
   Eye, 
   EyeOff, 
@@ -108,6 +113,8 @@ export default function LoginPage() {
 
   // Optional 2FA Challenge Modal (only shown if user enabled 2FA in their settings)
   const [pending2FAUser, setPending2FAUser] = useState<AuthUser | null>(null);
+  const [pending2FAConfig, setPending2FAConfig] = useState<UserSecurityConfig | null>(null);
+  const [selected2FAMethod, setSelected2FAMethod] = useState<MfaMethod>('PIN');
   const [otpInput, setOtpInput] = useState('');
 
   // Register form inputs (with SatkerBerjenjangModal & Email Dinas + Email Sekunder)
@@ -339,18 +346,31 @@ export default function LoginPage() {
           : data.user;
 
         // Check if this user has self-enabled 2FA in their settings
-        let is2FAEnabled = Boolean(mergedUser.mfaEnabled);
+        const secCfg = getUserSecurityConfig(mergedUser.nrp, mergedUser);
+        const activeCount = getActive2FAMethodsCount(secCfg);
+        let is2FAEnabled = activeCount > 0 || Boolean(mergedUser.mfaEnabled);
         try {
           const local2FA = localStorage.getItem(`ws96_2fa_${mergedUser.nrp}`);
           if (local2FA !== null) {
-            is2FAEnabled = local2FA === 'true';
+            is2FAEnabled = local2FA === 'true' || activeCount > 0;
           }
         } catch {
           // ignore
         }
 
         if (is2FAEnabled) {
+          const defaultMethod: MfaMethod = secCfg.pinEnabled
+            ? 'PIN'
+            : secCfg.passkeyEnabled
+            ? 'BIOMETRIC'
+            : secCfg.totpEnabled
+            ? 'TOTP'
+            : secCfg.emailOtpEnabled
+            ? 'EMAIL_OTP'
+            : mergedUser.mfaMethod || 'PIN';
           setPending2FAUser(mergedUser);
+          setPending2FAConfig(secCfg);
+          setSelected2FAMethod(defaultMethod);
           setOtpInput('');
         } else {
           handleLoginSuccess(mergedUser, 'PIN');
@@ -396,13 +416,24 @@ export default function LoginPage() {
   const handleVerify2FASubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!pending2FAUser) return;
-    if (otpInput.trim().length < 4) {
-      setErrorMessage('Masukkan kode OTP / PIN 2FA minimal 4 digit.');
-      return;
+    if (selected2FAMethod !== 'BIOMETRIC') {
+      if (otpInput.trim().length < 4) {
+        setErrorMessage('Masukkan kode verifikasi 6 digit terlebih dahulu.');
+        return;
+      }
+      if (
+        selected2FAMethod === 'PIN' &&
+        pending2FAConfig?.pinCode &&
+        otpInput.trim() !== pending2FAConfig.pinCode
+      ) {
+        setErrorMessage('PIN Keamanan 6-digit tidak sesuai.');
+        return;
+      }
     }
     const userToLogin = pending2FAUser;
     setPending2FAUser(null);
-    handleLoginSuccess(userToLogin, userToLogin.mfaMethod || 'EMAIL_OTP');
+    setPending2FAConfig(null);
+    handleLoginSuccess(userToLogin, selected2FAMethod);
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -740,34 +771,126 @@ export default function LoginPage() {
                 <Lock className="w-6 h-6" />
               </div>
               <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-900 text-[10px] font-extrabold uppercase">
-                Verifikasi 2FA Aktif
+                Otentikasi Dua Langkah (2FA)
               </span>
               <h3 className="font-extrabold text-lg text-slate-900">
-                Autentikasi Dua Faktor (2FA)
+                Verifikasi Keamanan Mandiri
               </h3>
               <p className="text-xs text-slate-600">
-                Akun <strong>{pending2FAUser.nama}</strong> mengaktifkan proteksi 2FA tambahan. Masukkan kode OTP / Authenticator Anda (contoh simulasi: <strong>199696</strong>).
+                Akun <strong>{pending2FAUser.nama}</strong> mengaktifkan proteksi 2FA. Pilih metode aktif Anda untuk melanjutkan login.
               </p>
             </div>
 
-            <form onSubmit={handleVerify2FASubmit} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Kode Verifikasi 2FA / OTP
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={otpInput}
-                  onChange={(e) => setOtpInput(e.target.value)}
-                  placeholder="Masukkan kode 6 digit (contoh: 199696)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-center font-mono text-sm font-extrabold tracking-widest focus:outline-none focus:ring-2 focus:ring-red-800"
-                />
+            {/* Active 2FA Method Selector Pills */}
+            {pending2FAConfig && (
+              <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-xl text-[11px]">
+                {pending2FAConfig.pinEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected2FAMethod('PIN');
+                      setOtpInput('');
+                    }}
+                    className={`py-2 px-2.5 rounded-lg font-bold transition-all ${
+                      selected2FAMethod === 'PIN'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    # PIN Keamanan
+                  </button>
+                )}
+                {pending2FAConfig.emailOtpEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected2FAMethod('EMAIL_OTP');
+                      setOtpInput('199696');
+                    }}
+                    className={`py-2 px-2.5 rounded-lg font-bold transition-all ${
+                      selected2FAMethod === 'EMAIL_OTP'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    ✉️ OTP Email
+                  </button>
+                )}
+                {pending2FAConfig.totpEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected2FAMethod('TOTP');
+                      setOtpInput('');
+                    }}
+                    className={`py-2 px-2.5 rounded-lg font-bold transition-all ${
+                      selected2FAMethod === 'TOTP'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🛡️ Google Auth (TOTP)
+                  </button>
+                )}
+                {pending2FAConfig.passkeyEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected2FAMethod('BIOMETRIC');
+                      setOtpInput('PASSKEY');
+                    }}
+                    className={`py-2 px-2.5 rounded-lg font-bold transition-all ${
+                      selected2FAMethod === 'BIOMETRIC'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    🔑 Biometrik Passkey
+                  </button>
+                )}
               </div>
+            )}
+
+            <form onSubmit={handleVerify2FASubmit} className="space-y-3">
+              {selected2FAMethod === 'BIOMETRIC' ? (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center space-y-2">
+                  <Fingerprint className="w-8 h-8 text-emerald-600 mx-auto" />
+                  <div className="text-xs font-extrabold text-emerald-950">
+                    Gawai Biometrik Terpercaya Terdeteksi
+                  </div>
+                  <p className="text-[11px] text-emerald-800">
+                    Klik tombol di bawah untuk mengotorisasi login menggunakan Passkey perangkat ini.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {selected2FAMethod === 'PIN'
+                      ? 'Masukkan 6-Digit PIN Keamanan'
+                      : selected2FAMethod === 'TOTP'
+                      ? 'Masukkan 6-Digit Kode Google/MS Authenticator'
+                      : `Masukkan 6-Digit OTP Email (${pending2FAUser.email || `${pending2FAUser.nrp}@polri.go.id`})`}
+                  </label>
+                  <input
+                    type={selected2FAMethod === 'PIN' ? 'password' : 'text'}
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    value={otpInput}
+                    onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Masukkan 6 digit angka"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-center font-mono text-sm font-extrabold tracking-widest focus:outline-none focus:ring-2 focus:ring-red-800"
+                  />
+                </div>
+              )}
+
               <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => setPending2FAUser(null)}
+                  onClick={() => {
+                    setPending2FAUser(null);
+                    setPending2FAConfig(null);
+                  }}
                   className="w-1/3 py-2.5 px-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-100"
                 >
                   Batal
@@ -776,7 +899,9 @@ export default function LoginPage() {
                   type="submit"
                   className="flex-1 py-2.5 px-4 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs shadow-md"
                 >
-                  Verifikasi &amp; Masuk
+                  {selected2FAMethod === 'BIOMETRIC'
+                    ? 'Verifikasi Biometrik & Masuk'
+                    : 'Verifikasi & Masuk'}
                 </button>
               </div>
             </form>
