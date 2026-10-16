@@ -459,47 +459,129 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
           </div>
 
-          {/* Statistik Tour of Duty (Dynamic from Real Data) */}
+          {/* Statistik Tour of Duty (Dynamic from Real Data & Synced with 7 Fungsi Filter) */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <h4 className="text-xs font-bold text-slate-900 flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
-              <span className="flex items-center gap-1.5 truncate">
+            <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
                 <Building2 className="w-4 h-4 text-red-800 flex-shrink-0" />
                 <span className="sm:hidden">TOD</span>
                 <span className="hidden sm:inline">Tour of Duty</span>
-              </span>
-              <span
-                title="Statistik penempatan dan riwayat jabatan personel"
-                className="text-slate-400 hover:text-slate-600 cursor-help flex-shrink-0"
-              >
-                <Info className="w-3.5 h-3.5" />
-              </span>
-            </h4>
+              </h4>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {selectedFungsi !== 'SEMUA' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFungsi('SEMUA')}
+                    className="text-[10px] font-bold text-red-700 hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+                <span
+                  title="Statistik penempatan dan riwayat jabatan personel (Klik untuk memfilter)"
+                  className="text-slate-400 hover:text-slate-600 cursor-help"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
-                <span className="text-slate-600">Total Tercatat:</span>
-                <span className="font-bold text-slate-900">{jabatanList.length} Jabatan</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-red-50">
-                <span className="text-red-900 font-medium">Bareskrim &amp; Reserse:</span>
-                <span className="font-bold text-red-900">{jabatanList.filter(j => j.fungsiPolri === 'RESERSE').length} Jabatan</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50">
-                <span className="text-amber-900 font-medium">Intelijen Keamanan:</span>
-                <span className="font-bold text-amber-900">{jabatanList.filter(j => j.fungsiPolri === 'INTELKAM').length} Jabatan</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-blue-50">
-                <span className="text-blue-900 font-medium">Korlantas / Lalu Lintas:</span>
-                <span className="font-bold text-blue-900">{jabatanList.filter(j => j.fungsiPolri === 'LANTAS').length} Jabatan</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50">
-                <span className="text-emerald-900 font-medium">Kapolres &amp; Kewilayahan:</span>
-                <span className="font-bold text-emerald-900">{jabatanList.filter(j => j.fungsiPolri === 'KEWILAYAHAN').length} Jabatan</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50">
-                <span className="text-purple-900 font-medium">Lemdiklat &amp; Sespim:</span>
-                <span className="font-bold text-purple-900">{jabatanList.filter(j => j.fungsiPolri === 'LEMDIKLAT').length} Jabatan</span>
-              </div>
+            <div className="space-y-1.5 text-xs">
+              {[
+                {
+                  key: 'SEMUA',
+                  label: 'Total Tercatat:',
+                  count: jabatanList.length,
+                  baseCls: 'bg-slate-50 hover:bg-slate-100 text-slate-700',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-slate-600',
+                  countCls: 'text-slate-900',
+                },
+                {
+                  key: 'RESERSE',
+                  label: '🔍 Bareskrim & Reserse:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'RESERSE').length,
+                  baseCls: 'bg-red-50 hover:bg-red-100/80 text-red-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-red-900 font-medium',
+                  countCls: 'text-red-900',
+                },
+                {
+                  key: 'INTELKAM',
+                  label: '🛡️ Intelijen Keamanan:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'INTELKAM').length,
+                  baseCls: 'bg-amber-50 hover:bg-amber-100/80 text-amber-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-amber-900 font-medium',
+                  countCls: 'text-amber-900',
+                },
+                {
+                  key: 'LANTAS',
+                  label: '🚦 Korlantas / Lalu Lintas:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'LANTAS').length,
+                  baseCls: 'bg-blue-50 hover:bg-blue-100/80 text-blue-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-blue-900 font-medium',
+                  countCls: 'text-blue-900',
+                },
+                {
+                  key: 'BRIMOB_SABHARA',
+                  label: '⚡ Brimob & Sabhara:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'BRIMOB_SABHARA').length,
+                  baseCls: 'bg-slate-100 hover:bg-slate-200/80 text-slate-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-slate-800 font-medium',
+                  countCls: 'text-slate-900',
+                },
+                {
+                  key: 'KEWILAYAHAN',
+                  label: '🏛️ Kapolres & Kewilayahan:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'KEWILAYAHAN').length,
+                  baseCls: 'bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-emerald-900 font-medium',
+                  countCls: 'text-emerald-900',
+                },
+                {
+                  key: 'LEMDIKLAT',
+                  label: '🎓 Lemdiklat & Sespim:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'LEMDIKLAT').length,
+                  baseCls: 'bg-purple-50 hover:bg-purple-100/80 text-purple-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-purple-900 font-medium',
+                  countCls: 'text-purple-900',
+                },
+                {
+                  key: 'LUAR_STRUKTUR',
+                  label: '🇮🇩 Luar Struktur & Humas:',
+                  count: jabatanList.filter((j) => j.fungsiPolri === 'LUAR_STRUKTUR').length,
+                  baseCls: 'bg-indigo-50 hover:bg-indigo-100/80 text-indigo-900',
+                  activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
+                  textCls: 'text-indigo-900 font-medium',
+                  countCls: 'text-indigo-900',
+                },
+              ].map((row) => {
+                const isSelected = selectedFungsi === row.key;
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    onClick={() =>
+                      setSelectedFungsi(isSelected && row.key !== 'SEMUA' ? 'SEMUA' : row.key)
+                    }
+                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all cursor-pointer ${
+                      isSelected ? row.activeCls : row.baseCls
+                    }`}
+                  >
+                    <span className={`truncate pr-2 ${isSelected ? 'text-white font-bold' : row.textCls}`}>
+                      {row.label}
+                    </span>
+                    <span className={`font-bold flex-shrink-0 ${isSelected ? 'text-white' : row.countCls}`}>
+                      {row.count} Jabatan
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
