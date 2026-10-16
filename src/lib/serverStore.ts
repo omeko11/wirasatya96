@@ -13,6 +13,7 @@ import {
   AssetPortfolioItem,
   FeedPost,
   PostComment,
+  ReactionType,
   UserAuditLog,
   UserRole,
   StatusKedinasan,
@@ -26,6 +27,7 @@ import {
   AKPOL_1996_MEMBERS,
   AKPOL_1996_REGISTRATIONS,
   AKPOL_1996_USERS,
+  PURGED_NON_1996_BASE_NAMES,
 } from '@/data/akpol1996Alumni';
 import { calculateRetirement58, stripRankFromName } from '@/lib/avatarUtils';
 
@@ -80,10 +82,12 @@ export interface LocalDatabaseSchema {
   registrations: PendingRegistration[];
   posts: FeedPost[];
   deletedNrps?: string[];
-  auditLogs?: UserAuditLog[];
+  auditLogs?: string[] | UserAuditLog[];
 }
 
-type GlobalStore = LocalDatabaseSchema;
+type GlobalStore = Omit<LocalDatabaseSchema, 'auditLogs'> & {
+  auditLogs?: UserAuditLog[];
+};
 
 const INITIAL_MESSAGES: ChatMessage[] = [];
 
@@ -282,6 +286,10 @@ export function readDb(): GlobalStore {
       );
       const isDeletedItem = (nrp?: string, oldNrp?: string) =>
         Boolean((nrp && deletedSet.has(nrp.trim())) || (oldNrp && deletedSet.has(oldNrp.trim())));
+      const isPurgedNon1996 = (rawName?: string) => {
+        const bn = (stripRankFromName(rawName || '') || rawName || '').split(',')[0].trim().toLowerCase();
+        return Boolean(bn && PURGED_NON_1996_BASE_NAMES.has(bn));
+      };
 
       const loadedFinanceConfig: FinanceConfig = {
         ...DEFAULT_FINANCE_CONFIG,
@@ -301,11 +309,15 @@ export function readDb(): GlobalStore {
 
       const rawMembersSource =
         Array.isArray(parsed.members) && parsed.members.length >= 10 ? parsed.members : defaultStore.members;
-      const loadedMembers = rawMembersSource.filter((m) => !isDeletedItem(m.nrp, m.oldNrp));
+      const loadedMembers = rawMembersSource.filter(
+        (m) => !isDeletedItem(m.nrp, m.oldNrp) && !isPurgedNon1996(m.namaLengkap)
+      );
 
       const rawUsersSource =
         Array.isArray(parsed.users) && parsed.users.length >= 10 ? parsed.users : defaultStore.users;
-      const loadedUsers = rawUsersSource.filter((u) => !isDeletedItem(u.nrp, u.oldNrp));
+      const loadedUsers = rawUsersSource.filter(
+        (u) => !isDeletedItem(u.nrp, u.oldNrp) && !isPurgedNon1996(u.nama)
+      );
 
       const rawIuranSource = Array.isArray(parsed.iuranList)
         ? parsed.iuranList
@@ -313,13 +325,15 @@ export function readDb(): GlobalStore {
         ? parsed.iuran
         : [];
       const loadedIuran = (rawIuranSource.length >= 10 ? rawIuranSource : defaultStore.iuranList).filter(
-        (i) => !isDeletedItem(i.nrp)
+        (i) => !isDeletedItem(i.nrp) && !isPurgedNon1996(i.namaLengkap)
       );
       const rawRegsSource =
         Array.isArray(parsed.registrations) && parsed.registrations.length >= 10
           ? parsed.registrations
           : defaultStore.registrations;
-      const loadedRegs = rawRegsSource.filter((r) => !isDeletedItem(r.nrp));
+      const loadedRegs = rawRegsSource.filter(
+        (r) => !isDeletedItem(r.nrp) && !isPurgedNon1996(r.nama)
+      );
 
       // Build reference lookup for all 275 AKPOL 1996 alumni (by nrp, oldNrp, id, and stripped base name)
       const akpolRefMap = new Map<string, AuthUser>();
@@ -2839,7 +2853,12 @@ export const serverStore = {
   // ==============================================================
   getPosts: () => globalStore.posts || [],
 
-  addPost: (postData: Omit<FeedPost, 'id' | 'createdAt' | 'likesCount' | 'repostsCount' | 'comments'>): FeedPost => {
+  addPost: (
+    postData: Omit<FeedPost, 'id' | 'createdAt' | 'likesCount' | 'repostsCount' | 'comments'> & {
+      id?: string;
+      createdAt?: string;
+    }
+  ): FeedPost => {
     if (!globalStore.posts) globalStore.posts = [];
     const nowStr = new Date().toLocaleDateString('id-ID', {
       day: '2-digit',
@@ -2848,48 +2867,317 @@ export const serverStore = {
       hour: '2-digit',
       minute: '2-digit',
     });
+    const postId = postData.id || 'post-' + Date.now();
+    const existingIdx = globalStore.posts.findIndex((p) => p.id === postId);
     const newPost: FeedPost = {
       ...postData,
-      id: 'post-' + Date.now(),
-      createdAt: nowStr,
+      id: postId,
+      createdAt: postData.createdAt && postData.createdAt !== 'Baru saja' ? postData.createdAt : nowStr,
       likesCount: 0,
       isLiked: false,
+      likedBy: [],
+      reactionsByNrp: {},
       repostsCount: 0,
       isReposted: false,
+      repostedBy: [],
       impressionsCount: 1,
       comments: [],
     };
-    globalStore.posts.unshift(newPost);
+    if (existingIdx >= 0) {
+      globalStore.posts[existingIdx] = { ...globalStore.posts[existingIdx], ...newPost };
+    } else {
+      globalStore.posts.unshift(newPost);
+    }
     persistLocalStore(globalStore);
     return newPost;
   },
 
-  toggleLikePost: (postId: string) => {
+  editPost: (
+    postId: string,
+    actorNrp: string,
+    actorRole: string,
+    updates: {
+      content?: string;
+      imageUrl?: string | null;
+      category?: FeedPost['category'];
+      pinned?: boolean;
+      tags?: string[];
+    }
+  ): FeedPost | null => {
     if (!globalStore.posts) return null;
     const p = globalStore.posts.find((x) => x.id === postId);
     if (!p) return null;
-    p.isLiked = !p.isLiked;
-    p.likesCount = p.isLiked ? (p.likesCount || 0) + 1 : Math.max(0, (p.likesCount || 0) - 1);
+    const isAdmin =
+      actorRole === 'SUPERADMIN' ||
+      actorNrp === '98010710' ||
+      actorRole === 'SEKRETARIAT' ||
+      actorRole === 'KETUA';
+    if (p.authorNrp !== actorNrp && !isAdmin) return null;
+
+    if (typeof updates.content === 'string') {
+      p.content = updates.content.trim();
+      const hashtagRegex = /#[a-zA-Z0-9_]+/g;
+      const extractedTags = p.content.match(hashtagRegex);
+      if (extractedTags && extractedTags.length > 0) {
+        p.tags = Array.from(new Set(extractedTags));
+      }
+    }
+    if (updates.imageUrl !== undefined) {
+      p.imageUrl = updates.imageUrl || undefined;
+    }
+    if (updates.category) {
+      p.category = updates.category;
+    }
+    if (typeof updates.pinned === 'boolean' && isAdmin) {
+      p.pinned = updates.pinned;
+    }
+    p.isEdited = true;
+    p.updatedAt = new Date().toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     persistLocalStore(globalStore);
     return p;
   },
 
-  toggleRepost: (postId: string) => {
+  deletePost: (postId: string, actorNrp: string, actorRole: string): boolean => {
+    if (!globalStore.posts) return false;
+    const idx = globalStore.posts.findIndex((x) => x.id === postId);
+    if (idx < 0) return false;
+    const target = globalStore.posts[idx];
+    const isAdmin =
+      actorRole === 'SUPERADMIN' ||
+      actorNrp === '98010710' ||
+      actorRole === 'SEKRETARIAT' ||
+      actorRole === 'KETUA';
+    if (target.authorNrp !== actorNrp && !isAdmin) return false;
+    globalStore.posts.splice(idx, 1);
+    persistLocalStore(globalStore);
+    return true;
+  },
+
+  toggleLikePost: (postId: string, actorNrp?: string, reaction?: ReactionType | null) => {
     if (!globalStore.posts) return null;
     const p = globalStore.posts.find((x) => x.id === postId);
     if (!p) return null;
-    p.isReposted = !p.isReposted;
-    p.repostsCount = p.isReposted ? (p.repostsCount || 0) + 1 : Math.max(0, (p.repostsCount || 0) - 1);
+
+    const nrp = (actorNrp || 'anon').trim();
+    if (!Array.isArray(p.likedBy)) p.likedBy = [];
+    if (!p.reactionsByNrp) p.reactionsByNrp = {};
+
+    const wasLiked = p.likedBy.includes(nrp) || (nrp === 'anon' && !!p.isLiked);
+
+    if (reaction === null) {
+      // Explicit unlike
+      if (wasLiked) {
+        p.likedBy = p.likedBy.filter((x) => x !== nrp);
+        delete p.reactionsByNrp[nrp];
+        p.likesCount = Math.max(0, (p.likesCount || 0) - 1);
+      }
+      p.isLiked = false;
+      p.userReaction = undefined;
+    } else if (reaction) {
+      // Specific reaction selected
+      if (!wasLiked) {
+        p.likedBy.push(nrp);
+        p.likesCount = (p.likesCount || 0) + 1;
+      }
+      p.reactionsByNrp[nrp] = reaction;
+      p.userReaction = reaction;
+      p.isLiked = true;
+    } else {
+      // Simple toggle
+      if (wasLiked) {
+        p.likedBy = p.likedBy.filter((x) => x !== nrp);
+        delete p.reactionsByNrp[nrp];
+        p.likesCount = Math.max(0, (p.likesCount || 0) - 1);
+        p.isLiked = false;
+        p.userReaction = undefined;
+      } else {
+        p.likedBy.push(nrp);
+        p.reactionsByNrp[nrp] = 'like';
+        p.likesCount = (p.likesCount || 0) + 1;
+        p.isLiked = true;
+        p.userReaction = 'like';
+      }
+    }
+
     persistLocalStore(globalStore);
     return p;
   },
 
-  addCommentToPost: (postId: string, comment: PostComment) => {
+  toggleRepost: (postId: string, actorNrp?: string) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p) return null;
+
+    const nrp = (actorNrp || 'anon').trim();
+    if (!Array.isArray(p.repostedBy)) p.repostedBy = [];
+    const wasReposted = p.repostedBy.includes(nrp) || (nrp === 'anon' && !!p.isReposted);
+
+    if (wasReposted) {
+      p.repostedBy = p.repostedBy.filter((x) => x !== nrp);
+      p.repostsCount = Math.max(0, (p.repostsCount || 0) - 1);
+      p.isReposted = false;
+    } else {
+      p.repostedBy.push(nrp);
+      p.repostsCount = (p.repostsCount || 0) + 1;
+      p.isReposted = true;
+    }
+    persistLocalStore(globalStore);
+    return p;
+  },
+
+  addCommentToPost: (postId: string, comment: PostComment, parentCommentId?: string) => {
     if (!globalStore.posts) return null;
     const p = globalStore.posts.find((x) => x.id === postId);
     if (!p) return null;
     if (!Array.isArray(p.comments)) p.comments = [];
-    p.comments.push(comment);
+
+    if (parentCommentId) {
+      const parent = p.comments.find((c) => c.id === parentCommentId);
+      if (parent) {
+        if (!Array.isArray(parent.replies)) parent.replies = [];
+        if (!parent.replies.some((r) => r.id === comment.id)) {
+          parent.replies.push(comment);
+        }
+        persistLocalStore(globalStore);
+        return p;
+      }
+    }
+
+    if (!p.comments.some((c) => c.id === comment.id)) {
+      p.comments.push(comment);
+    }
+    persistLocalStore(globalStore);
+    return p;
+  },
+
+  editCommentOnPost: (
+    postId: string,
+    commentId: string,
+    actorNrp: string,
+    actorRole: string,
+    content: string,
+    parentCommentId?: string
+  ) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p || !Array.isArray(p.comments)) return null;
+    const isAdmin =
+      actorRole === 'SUPERADMIN' ||
+      actorNrp === '98010710' ||
+      actorRole === 'SEKRETARIAT' ||
+      actorRole === 'KETUA';
+
+    const updateTarget = (list: PostComment[]): boolean => {
+      for (const c of list) {
+        if (c.id === commentId) {
+          if (c.authorNrp !== actorNrp && !isAdmin) return false;
+          c.content = content.trim();
+          c.isEdited = true;
+          c.updatedAt = 'Diedit';
+          return true;
+        }
+        if (Array.isArray(c.replies) && updateTarget(c.replies)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (parentCommentId) {
+      const parent = p.comments.find((c) => c.id === parentCommentId);
+      if (parent && Array.isArray(parent.replies)) {
+        updateTarget(parent.replies);
+      }
+    } else {
+      updateTarget(p.comments);
+    }
+    persistLocalStore(globalStore);
+    return p;
+  },
+
+  deleteCommentOnPost: (
+    postId: string,
+    commentId: string,
+    actorNrp: string,
+    actorRole: string,
+    parentCommentId?: string
+  ) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p || !Array.isArray(p.comments)) return null;
+    const isAdmin =
+      actorRole === 'SUPERADMIN' ||
+      actorNrp === '98010710' ||
+      actorRole === 'SEKRETARIAT' ||
+      actorRole === 'KETUA' ||
+      p.authorNrp === actorNrp;
+
+    if (parentCommentId) {
+      const parent = p.comments.find((c) => c.id === parentCommentId);
+      if (parent && Array.isArray(parent.replies)) {
+        parent.replies = parent.replies.filter(
+          (r) => !(r.id === commentId && (r.authorNrp === actorNrp || isAdmin))
+        );
+      }
+    } else {
+      p.comments = p.comments
+        .filter((c) => !(c.id === commentId && (c.authorNrp === actorNrp || isAdmin)))
+        .map((c) => ({
+          ...c,
+          replies: Array.isArray(c.replies)
+            ? c.replies.filter((r) => !(r.id === commentId && (r.authorNrp === actorNrp || isAdmin)))
+            : c.replies,
+        }));
+    }
+    persistLocalStore(globalStore);
+    return p;
+  },
+
+  toggleLikeComment: (
+    postId: string,
+    commentId: string,
+    actorNrp: string,
+    parentCommentId?: string
+  ) => {
+    if (!globalStore.posts) return null;
+    const p = globalStore.posts.find((x) => x.id === postId);
+    if (!p || !Array.isArray(p.comments)) return null;
+    const nrp = (actorNrp || 'anon').trim();
+
+    const toggleOnList = (list: PostComment[]): boolean => {
+      for (const c of list) {
+        if (c.id === commentId) {
+          if (!Array.isArray(c.likedBy)) c.likedBy = [];
+          if (c.likedBy.includes(nrp)) {
+            c.likedBy = c.likedBy.filter((x) => x !== nrp);
+            c.likesCount = Math.max(0, (c.likesCount || 1) - 1);
+          } else {
+            c.likedBy.push(nrp);
+            c.likesCount = (c.likesCount || 0) + 1;
+          }
+          return true;
+        }
+        if (Array.isArray(c.replies) && toggleOnList(c.replies)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (parentCommentId) {
+      const parent = p.comments.find((c) => c.id === parentCommentId);
+      if (parent && Array.isArray(parent.replies)) {
+        toggleOnList(parent.replies);
+      }
+    } else {
+      toggleOnList(p.comments);
+    }
     persistLocalStore(globalStore);
     return p;
   },

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, FinanceSummary, IuranAnggota, KasTransaction } from '@/types';
+import { AnggotaWiraSatya, AuthUser, FeedPost, PostComment, ReactionType, FinanceSummary, IuranAnggota, KasTransaction } from '@/types';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import {
   getAvatarUrl,
@@ -218,6 +218,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
   const [feedCategoryFilter, setFeedCategoryFilter] = useState<string>('SEMUA');
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [openCreatePostWithImage, setOpenCreatePostWithImage] = useState(false);
   const [memberOverrides, setMemberOverrides] = useState<Record<string, AnggotaWiraSatya>>({});
 
   const effectiveMembers = useMemo(
@@ -253,7 +254,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     setPosts(updated);
     if (onPostsChange) onPostsChange(updated);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+      try {
+        localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(updated));
+      } catch {
+        // Ignore storage quota overflow if base64 image is large
+      }
     }
   };
 
@@ -267,8 +272,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       createdAt: 'Baru saja',
       likesCount: 0,
       isLiked: false,
+      likedBy: [],
+      reactionsByNrp: {},
       repostsCount: 0,
       isReposted: false,
+      repostedBy: [],
       impressionsCount: 1,
       comments: [],
     };
@@ -279,7 +287,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       const res = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'CREATE', ...newPostData }),
+        body: JSON.stringify({ action: 'CREATE', id: newPost.id, ...newPostData }),
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.posts)) {
@@ -290,17 +298,75 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     }
   };
 
-  const handleLikeToggle = async (postId: string) => {
+  const handleLikeToggle = async (postId: string, reaction?: ReactionType | null) => {
+    const userNrp = currentUser.nrp;
     const updated = posts.map((p) => {
-      if (p.id === postId) {
-        const nextIsLiked = !p.isLiked;
+      if (p.id !== postId) return p;
+      const likedBy = Array.isArray(p.likedBy) ? [...p.likedBy] : p.isLiked ? [userNrp] : [];
+      const reactionsByNrp = { ...(p.reactionsByNrp || {}) };
+      const idx = likedBy.indexOf(userNrp);
+
+      if (reaction === null) {
+        if (idx !== -1) {
+          likedBy.splice(idx, 1);
+          delete reactionsByNrp[userNrp];
+          return {
+            ...p,
+            isLiked: false,
+            userReaction: null,
+            likedBy,
+            reactionsByNrp,
+            likesCount: Math.max(0, p.likesCount - 1),
+          };
+        }
+        return p;
+      }
+
+      if (reaction) {
+        reactionsByNrp[userNrp] = reaction;
+        if (idx === -1) {
+          likedBy.push(userNrp);
+          return {
+            ...p,
+            isLiked: true,
+            userReaction: reaction,
+            likedBy,
+            reactionsByNrp,
+            likesCount: p.likesCount + 1,
+          };
+        }
         return {
           ...p,
-          isLiked: nextIsLiked,
-          likesCount: nextIsLiked ? p.likesCount + 1 : Math.max(0, p.likesCount - 1),
+          isLiked: true,
+          userReaction: reaction,
+          likedBy,
+          reactionsByNrp,
         };
       }
-      return p;
+
+      if (idx !== -1) {
+        likedBy.splice(idx, 1);
+        delete reactionsByNrp[userNrp];
+        return {
+          ...p,
+          isLiked: false,
+          userReaction: null,
+          likedBy,
+          reactionsByNrp,
+          likesCount: Math.max(0, p.likesCount - 1),
+        };
+      } else {
+        likedBy.push(userNrp);
+        reactionsByNrp[userNrp] = 'like';
+        return {
+          ...p,
+          isLiked: true,
+          userReaction: 'like' as ReactionType,
+          likedBy,
+          reactionsByNrp,
+          likesCount: p.likesCount + 1,
+        };
+      }
     });
     syncPosts(updated);
 
@@ -308,7 +374,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'LIKE', postId }),
+        body: JSON.stringify({ action: 'LIKE', postId, userNrp, reaction }),
       });
     } catch {
       // ignore
@@ -316,16 +382,28 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   };
 
   const handleRepost = async (postId: string) => {
+    const userNrp = currentUser.nrp;
     const updated = posts.map((p) => {
-      if (p.id === postId) {
-        const nextIsReposted = !p.isReposted;
+      if (p.id !== postId) return p;
+      const repostedBy = Array.isArray(p.repostedBy) ? [...p.repostedBy] : p.isReposted ? [userNrp] : [];
+      const idx = repostedBy.indexOf(userNrp);
+      if (idx !== -1) {
+        repostedBy.splice(idx, 1);
         return {
           ...p,
-          isReposted: nextIsReposted,
-          repostsCount: nextIsReposted ? p.repostsCount + 1 : Math.max(0, p.repostsCount - 1),
+          isReposted: false,
+          repostedBy,
+          repostsCount: Math.max(0, p.repostsCount - 1),
+        };
+      } else {
+        repostedBy.push(userNrp);
+        return {
+          ...p,
+          isReposted: true,
+          repostedBy,
+          repostsCount: p.repostsCount + 1,
         };
       }
-      return p;
     });
     syncPosts(updated);
 
@@ -333,14 +411,81 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'REPOST', postId }),
+        body: JSON.stringify({ action: 'REPOST', postId, userNrp }),
       });
     } catch {
       // ignore
     }
   };
 
-  const handleAddComment = async (postId: string, commentText: string) => {
+  const handleEditPost = async (
+    postId: string,
+    updates: { content?: string; imageUrl?: string | null; isPinned?: boolean }
+  ) => {
+    const updated = posts.map((p) => {
+      if (p.id !== postId) return p;
+      return {
+        ...p,
+        content: updates.content !== undefined ? updates.content : p.content,
+        imageUrl:
+          updates.imageUrl === null
+            ? undefined
+            : updates.imageUrl !== undefined
+            ? updates.imageUrl
+            : p.imageUrl,
+        pinned: updates.isPinned !== undefined ? updates.isPinned : p.pinned,
+        isPinned: updates.isPinned !== undefined ? updates.isPinned : p.isPinned ?? p.pinned,
+        isEdited: updates.content !== undefined || updates.imageUrl !== undefined ? true : p.isEdited,
+        updatedAt: 'Diedit baru saja',
+      };
+    });
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'EDIT_POST', postId, ...updates }),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    const updated = posts.filter((p) => p.id !== postId);
+    syncPosts(updated);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawDel = localStorage.getItem('ws96_deleted_post_ids_v1');
+        const parsedDel: string[] = rawDel ? JSON.parse(rawDel) : [];
+        if (!parsedDel.includes(postId)) {
+          parsedDel.push(postId);
+          localStorage.setItem('ws96_deleted_post_ids_v1', JSON.stringify(parsedDel));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'DELETE_POST', postId }),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleAddComment = async (
+    postId: string,
+    commentText: string,
+    parentCommentId?: string,
+    imageUrl?: string
+  ) => {
     const newComment: PostComment = {
       id: `c-${Date.now()}`,
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
@@ -348,17 +493,42 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       authorAvatar: resolveAvatarUrl(currentMemberObj?.fotoUrl, currentUser.fotoUrl),
       authorNrp: currentUser.nrp,
       content: commentText,
+      imageUrl: imageUrl || undefined,
       createdAt: 'Baru saja',
+      likesCount: 0,
+      likedBy: [],
+      replies: [],
     };
 
+    const insertReplyRecursive = (list: PostComment[]): PostComment[] =>
+      list.map((c) => {
+        if (c.id === parentCommentId) {
+          return {
+            ...c,
+            replies: [...(c.replies || []), newComment],
+          };
+        }
+        if (Array.isArray(c.replies) && c.replies.length > 0) {
+          return {
+            ...c,
+            replies: insertReplyRecursive(c.replies),
+          };
+        }
+        return c;
+      });
+
     const updated = posts.map((p) => {
-      if (p.id === postId) {
+      if (p.id !== postId) return p;
+      if (parentCommentId) {
         return {
           ...p,
-          comments: [...p.comments, newComment],
+          comments: insertReplyRecursive(p.comments),
         };
       }
-      return p;
+      return {
+        ...p,
+        comments: [...p.comments, newComment],
+      };
     });
     syncPosts(updated);
 
@@ -369,12 +539,102 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
         body: JSON.stringify({
           action: 'COMMENT',
           postId,
-          authorName: newComment.authorName,
-          authorPangkat: newComment.authorPangkat,
-          authorAvatar: newComment.authorAvatar,
-          authorNrp: newComment.authorNrp,
-          content: commentText,
+          parentCommentId,
+          comment: newComment,
         }),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleEditComment = async (postId: string, commentId: string, content: string) => {
+    const editRecursive = (list: PostComment[]): PostComment[] =>
+      list.map((c) => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            content,
+            isEdited: true,
+            updatedAt: 'Diedit',
+          };
+        }
+        if (Array.isArray(c.replies) && c.replies.length > 0) {
+          return {
+            ...c,
+            replies: editRecursive(c.replies),
+          };
+        }
+        return c;
+      });
+
+    const updated = posts.map((p) => (p.id === postId ? { ...p, comments: editRecursive(p.comments) } : p));
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'EDIT_COMMENT', postId, commentId, content }),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDeleteComment = async (postId: string, commentId: string) => {
+    const deleteRecursive = (list: PostComment[]): PostComment[] =>
+      list
+        .filter((c) => c.id !== commentId)
+        .map((c) => ({
+          ...c,
+          replies: Array.isArray(c.replies) ? deleteRecursive(c.replies) : c.replies,
+        }));
+
+    const updated = posts.map((p) => (p.id === postId ? { ...p, comments: deleteRecursive(p.comments) } : p));
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'DELETE_COMMENT', postId, commentId }),
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLikeComment = async (postId: string, commentId: string) => {
+    const userNrp = currentUser.nrp;
+    const toggleLikeRecursive = (list: PostComment[]): PostComment[] =>
+      list.map((c) => {
+        if (c.id === commentId) {
+          const likedBy = Array.isArray(c.likedBy) ? [...c.likedBy] : [];
+          const idx = likedBy.indexOf(userNrp);
+          const currentCount = typeof c.likesCount === 'number' ? c.likesCount : likedBy.length;
+          if (idx !== -1) {
+            likedBy.splice(idx, 1);
+            return { ...c, likedBy, likesCount: Math.max(0, currentCount - 1) };
+          } else {
+            likedBy.push(userNrp);
+            return { ...c, likedBy, likesCount: currentCount + 1 };
+          }
+        }
+        if (Array.isArray(c.replies) && c.replies.length > 0) {
+          return { ...c, replies: toggleLikeRecursive(c.replies) };
+        }
+        return c;
+      });
+
+    const updated = posts.map((p) => (p.id === postId ? { ...p, comments: toggleLikeRecursive(p.comments) } : p));
+    syncPosts(updated);
+
+    try {
+      await fetch('/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'LIKE_COMMENT', postId, commentId, userNrp }),
       });
     } catch {
       // ignore
@@ -392,8 +652,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   };
 
   const filteredPosts = useMemo(() => {
-    if (feedCategoryFilter === 'SEMUA') return posts;
-    return posts.filter((p) => p.category === feedCategoryFilter);
+    const list =
+      feedCategoryFilter === 'SEMUA'
+        ? posts
+        : posts.filter((p) => p.category === feedCategoryFilter);
+    return [...list].sort((a, b) => (b.isPinned || b.pinned ? 1 : 0) - (a.isPinned || a.pinned ? 1 : 0));
   }, [posts, feedCategoryFilter]);
 
   // Quick search results when user types in top navbar search
@@ -713,7 +976,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0 bg-white"
               />
               <button
-                onClick={() => setIsCreatePostModalOpen(true)}
+                onClick={() => {
+                  setOpenCreatePostWithImage(false);
+                  setIsCreatePostModalOpen(true);
+                }}
                 className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200/80 rounded-full text-left text-xs text-slate-500 font-medium transition-colors border border-slate-200 hover:text-slate-800 truncate"
               >
                 Tulis postingan...
@@ -722,21 +988,30 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
 
             <div className="flex items-center justify-around pt-2 border-t border-slate-100 text-xs font-semibold text-slate-600 px-1 sm:px-2">
               <button
-                onClick={() => setIsCreatePostModalOpen(true)}
+                onClick={() => {
+                  setOpenCreatePostWithImage(true);
+                  setIsCreatePostModalOpen(true);
+                }}
                 className="flex items-center gap-2 hover:text-red-900 transition-colors p-1"
               >
                 <ImageIcon className="w-4 h-4 text-red-800" />
                 <span>Foto</span>
               </button>
               <button
-                onClick={() => setIsCreatePostModalOpen(true)}
+                onClick={() => {
+                  setOpenCreatePostWithImage(true);
+                  setIsCreatePostModalOpen(true);
+                }}
                 className="flex items-center gap-2 hover:text-emerald-600 transition-colors p-1"
               >
                 <Video className="w-4 h-4 text-emerald-600" />
                 <span>Video</span>
               </button>
               <button
-                onClick={() => setIsCreatePostModalOpen(true)}
+                onClick={() => {
+                  setOpenCreatePostWithImage(false);
+                  setIsCreatePostModalOpen(true);
+                }}
                 className="flex items-center gap-2 hover:text-amber-600 transition-colors p-1"
               >
                 <PenSquare className="w-4 h-4 text-amber-600" />
@@ -791,6 +1066,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     onLikeToggle={handleLikeToggle}
                     onRepost={handleRepost}
                     onAddComment={handleAddComment}
+                    onEditPost={handleEditPost}
+                    onDeletePost={handleDeletePost}
+                    onEditComment={handleEditComment}
+                    onDeleteComment={handleDeleteComment}
+                    onLikeComment={handleLikeComment}
                     onAuthorClick={handleAuthorClick}
                   />
                 ))}
@@ -799,7 +1079,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <div className="bg-white rounded-xl p-8 border border-slate-200 text-center space-y-2">
                 <p className="text-slate-600 text-xs">Belum ada postingan pada kategori ini.</p>
                 <button
-                  onClick={() => setIsCreatePostModalOpen(true)}
+                  onClick={() => {
+                    setOpenCreatePostWithImage(false);
+                    setIsCreatePostModalOpen(true);
+                  }}
                   className="text-xs font-bold text-red-900 hover:underline"
                 >
                   + Buat Postingan Baru
@@ -985,9 +1268,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       {/* Create Post Modal */}
       <CreatePostModal
         isOpen={isCreatePostModalOpen}
-        onClose={() => setIsCreatePostModalOpen(false)}
+        onClose={() => {
+          setIsCreatePostModalOpen(false);
+          setOpenCreatePostWithImage(false);
+        }}
         currentUser={currentUser}
         onSubmitPost={handleCreatePost}
+        initialOpenImagePicker={openCreatePostWithImage}
       />
     </div>
   );

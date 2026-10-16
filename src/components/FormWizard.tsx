@@ -478,48 +478,25 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       : resolveAvatarUrl(formData.fotoUrl, existingMember?.fotoUrl);
 
     const rawAdcList = [...(formData.daftarAdc || [])];
-    const primaryAdcNrp = (formData.nrpAdc || '').trim();
-    const primaryAdcNama = (formData.namaAdc || '').trim();
-    const primaryAdcPangkat = formData.pangkatAdc || 'Briptu';
-    const primaryAdcKontak = (formData.kontakAdc || '').trim();
-
-    if (primaryAdcNama || primaryAdcNrp || primaryAdcKontak) {
-      if (rawAdcList.length === 0) {
-        rawAdcList.push({
-          id: 'adc-primary-' + Date.now(),
-          nama: primaryAdcNama,
-          nrp: primaryAdcNrp,
-          pangkat: primaryAdcPangkat,
-          jabatan: 'ADC / Ajudan',
-          noHp: primaryAdcKontak,
-          email: primaryAdcNrp ? `${primaryAdcNrp}@polri.go.id` : '',
-        });
-      } else {
-        rawAdcList[0] = {
-          ...rawAdcList[0],
-          nama: primaryAdcNama || rawAdcList[0].nama,
-          nrp: primaryAdcNrp || rawAdcList[0].nrp,
-          pangkat: primaryAdcPangkat || rawAdcList[0].pangkat,
-          noHp: primaryAdcKontak || rawAdcList[0].noHp,
-        };
-      }
-    }
-
     const validAdcList = rawAdcList.filter(
       (a) => a.nama.trim().length > 0 || a.noHp.trim().length > 0 || (a.nrp && a.nrp.trim().length > 0)
     );
+    const primaryAdc = validAdcList[0];
+    const primaryAdcNrp = (primaryAdc?.nrp || '').trim();
+    const primaryAdcNama = (primaryAdc?.nama || '').trim();
+    const primaryAdcPangkat = primaryAdc?.pangkat || 'Briptu';
+    const primaryAdcKontak = (primaryAdc?.noHp || '').trim();
+
     const syncedKontakAdc =
-      primaryAdcKontak ||
-      (validAdcList.length > 0
+      validAdcList.length > 0
         ? validAdcList
             .map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}${a.noHp ? ' - ' + a.noHp : ''}`.trim())
             .join(' • ')
-        : '');
+        : '';
     const syncedNamaAdc =
-      primaryAdcNama ||
-      (validAdcList.length > 0
+      validAdcList.length > 0
         ? validAdcList.map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}`.trim()).join(', ')
-        : '');
+        : '';
 
     const finalCalc58 = calculateRetirement58(formData.tanggalLahir, formData.nrp);
     const resolvedStatusKedinasan = detectStatusKedinasan(
@@ -860,6 +837,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   >
                     <option value="AKTIF">Aktif Menjabat</option>
                     <option value="PURNA_TUGAS">Purna Tugas / Pensiun</option>
+                    <option value="PTDH">PTDH</option>
                     <option value="ALMARHUM">Almarhum / Gugur</option>
                   </select>
                 </div>
@@ -940,8 +918,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-700">
-                      {formData.statusKedinasan === 'ALMARHUM' || formData.statusKedinasan === 'PURNA_TUGAS'
-                        ? 'Jabatan Terakhir Sebelum Purna Tugas / Wafat'
+                      {formData.statusKedinasan === 'ALMARHUM' || formData.statusKedinasan === 'PURNA_TUGAS' || formData.statusKedinasan === 'PTDH'
+                        ? 'Jabatan Terakhir Sebelum Purna Tugas / Wafat / PTDH'
                         : 'Jabatan Organisasi Polri Saat Ini'}{' '}
                       <span className="text-red-500">*</span>
                     </label>
@@ -1368,111 +1346,20 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
               {/* Rincian Data Ajudan / ADC Resmi & Pendamping Pimpinan */}
               <div className="pt-4 border-t border-slate-200/80 space-y-3.5">
-                <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-extrabold text-polri-navy flex items-center gap-1.5">
-                        <Shield className="w-3.5 h-3.5 text-polri-gold" />
-                        <span>Ajudan / ADC Resmi (Akses Login Mewakili Pimpinan)</span>
-                      </span>
-                      <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                        Jika NRP ADC diisi, Ajudan (ADC) dapat login menggunakan NRP ADC tersebut (password default: <strong>WS96@NRP_ADC</strong> atau password Pimpinan) untuk membantu memperbarui data Pimpinan. Seluruh aktivitas login &amp; perubahan data oleh ADC tercatat di Log Audit atas identitas NRP ADC.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Nama Lengkap ADC
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: Aryo Pratama, S.H."
-                        value={formData.namaAdc || ''}
-                        onChange={(e) => handleInputChange('namaAdc', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        Pangkat ADC
-                      </label>
-                      <select
-                        value={formData.pangkatAdc || 'Briptu'}
-                        onChange={(e) => handleInputChange('pangkatAdc', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                      >
-                        {[
-                          'Briptu',
-                          'Bripda',
-                          'Brigpol',
-                          'Bripka',
-                          'Aipda',
-                          'Aiptu',
-                          'Ipda',
-                          'Iptu',
-                          'AKP',
-                          'Bharada',
-                          'Bharatu',
-                          'Bharaka',
-                          'Abripda',
-                          'Abriptu',
-                          'Abrip',
-                          'Pengatur / ASN Polri',
-                          'Penata / ASN Polri',
-                          'Pembina / ASN Polri',
-                          'ASN / PNS Polri',
-                        ].map((p) => (
-                          <option key={p} value={p}>
-                            {p}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        NRP ADC (Akses Login Mewakili Pimpinan)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: 99040123"
-                        value={formData.nrpAdc || ''}
-                        onChange={(e) => handleInputChange('nrpAdc', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                        No. WhatsApp ADC
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="0812-xxxx-xxxx"
-                        value={formData.kontakAdc || ''}
-                        onChange={(e) => handleInputChange('kontakAdc', e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2 pt-1">
-                  <div>
-                    <label className="block text-xs font-extrabold text-slate-800">
-                      Daftar ADC / Ajudan / Spri Tambahan (Opsional)
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 rounded-xl border border-amber-200 bg-amber-50/40">
+                  <div className="min-w-0">
+                    <label className="text-xs font-extrabold text-polri-navy flex items-center gap-1.5">
+                      <Shield className="w-3.5 h-3.5 text-polri-gold flex-shrink-0" />
+                      <span>Daftar ADC / Ajudan / Spri Pendamping Pimpinan (Opsional)</span>
                     </label>
-                    <span className="text-[11px] text-slate-500">
-                      Jika memiliki lebih dari 1 ADC/Spri, klik &ldquo;Tambah ADC&rdquo; di samping.
-                    </span>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      Klik <strong>&ldquo;+ Tambah ADC&rdquo;</strong> untuk menambahkan data Ajudan/ADC. Jika NRP ADC diisi, ADC dapat login mewakili Pimpinan dan seluruh aktivitas tercatat di Log Audit.
+                    </p>
                   </div>
                   <button
                     type="button"
                     onClick={handleAddAdc}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-polri-navy text-polri-gold text-xs font-bold hover:bg-polri-navyLight transition-colors cursor-pointer flex-shrink-0 shadow-xs"
+                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-polri-navy text-polri-gold text-xs font-bold hover:bg-polri-navyLight transition-colors cursor-pointer flex-shrink-0 shadow-xs"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Tambah ADC</span>
@@ -1481,7 +1368,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                 {(!formData.daftarAdc || formData.daftarAdc.length === 0) && (
                   <div className="p-3 rounded-xl border border-dashed border-slate-300 bg-white/70 text-center text-xs text-slate-400">
-                    Belum ada ADC tambahan. Anda cukup mengisi kolom Ajudan / ADC Resmi di atas atau klik &ldquo;Tambah ADC&rdquo;.
+                    Belum ada akun / kontak ADC yang ditambahkan. Klik tombol <strong>&ldquo;+ Tambah ADC&rdquo;</strong> di atas untuk menginput data ADC.
                   </div>
                 )}
 

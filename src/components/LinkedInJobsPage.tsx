@@ -17,6 +17,10 @@ import {
   stripRankFromName,
   getActiveAdcSessionFromStorage,
   recordAdcActivityToAuditLog,
+  getPangkatRankOrder,
+  getLevelSatkerOrder,
+  getRoleRankOrder,
+  getStatusKedinasanOrder,
 } from '@/lib/avatarUtils';
 import {
   getJabatanGroupsForPangkat,
@@ -39,7 +43,8 @@ import {
   MessageSquare,
   Phone,
   Info,
-  X
+  X,
+  ArrowUpDown,
 } from 'lucide-react';
 
 interface LinkedInJobsPageProps {
@@ -85,6 +90,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
   const [selectedPolda, setSelectedPolda] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'DEFAULT' | 'STATUS' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'>('DEFAULT');
+  const [sortDesc, setSortDesc] = useState<boolean>(true);
   const myProfile = useMemo(() => getOrBuildUserProfile(currentUser, members), [currentUser, members]);
   const myAvatarUrl = resolveAvatarUrl(myProfile.fotoUrl, currentUser.fotoUrl);
   const canSeeSuperadmin = currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN';
@@ -131,6 +138,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           ? `Almarhum • Jabatan terakhir pada ${stk} (${pld}).`
           : statusKedinasan === 'PURNA_TUGAS'
           ? `Purna Tugas Polri • Jabatan terakhir pada ${stk} (${pld}).`
+          : statusKedinasan === 'PTDH'
+          ? `PTDH • Jabatan terakhir pada ${stk} (${pld}).`
           : `Penugasan aktif pada ${stk} (${pld}).`;
       return {
         id: `jab-member-${m.nrp}`,
@@ -202,6 +211,102 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       return matchesSearch && matchesFungsi && matchesPolda && matchesKategori;
     });
   }, [jabatanList, searchQuery, selectedFungsi, selectedPolda, selectedKategoriJabatan]);
+
+  const sortedJabatan = useMemo(() => {
+    const cmpStatus = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting) =>
+      getStatusKedinasanOrder(a.statusKedinasan) - getStatusKedinasanOrder(b.statusKedinasan);
+    const cmpPangkat = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting) =>
+      getPangkatRankOrder(a.pangkat) - getPangkatRankOrder(b.pangkat);
+    const cmpLevelSatker = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting) =>
+      getLevelSatkerOrder(a.satker, a.polda, a.jabatan) - getLevelSatkerOrder(b.satker, b.polda, b.jabatan);
+    const cmpNrp = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting) => {
+      const nA = Number(String(a.perwiraNrp || '').replace(/\D/g, '')) || 0;
+      const nB = Number(String(b.perwiraNrp || '').replace(/\D/g, '')) || 0;
+      if (nA !== nB) return nA - nB;
+      return String(a.perwiraNrp || '').localeCompare(String(b.perwiraNrp || ''));
+    };
+    const cmpNama = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting) =>
+      (stripRankFromName(a.namaPerwira) || a.namaPerwira).localeCompare(
+        stripRankFromName(b.namaPerwira) || b.namaPerwira,
+        'id'
+      );
+    const cmpRole = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting) =>
+      getRoleRankOrder(resolveRoleForBadge(a.perwiraNrp)) -
+      getRoleRankOrder(resolveRoleForBadge(b.perwiraNrp));
+
+    const comparePair = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting): number => {
+      let res = 0;
+      if (sortBy === 'DEFAULT' || sortBy === 'STATUS') {
+        // 1. Almarhum -> 2. Purna Tugas -> 3. PTDH -> 4. Masih Aktif
+        const statusDiff = cmpStatus(a, b);
+        if (statusDiff !== 0) {
+          res = statusDiff;
+        } else {
+          const st = a.statusKedinasan || 'AKTIF';
+          if (st === 'ALMARHUM' || st === 'PURNA_TUGAS' || st === 'PTDH') {
+            // Untuk Almarhum, Purna, dan PTDH: NRP paling kecil berada di urutan paling atas
+            res =
+              cmpNrp(a, b) ||
+              cmpPangkat(a, b) ||
+              cmpLevelSatker(a, b) ||
+              cmpNama(a, b) ||
+              cmpRole(a, b);
+          } else {
+            // Untuk yang Masih Aktif: Pangkat (Jenderal -> Bharada) -> Level Satker -> NRP (kecil -> besar) -> Nama -> Role
+            res =
+              cmpPangkat(a, b) ||
+              cmpLevelSatker(a, b) ||
+              cmpNrp(a, b) ||
+              cmpNama(a, b) ||
+              cmpRole(a, b);
+          }
+        }
+      } else if (sortBy === 'PANGKAT') {
+        res =
+          cmpPangkat(a, b) ||
+          cmpStatus(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNrp(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b);
+      } else if (sortBy === 'LEVEL_SATKER') {
+        res =
+          cmpLevelSatker(a, b) ||
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpNrp(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b);
+      } else if (sortBy === 'NRP') {
+        res =
+          cmpNrp(a, b) ||
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b);
+      } else if (sortBy === 'NAMA') {
+        res =
+          cmpNama(a, b) ||
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNrp(a, b) ||
+          cmpRole(a, b);
+      } else if (sortBy === 'ROLE') {
+        res =
+          cmpRole(a, b) ||
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNrp(a, b) ||
+          cmpNama(a, b);
+      }
+      return sortDesc ? res : -res;
+    };
+
+    return [...filteredJabatan].sort(comparePair);
+  }, [filteredJabatan, sortBy, sortDesc]);
 
   const handleAddJabatanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -456,18 +561,46 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           
           {/* Top Search & Filter Bar */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="flex flex-col gap-3">
               <div className="min-w-0">
                 <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 truncate">
                   <Briefcase className="w-5 h-5 text-red-800 flex-shrink-0" />
-                  <span className="truncate">Riwayat Jabatan ({filteredJabatan.length})</span>
+                  <span className="truncate">Riwayat Jabatan ({sortedJabatan.length})</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  Penempatan aktif di Mabes Polri &amp; 38 Polda
+                  Penempatan aktif di Mabes Polri &amp; 38 Polda &bull; Urutan Default: Almarhum (NRP Terkecil) &rarr; Purna Tugas &rarr; PTDH &rarr; Masih Aktif
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
+                {/* Sorting Button & Dropdown (Far Left before Filter Wilayah & Searchbox) */}
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-red-800 flex-shrink-0" />
+                  <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">Urutkan:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1"
+                    title="Urutkan Daftar Riwayat Jabatan"
+                  >
+                    <option value="DEFAULT">Default (Almarhum [NRP Kecil] → Purna → PTDH → Aktif)</option>
+                    <option value="STATUS">By Status (Almarhum → Purna → PTDH → Aktif)</option>
+                    <option value="PANGKAT">By Pangkat (Jenderal Polisi → Bharada)</option>
+                    <option value="LEVEL_SATKER">By Level Satker (Mabes → Polda → Polres → Polsek)</option>
+                    <option value="NRP">By NRP (Angka Kecil → Besar)</option>
+                    <option value="NAMA">By Nama (A → Z)</option>
+                    <option value="ROLE">By Role (Superadmin → Anggota)</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setSortDesc((prev) => !prev)}
+                    className="px-2 py-0.5 text-[10px] font-bold rounded bg-white border border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-800 hover:border-red-200 transition-colors whitespace-nowrap"
+                    title={sortDesc ? 'Urutan Menurun (Descending) — Klik untuk Ascending' : 'Urutan Menaik (Ascending) — Klik untuk Descending'}
+                  >
+                    {sortDesc ? '↓ Desc' : '↑ Asc'}
+                  </button>
+                </div>
+
                 <select
                   value={selectedPolda}
                   onChange={(e) => setSelectedPolda(e.target.value)}
@@ -479,7 +612,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   ))}
                 </select>
 
-                <div className="relative min-w-[220px]">
+                <div className="relative flex-1 min-w-[200px]">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
@@ -521,12 +654,12 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
           {/* Jabatan Cards Stream */}
           <div className="space-y-3">
-            {filteredJabatan.length === 0 ? (
+            {sortedJabatan.length === 0 ? (
               <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-500 text-xs">
                 Tidak ditemukan riwayat jabatan yang sesuai kriteria pencarian.
               </div>
             ) : (
-              filteredJabatan.map((item) => {
+              sortedJabatan.map((item) => {
                 const badge = getFungsiBadge(item.fungsiPolri);
                 const matchedMember = members.find((m) => m.nrp === item.perwiraNrp);
                 const angkatanRole = resolveRoleForBadge(item.perwiraNrp);
@@ -584,7 +717,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                           {/* Jabatan Organisasi Polri (Red) & NRP */}
                           <div className="text-xs flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span className="font-semibold text-red-900">
-                              {item.statusKedinasan === 'ALMARHUM' || item.statusKedinasan === 'PURNA_TUGAS'
+                              {item.statusKedinasan === 'ALMARHUM' || item.statusKedinasan === 'PURNA_TUGAS' || item.statusKedinasan === 'PTDH'
                                 ? `Eks ${extractCleanJabatanTitle(item.jabatan)}`
                                 : extractCleanJabatanTitle(item.jabatan)}
                             </span>
@@ -616,6 +749,10 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                         ) : item.statusKedinasan === 'PURNA_TUGAS' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                             🎖️ Purna Tugas / Pensiun
+                          </span>
+                        ) : item.statusKedinasan === 'PTDH' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                            ⚠️ PTDH
                           </span>
                         ) : item.isCurrent ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">

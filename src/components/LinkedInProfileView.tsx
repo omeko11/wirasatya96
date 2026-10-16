@@ -852,6 +852,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                           </span>
                         );
                       }
+                      if (st === 'PTDH') {
+                        return (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                            ⚠️ PTDH
+                          </span>
+                        );
+                      }
                       return null;
                     })()}
                   </div>

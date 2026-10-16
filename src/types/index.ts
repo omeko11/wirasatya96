@@ -8,7 +8,7 @@ export type UserAccountStatus =
 
 export type MfaMethod = 'BIOMETRIC' | 'GOOGLE_AUTH' | 'TOTP' | 'EMAIL_OTP' | 'PIN';
 
-export type StatusKedinasan = 'AKTIF' | 'PURNA_TUGAS' | 'ALMARHUM';
+export type StatusKedinasan = 'AKTIF' | 'PURNA_TUGAS' | 'PTDH' | 'ALMARHUM';
 
 export interface ActiveAdcSession {
   adcNrp: string;
@@ -316,7 +316,13 @@ export interface PostComment {
   authorAvatar: string;
   authorNrp?: string;
   content: string;
+  imageUrl?: string;
   createdAt: string;
+  updatedAt?: string;
+  isEdited?: boolean;
+  likesCount?: number;
+  likedBy?: string[];
+  replies?: PostComment[];
 }
 
 export interface FeedPost {
@@ -333,15 +339,21 @@ export interface FeedPost {
   imageUrl?: string;
   tags?: string[];
   createdAt: string;
+  updatedAt?: string;
+  isEdited?: boolean;
   likesCount: number;
   isLiked?: boolean;
+  likedBy?: string[];
   repostsCount: number;
   isReposted?: boolean;
+  repostedBy?: string[];
   comments: PostComment[];
   impressionsCount?: number;
   category?: 'MOTIVASI' | 'KENAIKAN_PANGKAT' | 'BAKSOS' | 'REUNI' | 'KABAR_LETING' | 'UMUM';
   pinned?: boolean;
-  userReaction?: 'like' | 'celebrate' | 'support' | 'love' | 'insightful' | 'funny';
+  isPinned?: boolean;
+  userReaction?: ReactionType | null;
+  reactionsByNrp?: Record<string, ReactionType>;
   reactionCounts?: {
     like: number;
     celebrate: number;

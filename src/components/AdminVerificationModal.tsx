@@ -11,6 +11,7 @@ import {
   DAFTAR_PANGKAT_POLRI,
 } from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
+import { PURGED_NON_1996_BASE_NAMES } from '@/data/akpol1996Alumni';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
 import { MetaVerifiedBadge, setDynamicRoleMap, updateDynamicUserRole } from './MetaVerifiedBadge';
 import { UserTableSkeleton } from './SkeletonLoader';
@@ -405,8 +406,18 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       if (usersData.success && Array.isArray(usersData.data)) {
         const rawServerUsers = usersData.data as AuthUser[];
 
-        // Filter out tombstoned users; if server still had one (cold instance), sync DELETE in background
+        const getBasePersonName = (rawName?: string) =>
+          (stripRankFromName(rawName || '') || rawName || '')
+            .split(',')[0]
+            .trim()
+            .toLowerCase();
+
+        // Filter out tombstoned users & non-Akpol-1996 purged names
         let fetchedUsers = rawServerUsers.filter((u) => {
+          const bName = getBasePersonName(u.nama);
+          if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) {
+            return false;
+          }
           if (isUserTombstoned(u)) {
             fetch(`/api/users?nrp=${encodeURIComponent(u.nrp)}`, { method: 'DELETE' }).catch(() => {});
             return false;
@@ -414,18 +425,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           return true;
         });
 
-        const getBasePersonName = (rawName?: string) =>
-          (stripRankFromName(rawName || '') || rawName || '')
-            .split(',')[0]
-            .trim()
-            .toLowerCase();
-
         // Deduplicate & heal parsedOverrides by baseName so stale oldNrp keys never duplicate a person
         const cleanedOverridesByKey: Record<string, Partial<AuthUser> & { oldNrp?: string }> = {};
         const seenOverrideNames = new Map<string, string>();
-        Object.entries(parsedOverrides).forEach(([k, ov]) => {
+        Object.entries(parsedOverrides).forEach(([, ov]) => {
           if (!ov || !ov.nrp) return;
           const bName = getBasePersonName(ov.nama);
+          if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) return;
           if (bName && seenOverrideNames.has(bName)) {
             const prevKey = seenOverrideNames.get(bName)!;
             cleanedOverridesByKey[prevKey] = { ...cleanedOverridesByKey[prevKey], ...ov };

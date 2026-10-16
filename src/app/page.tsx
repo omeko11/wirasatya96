@@ -19,6 +19,7 @@ import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
 import { isEffectivelyOnline, getOutboxQueue } from '@/lib/offlineSyncEngine';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
+import { PURGED_NON_1996_BASE_NAMES } from '@/data/akpol1996Alumni';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_ASSETS } from '@/data/mockFinance';
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem, FeedPost, ChatMessage } from '@/types';
@@ -33,7 +34,7 @@ import {
   recordAdcActivityToAuditLog,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v11';
+const STORAGE_VERSION = 'ws96_akpol96_real_v12';
 
 export default function Home() {
   const router = useRouter();
@@ -248,20 +249,24 @@ export default function Home() {
             );
           };
 
-          // Filter out tombstoned members; if server still had one (cold instance), sync DELETE in background
+          const getBasePersonName = (rawName?: string) =>
+            (stripRankFromName(rawName || '') || rawName || '')
+              .split(',')[0]
+              .trim()
+              .toLowerCase();
+
+          // Filter out tombstoned members & purged non-1996 names
           const activeServerList = (list as AnggotaWiraSatya[]).filter((m) => {
+            const bName = getBasePersonName(m.namaLengkap);
+            if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) {
+              return false;
+            }
             if (isMemberTombstoned(m)) {
               fetch(`/api/users?nrp=${encodeURIComponent(m.nrp)}`, { method: 'DELETE' }).catch(() => {});
               return false;
             }
             return true;
           });
-
-          const getBasePersonName = (rawName?: string) =>
-            (stripRankFromName(rawName || '') || rawName || '')
-              .split(',')[0]
-              .trim()
-              .toLowerCase();
 
           const consumedMemberOvNrps = new Set<string>();
           const consumedUserOvNrps = new Set<string>();
@@ -586,7 +591,7 @@ export default function Home() {
 
   // Load from localStorage or API on initial mount
   useEffect(() => {
-    // Non-destructively record storage version and clean legacy rank prefixes in cached overrides
+    // Non-destructively record storage version and clean legacy rank prefixes & purged non-1996 names in cached overrides
     const currentVersion = localStorage.getItem('ws96_storage_version');
     if (currentVersion !== STORAGE_VERSION) {
       localStorage.removeItem('wirasatya96_members');
@@ -595,8 +600,13 @@ export default function Home() {
         if (rawUOv) {
           const parsedUOv = JSON.parse(rawUOv) || {};
           Object.keys(parsedUOv).forEach((k) => {
-            if (parsedUOv[k]?.nama) {
-              parsedUOv[k].nama = stripRankFromName(parsedUOv[k].nama) || parsedUOv[k].nama;
+            const rawNama = parsedUOv[k]?.nama || '';
+            const cleanNama = stripRankFromName(rawNama) || rawNama;
+            const bName = cleanNama.split(',')[0].trim().toLowerCase();
+            if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) {
+              delete parsedUOv[k];
+            } else if (parsedUOv[k]?.nama) {
+              parsedUOv[k].nama = cleanNama;
             }
           });
           localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
@@ -605,8 +615,13 @@ export default function Home() {
         if (rawMOv) {
           const parsedMOv = JSON.parse(rawMOv) || {};
           Object.keys(parsedMOv).forEach((k) => {
-            if (parsedMOv[k]?.namaLengkap) {
-              parsedMOv[k].namaLengkap = stripRankFromName(parsedMOv[k].namaLengkap) || parsedMOv[k].namaLengkap;
+            const rawNama = parsedMOv[k]?.namaLengkap || '';
+            const cleanNama = stripRankFromName(rawNama) || rawNama;
+            const bName = cleanNama.split(',')[0].trim().toLowerCase();
+            if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) {
+              delete parsedMOv[k];
+            } else if (parsedMOv[k]?.namaLengkap) {
+              parsedMOv[k].namaLengkap = cleanNama;
             }
           });
           localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(parsedMOv));
@@ -669,7 +684,7 @@ export default function Home() {
       }
     }
 
-    // Load Members while respecting tombstoned NRPs
+    // Load Members while respecting tombstoned NRPs & purged non-1996 names
     const rawDeletedOnMount = localStorage.getItem('ws96_deleted_nrps_v1');
     let deletedOnMount = new Set<string>();
     if (rawDeletedOnMount) {
@@ -687,11 +702,17 @@ export default function Home() {
         const parsed = JSON.parse(savedMembers);
         if (Array.isArray(parsed) && parsed.length >= 10) {
           const sanitizedMembers = parsed
-            .filter(
-              (m: AnggotaWiraSatya) =>
+            .filter((m: AnggotaWiraSatya) => {
+              const bName = (stripRankFromName(m.namaLengkap || '') || m.namaLengkap || '')
+                .split(',')[0]
+                .trim()
+                .toLowerCase();
+              if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) return false;
+              return (
                 !deletedOnMount.has((m.nrp || '').trim()) &&
                 !(m.oldNrp && deletedOnMount.has(m.oldNrp.trim()))
-            )
+              );
+            })
             .map((m: AnggotaWiraSatya) => ({
               ...m,
               namaLengkap: stripRankFromName(m.namaLengkap) || m.namaLengkap,
@@ -722,13 +743,61 @@ export default function Home() {
       }
     }
 
+    // Load local feed posts first & merge with API store while respecting deleted post IDs
+    let deletedPostIds = new Set<string>();
+    try {
+      const rawDelPosts = localStorage.getItem('ws96_deleted_post_ids_v1');
+      if (rawDelPosts) {
+        const parsedDelPosts: string[] = JSON.parse(rawDelPosts);
+        deletedPostIds = new Set(parsedDelPosts);
+      }
+    } catch {
+      deletedPostIds = new Set();
+    }
+
+    let localFeedPosts: FeedPost[] = [];
+    try {
+      const rawSavedPosts = localStorage.getItem('wirasatya96_feed_posts');
+      if (rawSavedPosts) {
+        const parsedPosts = JSON.parse(rawSavedPosts);
+        if (Array.isArray(parsedPosts) && parsedPosts.length > 0) {
+          localFeedPosts = parsedPosts.filter((p: FeedPost) => p && p.id && !deletedPostIds.has(p.id));
+          if (localFeedPosts.length > 0) {
+            setPosts(localFeedPosts);
+          }
+        }
+      }
+    } catch {
+      localFeedPosts = [];
+    }
+
     // Refresh feed posts from API store
     fetch('/api/posts')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.posts) && data.posts.length > 0) {
-          setPosts(data.posts);
-          localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(data.posts));
+          const serverPosts = (data.posts as FeedPost[]).filter(
+            (p) => p && p.id && !deletedPostIds.has(p.id)
+          );
+          const byId = new Map<string, FeedPost>();
+          serverPosts.forEach((p) => byId.set(p.id, p));
+          // Preserve locally created/edited posts if serverless instance cold-started
+          localFeedPosts.forEach((lp) => {
+            if (deletedPostIds.has(lp.id)) return;
+            const sp = byId.get(lp.id);
+            if (!sp) {
+              byId.set(lp.id, lp);
+            } else if (lp.isEdited || (lp.comments?.length || 0) > (sp.comments?.length || 0) || lp.likesCount !== sp.likesCount) {
+              byId.set(lp.id, lp);
+            }
+          });
+          const mergedPosts = Array.from(byId.values());
+          setPosts(mergedPosts);
+          try {
+            localStorage.setItem('wirasatya96_feed_posts', JSON.stringify(mergedPosts));
+          } catch {
+            // ignore quota error
+          }
         }
       })
       .catch(() => {});

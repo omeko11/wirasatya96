@@ -20,6 +20,7 @@ interface CreatePostModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: AuthUser;
+  initialOpenImagePicker?: boolean;
   onSubmitPost: (post: Omit<FeedPost, 'id' | 'createdAt' | 'likesCount' | 'repostsCount' | 'comments'>) => void;
 }
 
@@ -27,14 +28,22 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
   isOpen,
   onClose,
   currentUser,
+  initialOpenImagePicker = false,
   onSubmitPost,
 }) => {
   const [content, setContent] = useState('');
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [customImageUrl, setCustomImageUrl] = useState('');
-  const [showImagePicker, setShowImagePicker] = useState(false);
+  const [showImagePicker, setShowImagePicker] = useState(initialOpenImagePicker);
   const [selectedCategory, setSelectedCategory] = useState<FeedPost['category']>('MOTIVASI');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setShowImagePicker(initialOpenImagePicker);
+    }
+  }, [isOpen, initialOpenImagePicker]);
 
   if (!isOpen) return null;
 
@@ -64,6 +73,7 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    setIsUploadingImage(true);
     try {
       const processed = await processSecureImageUpload(file, {
         preset: 'POST',
@@ -81,18 +91,21 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
         }
       };
       reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
+  const imageToUse = customImageUrl.trim() || selectedImage;
+  const canSubmit = Boolean(content.trim() || imageToUse);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!canSubmit) return;
 
     // Extract hashtags from content
     const hashtagRegex = /#[a-zA-Z0-9_]+/g;
     const extractedTags = content.match(hashtagRegex) || ['#WiraSatya96', '#SelaluBahagia'];
-
-    const imageToUse = customImageUrl.trim() || selectedImage;
 
     onSubmitPost({
       authorName: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
@@ -100,7 +113,16 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
       authorJabatan: currentUser.satker || 'Mabes Polri',
       authorAvatar: getAvatarUrl(currentUser.fotoUrl),
       authorNrp: currentUser.nrp,
-      badgeLabel: currentUser.role === 'SUPERADMIN' ? 'Admin' : currentUser.role === 'KETUA' ? 'Ketua' : currentUser.role === 'BENDAHARA' ? 'Bendahara' : 'Anggota',
+      badgeLabel:
+        currentUser.role === 'SUPERADMIN'
+          ? 'Admin'
+          : currentUser.role === 'KETUA'
+          ? 'Ketua'
+          : currentUser.role === 'BENDAHARA'
+          ? 'Bendahara'
+          : currentUser.role === 'SEKRETARIAT'
+          ? 'Sekretaris'
+          : 'Anggota',
       content: content.trim(),
       imageUrl: imageToUse || undefined,
       tags: Array.from(new Set(extractedTags)),
@@ -166,13 +188,41 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Tulis informasi, kegiatan, atau pengumuman..."
-            className="w-full h-36 resize-none text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 leading-relaxed font-normal"
+            placeholder="Tulis informasi, kegiatan, atau keterangan foto..."
+            className="w-full h-28 resize-none text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-0 leading-relaxed font-normal"
             autoFocus
           />
 
+          {/* Active Image Preview (ALWAYS visible whenever an image is selected/uploaded) */}
+          {imageToUse && (
+            <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500/80 bg-slate-900 max-h-56 group shadow-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageToUse}
+                alt="Lampiran Foto"
+                className="w-full h-52 object-cover"
+              />
+              <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-600/95 text-white text-[10px] font-bold flex items-center gap-1 shadow-md">
+                <Check className="w-3 h-3" />
+                <span>Foto Siap Diposting</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedImage('');
+                  setCustomImageUrl('');
+                }}
+                className="absolute top-2 right-2 px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-red-600 text-white text-[10px] font-bold flex items-center gap-1 transition-colors shadow-md"
+                title="Hapus foto"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Hapus Foto</span>
+              </button>
+            </div>
+          )}
+
           {/* Category Selector */}
-          <div className="flex items-center gap-1.5 pt-1 text-xs">
+          <div className="flex items-center gap-1.5 pt-1 text-xs flex-wrap">
             <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Kategori:</span>
             {[
               { key: 'MOTIVASI', label: '⭐ Motivasi' },
@@ -228,22 +278,24 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setSelectedImage('');
-                    setCustomImageUrl('');
-                    setShowImagePicker(false);
-                  }}
-                  className="text-slate-400 hover:text-red-500 text-[11px]"
+                  onClick={() => setShowImagePicker(false)}
+                  className="text-slate-500 hover:text-slate-800 text-[11px] font-semibold"
                 >
-                  Tutup
+                  Sembunyikan
                 </button>
               </div>
 
               {/* Upload File From Device */}
               <div>
-                <label className="w-full py-2 px-3 rounded-lg border border-dashed border-red-800 bg-white hover:bg-red-50 text-red-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
+                <label className="w-full py-2.5 px-3 rounded-lg border-2 border-dashed border-red-800 bg-white hover:bg-red-50 text-red-900 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors">
                   <ImageIcon className="w-4 h-4" />
-                  <span>Pilih File Foto dari Perangkat...</span>
+                  <span>
+                    {isUploadingImage
+                      ? 'Memproses foto...'
+                      : selectedImage
+                      ? 'Ganti File Foto dari Perangkat...'
+                      : 'Pilih File Foto dari Perangkat...'}
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
@@ -298,29 +350,6 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
                   className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-1 focus:ring-red-800 focus:outline-none"
                 />
               </div>
-            </div>
-          )}
-
-          {/* Active Image Preview */}
-          {(selectedImage || customImageUrl) && !showImagePicker && (
-            <div className="relative rounded-xl overflow-hidden border border-slate-200 max-h-48 group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={customImageUrl || selectedImage}
-                alt="Lampiran"
-                className="w-full h-44 object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedImage('');
-                  setCustomImageUrl('');
-                }}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/70 hover:bg-red-600 text-white transition-colors"
-                title="Hapus foto"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           )}
 
@@ -391,9 +420,9 @@ export const CreatePostModal: React.FC<CreatePostModalProps> = ({
 
               <button
                 type="submit"
-                disabled={!content.trim()}
+                disabled={!canSubmit || isUploadingImage}
                 className={`px-6 py-2 rounded-full text-xs font-bold transition-all shadow-sm ${
-                  content.trim()
+                  canSubmit && !isUploadingImage
                     ? 'bg-red-800 hover:bg-red-900 text-white cursor-pointer hover:shadow'
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}

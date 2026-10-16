@@ -459,19 +459,27 @@ export function getRoleRankOrder(role?: string | null): number {
 }
 
 /**
- * Detects whether a member/officer is AKTIF, PURNA_TUGAS, or ALMARHUM from explicit status or jabatan text.
+ * Detects whether a member/officer is AKTIF, PURNA_TUGAS, PTDH, or ALMARHUM from explicit status or jabatan text.
  */
 export function detectStatusKedinasan(
-  explicitStatus?: 'AKTIF' | 'PURNA_TUGAS' | 'ALMARHUM' | string | null,
+  explicitStatus?: 'AKTIF' | 'PURNA_TUGAS' | 'PTDH' | 'ALMARHUM' | string | null,
   jabatan?: string | null,
   jenisAnggota?: string | null
-): 'AKTIF' | 'PURNA_TUGAS' | 'ALMARHUM' {
-  if (explicitStatus === 'ALMARHUM' || explicitStatus === 'PURNA_TUGAS' || explicitStatus === 'AKTIF') {
+): 'AKTIF' | 'PURNA_TUGAS' | 'PTDH' | 'ALMARHUM' {
+  if (
+    explicitStatus === 'ALMARHUM' ||
+    explicitStatus === 'PURNA_TUGAS' ||
+    explicitStatus === 'PTDH' ||
+    explicitStatus === 'AKTIF'
+  ) {
     return explicitStatus;
   }
   const j = (jabatan || '').toLowerCase();
   if (j.includes('almarhum') || j.includes('wafat') || j.includes('gugur')) {
     return 'ALMARHUM';
+  }
+  if (j.includes('ptdh') || j.includes('pemberhentian tidak dengan hormat')) {
+    return 'PTDH';
   }
   if (
     j.includes('purna bhakti') ||
@@ -482,6 +490,27 @@ export function detectStatusKedinasan(
     return 'PURNA_TUGAS';
   }
   return 'AKTIF';
+}
+
+/**
+ * Returns numeric Status Kedinasan order (Almarhum -> Purna Tugas -> PTDH -> Masih Aktif):
+ * 1 = ALMARHUM
+ * 2 = PURNA_TUGAS
+ * 3 = PTDH
+ * 4 = AKTIF
+ */
+export function getStatusKedinasanOrder(status?: string | null): number {
+  switch ((status || '').toUpperCase()) {
+    case 'ALMARHUM':
+      return 1;
+    case 'PURNA_TUGAS':
+      return 2;
+    case 'PTDH':
+      return 3;
+    case 'AKTIF':
+    default:
+      return 4;
+  }
 }
 
 /**
