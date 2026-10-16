@@ -299,6 +299,7 @@ export async function PUT(req: NextRequest) {
       actorNrp,
       actorName,
       actorNama,
+      isBackgroundSync,
       action: _ignoredAction,
       ...updates
     } = body;
@@ -332,30 +333,32 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const isRoleOnlyUpdate =
-      updates.role !== undefined &&
-      updates.nama === undefined &&
-      updates.newNrp === undefined &&
-      updates.jabatanTerakhir === undefined &&
-      updates.statusKedinasan === undefined;
+    if (!isBackgroundSync) {
+      const isRoleOnlyUpdate =
+        updates.role !== undefined &&
+        updates.nama === undefined &&
+        updates.newNrp === undefined &&
+        updates.jabatanTerakhir === undefined &&
+        updates.statusKedinasan === undefined;
 
-    serverStore.recordAuditLog({
-      action: isRoleOnlyUpdate ? 'UBAH_ROLE' : 'EDIT_USER',
-      actorNrp: actorNrp || '98010710',
-      actorName: actorName || actorNama || 'Admin / Sekretaris',
-      actorNama: actorNama || actorName || 'Admin / Sekretaris',
-      actorRole: (actorRole as UserRole) || 'SUPERADMIN',
-      targetNrp: updated.nrp,
-      targetNama: updated.nama,
-      targetName: updated.nama,
-      targetPangkat: updated.pangkat,
-      targetRole: updated.isAdcAccount ? 'ADC' : updated.role,
-      details: isRoleOnlyUpdate
-        ? `Mengubah role akses menjadi ${updated.role}`
-        : `Memperbarui data pengguna (${updated.pangkat} • ${updated.jabatanTerakhir || updated.satker || 'Mabes Polri'}${
-            updated.statusKedinasan && updated.statusKedinasan !== 'AKTIF' ? ` • Status: ${updated.statusKedinasan}` : ''
-          }${updates.newNrp && updates.newNrp !== nrp ? ` • NRP ${nrp} → ${updates.newNrp}` : ''})`,
-    });
+      serverStore.recordAuditLog({
+        action: isRoleOnlyUpdate ? 'UBAH_ROLE' : 'EDIT_USER',
+        actorNrp: actorNrp || '98010710',
+        actorName: actorName || actorNama || 'Admin / Sekretaris',
+        actorNama: actorNama || actorName || 'Admin / Sekretaris',
+        actorRole: (actorRole as UserRole) || 'SUPERADMIN',
+        targetNrp: updated.nrp,
+        targetNama: updated.nama,
+        targetName: updated.nama,
+        targetPangkat: updated.pangkat,
+        targetRole: updated.isAdcAccount ? 'ADC' : updated.role,
+        details: isRoleOnlyUpdate
+          ? `Mengubah role akses menjadi ${updated.role}`
+          : `Memperbarui data pengguna (${updated.pangkat} • ${updated.jabatanTerakhir || updated.satker || 'Mabes Polri'}${
+              updated.statusKedinasan && updated.statusKedinasan !== 'AKTIF' ? ` • Status: ${updated.statusKedinasan}` : ''
+            }${updates.newNrp && updates.newNrp !== nrp ? ` • NRP ${nrp} → ${updates.newNrp}` : ''})`,
+      });
+    }
 
     await cacheInvalidatePrefix('ws96:users:');
     await cacheInvalidatePrefix('ws96:members:');

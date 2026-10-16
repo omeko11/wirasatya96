@@ -342,24 +342,45 @@ export function readDb(): GlobalStore {
 
       const annualTagihan = (loadedFinanceConfig.iuranWajibPerBulan || 250000) * 12;
 
+      const getBasePersonName = (raw?: string) =>
+        (stripRankFromName(raw || '') || raw || '')
+          .split(',')[0]
+          .trim()
+          .toLowerCase();
+
       loadedUsers.forEach((u) => {
         u.nama = stripRankFromName(u.nama) || u.nama;
-        const baseNameKey = `name:${stripRankFromName(u.nama).split(',')[0].trim().toLowerCase()}`;
-        const ref =
+        const uBaseName = getBasePersonName(u.nama);
+        const baseNameKey = `name:${uBaseName}`;
+        const byNameRef = uBaseName ? akpolRefMap.get(baseNameKey) : undefined;
+        const byNrpOrIdRef =
           akpolRefMap.get(u.nrp) ||
           (u.oldNrp ? akpolRefMap.get(u.oldNrp) : undefined) ||
-          (u.id ? akpolRefMap.get(u.id) : undefined) ||
-          (/^74090\d{3}$/.test(u.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
+          (u.id ? akpolRefMap.get(u.id) : undefined);
+
+        // Match by person baseName first so a custom NRP or stale oldNrp never overwrites another officer
+        const ref =
+          byNameRef ||
+          (byNrpOrIdRef && (!uBaseName || getBasePersonName(byNrpOrIdRef.nama) === uBaseName)
+            ? byNrpOrIdRef
+            : undefined);
 
         if (ref) {
+          // Heal id/oldNrp if this person's canonical alumni slot shifted
+          if (!u.isAdcAccount && ref.id) {
+            u.id = ref.id;
+            u.profileId = ref.profileId || ref.id.replace(/^u-/, 'ws-');
+          }
           if ((/^74090\d{3}$/.test(u.nrp) || u.id === 'u-74090217' || u.id === 'u-74090226' || u.id === 'u-74090237') && ref.nrp !== u.nrp) {
-            u.oldNrp = u.oldNrp || u.nrp;
+            u.oldNrp = ref.oldNrp || u.oldNrp || u.nrp;
             u.nrp = ref.nrp;
+          } else if (ref.oldNrp) {
+            u.oldNrp = ref.oldNrp;
           }
           u.nama = stripRankFromName(ref.nama) || u.nama;
-          u.pangkat = ref.pangkat || u.pangkat;
-          u.satker = ref.satker || u.satker;
-          u.polda = ref.polda || u.polda;
+          u.pangkat = u.pangkat || ref.pangkat;
+          u.satker = u.satker || ref.satker;
+          u.polda = u.polda || ref.polda;
           if (ref.jabatanTerakhir) {
             u.jabatanTerakhir = cleanStatusWrapperFromJabatan(
               u.id === 'u-74090217' || u.id === 'u-74090226' || u.id === 'u-74090237' ? ref.jabatanTerakhir : (u.jabatanTerakhir || ref.jabatanTerakhir),
@@ -371,8 +392,8 @@ export function readDb(): GlobalStore {
           } else {
             u.statusKedinasan = u.statusKedinasan || ref.statusKedinasan || 'AKTIF';
           }
-          if (ref.tanggalLahir) u.tanggalLahir = ref.tanggalLahir;
-          if (ref.tempatLahir) u.tempatLahir = ref.tempatLahir;
+          if (ref.tanggalLahir && !u.tanggalLahir) u.tanggalLahir = ref.tanggalLahir;
+          if (ref.tempatLahir && !u.tempatLahir) u.tempatLahir = ref.tempatLahir;
         } else {
           u.jabatanTerakhir = cleanStatusWrapperFromJabatan(u.jabatanTerakhir);
           u.statusKedinasan = u.statusKedinasan || 'AKTIF';
@@ -399,22 +420,57 @@ export function readDb(): GlobalStore {
         }
       });
 
+      // Deduplicate loadedUsers by nrp and baseName (collapsing any duplicate records such as Hadi Wicaksono)
+      const dedupedLoadedUsers: AuthUser[] = [];
+      const seenLoadedUserNrps = new Set<string>();
+      const seenLoadedUserNames = new Map<string, number>();
+      for (const u of loadedUsers) {
+        const cleanNrp = (u.nrp || '').trim();
+        if (!cleanNrp) continue;
+        const bName = getBasePersonName(u.nama);
+        if (!u.isAdcAccount && bName && seenLoadedUserNames.has(bName)) {
+          const existingIdx = seenLoadedUserNames.get(bName)!;
+          const prev = dedupedLoadedUsers[existingIdx];
+          // Prefer non-ANGGOTA role and non-dummy NRP when merging duplicates
+          dedupedLoadedUsers[existingIdx] = {
+            ...prev,
+            ...u,
+            id: prev.id,
+            profileId: prev.profileId,
+            oldNrp: prev.oldNrp || u.oldNrp,
+            nrp: !/^74090\d{3}$/.test(u.nrp) ? u.nrp : prev.nrp,
+            role: u.role && u.role !== 'ANGGOTA' ? u.role : prev.role,
+            satker: u.satker && u.satker !== 'Polri' ? u.satker : prev.satker,
+            polda: u.polda || prev.polda,
+            jabatanTerakhir: u.jabatanTerakhir || prev.jabatanTerakhir,
+            fotoUrl: resolveBestFotoUrl(prev.fotoUrl, u.fotoUrl),
+          };
+          seenLoadedUserNrps.add(dedupedLoadedUsers[existingIdx].nrp);
+          continue;
+        }
+        if (seenLoadedUserNrps.has(cleanNrp)) continue;
+        const newIdx = dedupedLoadedUsers.length;
+        dedupedLoadedUsers.push(u);
+        seenLoadedUserNrps.add(cleanNrp);
+        if (!u.isAdcAccount && bName) seenLoadedUserNames.set(bName, newIdx);
+      }
+      loadedUsers.length = 0;
+      loadedUsers.push(...dedupedLoadedUsers);
+
       // Ensure any officer in AKPOL_1996_USERS not yet in loadedUsers (and not deleted) is automatically added
       const existingUserKeys = new Set<string>();
       loadedUsers.forEach((u) => {
         existingUserKeys.add(u.nrp);
         if (u.oldNrp) existingUserKeys.add(u.oldNrp);
         if (u.id) existingUserKeys.add(u.id);
-        const bn = stripRankFromName(u.nama).split(',')[0].trim().toLowerCase();
+        const bn = getBasePersonName(u.nama);
         if (bn) existingUserKeys.add(`name:${bn}`);
       });
       AKPOL_1996_USERS.forEach((au) => {
         if (isDeletedItem(au.nrp, au.oldNrp)) return;
-        const bn = stripRankFromName(au.nama).split(',')[0].trim().toLowerCase();
+        const bn = getBasePersonName(au.nama);
         if (
           !existingUserKeys.has(au.nrp) &&
-          !(au.oldNrp && existingUserKeys.has(au.oldNrp)) &&
-          !existingUserKeys.has(au.id) &&
           !(bn && existingUserKeys.has(`name:${bn}`))
         ) {
           loadedUsers.push({
@@ -434,22 +490,34 @@ export function readDb(): GlobalStore {
 
       loadedMembers.forEach((m) => {
         m.namaLengkap = stripRankFromName(m.namaLengkap) || m.namaLengkap;
-        const baseNameKey = `name:${stripRankFromName(m.namaLengkap).split(',')[0].trim().toLowerCase()}`;
-        const memberRef =
+        const mBaseName = getBasePersonName(m.namaLengkap);
+        const baseNameKey = `name:${mBaseName}`;
+        const byNameMemberRef = mBaseName ? akpolMemberRefMap.get(baseNameKey) : undefined;
+        const byNrpOrIdMemberRef =
           akpolMemberRefMap.get(m.nrp) ||
           (m.oldNrp ? akpolMemberRefMap.get(m.oldNrp) : undefined) ||
-          (m.id ? akpolMemberRefMap.get(m.id) : undefined) ||
-          (/^74090\d{3}$/.test(m.nrp) ? akpolMemberRefMap.get(baseNameKey) : undefined);
+          (m.id ? akpolMemberRefMap.get(m.id) : undefined);
+
+        const memberRef =
+          byNameMemberRef ||
+          (byNrpOrIdMemberRef && (!mBaseName || getBasePersonName(byNrpOrIdMemberRef.namaLengkap) === mBaseName)
+            ? byNrpOrIdMemberRef
+            : undefined);
 
         if (memberRef) {
+          if (memberRef.id) {
+            m.id = memberRef.id;
+          }
           if ((/^74090\d{3}$/.test(m.nrp) || m.id === 'ws-74090217' || m.id === 'ws-74090226' || m.id === 'ws-74090237') && memberRef.nrp !== m.nrp) {
-            m.oldNrp = m.oldNrp || m.nrp;
+            m.oldNrp = memberRef.oldNrp || m.oldNrp || m.nrp;
             m.nrp = memberRef.nrp;
+          } else if (memberRef.oldNrp) {
+            m.oldNrp = memberRef.oldNrp;
           }
           m.namaLengkap = stripRankFromName(memberRef.namaLengkap) || m.namaLengkap;
-          m.pangkat = memberRef.pangkat || m.pangkat;
+          m.pangkat = m.pangkat || memberRef.pangkat;
           m.jabatanTerakhir = cleanStatusWrapperFromJabatan(
-            memberRef.jabatanTerakhir || m.jabatanTerakhir,
+            m.jabatanTerakhir || memberRef.jabatanTerakhir,
             memberRef.jabatanTerakhir
           );
           if (memberRef.statusKedinasan && memberRef.statusKedinasan !== 'AKTIF') {
@@ -461,10 +529,10 @@ export function readDb(): GlobalStore {
             m.statusKedinasan = resolvedStatus;
             m.statusDinas = resolvedStatus;
           }
-          m.satuanKerja = memberRef.satuanKerja || m.satuanKerja;
-          m.polda = memberRef.polda || m.polda;
-          if (memberRef.tipeSatker) m.tipeSatker = memberRef.tipeSatker;
-          if (memberRef.tempatLahir && memberRef.tempatLahir !== 'Jakarta') {
+          m.satuanKerja = m.satuanKerja || memberRef.satuanKerja;
+          m.polda = m.polda || memberRef.polda;
+          if (memberRef.tipeSatker && !m.tipeSatker) m.tipeSatker = memberRef.tipeSatker;
+          if (memberRef.tempatLahir && memberRef.tempatLahir !== 'Jakarta' && (!m.tempatLahir || m.tempatLahir === 'Jakarta')) {
             m.tempatLahir = memberRef.tempatLahir;
           }
           if (memberRef.tanggalLahir && (!m.tanggalLahir || m.tanggalLahir.endsWith('-09-01') || m.tanggalLahir === '1974-01-01')) {
@@ -551,22 +619,54 @@ export function readDb(): GlobalStore {
         }
       });
 
+      // Deduplicate loadedMembers by nrp and baseName
+      const dedupedLoadedMembers: AnggotaWiraSatya[] = [];
+      const seenLoadedMemberNrps = new Set<string>();
+      const seenLoadedMemberNames = new Map<string, number>();
+      for (const m of loadedMembers) {
+        const cleanNrp = (m.nrp || '').trim();
+        if (!cleanNrp) continue;
+        const bName = getBasePersonName(m.namaLengkap);
+        if (bName && seenLoadedMemberNames.has(bName)) {
+          const existingIdx = seenLoadedMemberNames.get(bName)!;
+          const prev = dedupedLoadedMembers[existingIdx];
+          dedupedLoadedMembers[existingIdx] = {
+            ...prev,
+            ...m,
+            id: prev.id,
+            oldNrp: prev.oldNrp || m.oldNrp,
+            nrp: !/^74090\d{3}$/.test(m.nrp) ? m.nrp : prev.nrp,
+            satuanKerja: m.satuanKerja && m.satuanKerja !== 'Polri' ? m.satuanKerja : prev.satuanKerja,
+            polda: m.polda || prev.polda,
+            jabatanTerakhir: m.jabatanTerakhir || prev.jabatanTerakhir,
+            fotoUrl: resolveBestFotoUrl(prev.fotoUrl, m.fotoUrl),
+          };
+          seenLoadedMemberNrps.add(dedupedLoadedMembers[existingIdx].nrp);
+          continue;
+        }
+        if (seenLoadedMemberNrps.has(cleanNrp)) continue;
+        const newIdx = dedupedLoadedMembers.length;
+        dedupedLoadedMembers.push(m);
+        seenLoadedMemberNrps.add(cleanNrp);
+        if (bName) seenLoadedMemberNames.set(bName, newIdx);
+      }
+      loadedMembers.length = 0;
+      loadedMembers.push(...dedupedLoadedMembers);
+
       // Ensure any officer in AKPOL_1996_MEMBERS not yet in loadedMembers (and not deleted) is automatically added
       const existingMemberKeys = new Set<string>();
       loadedMembers.forEach((m) => {
         existingMemberKeys.add(m.nrp);
         if (m.oldNrp) existingMemberKeys.add(m.oldNrp);
         if (m.id) existingMemberKeys.add(m.id);
-        const bn = stripRankFromName(m.namaLengkap).split(',')[0].trim().toLowerCase();
+        const bn = getBasePersonName(m.namaLengkap);
         if (bn) existingMemberKeys.add(`name:${bn}`);
       });
       AKPOL_1996_MEMBERS.forEach((am) => {
         if (isDeletedItem(am.nrp, am.oldNrp)) return;
-        const bn = stripRankFromName(am.namaLengkap).split(',')[0].trim().toLowerCase();
+        const bn = getBasePersonName(am.namaLengkap);
         if (
           !existingMemberKeys.has(am.nrp) &&
-          !(am.oldNrp && existingMemberKeys.has(am.oldNrp)) &&
-          !existingMemberKeys.has(am.id) &&
           !(bn && existingMemberKeys.has(`name:${bn}`))
         ) {
           loadedMembers.push({
@@ -729,6 +829,20 @@ export function readDb(): GlobalStore {
         }
       }
 
+      // Clean up consecutive duplicate EDIT_USER spam logs generated by background syncs
+      const rawAuditLogs: UserAuditLog[] = Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [];
+      const cleanedAuditLogs: UserAuditLog[] = [];
+      const seenEditSignatures = new Set<string>();
+      for (const log of rawAuditLogs) {
+        if (!log) continue;
+        if (log.action === 'EDIT_USER') {
+          const sig = `${log.action}|${log.targetNrp}|${log.targetNama || ''}|${log.details || ''}`;
+          if (seenEditSignatures.has(sig)) continue;
+          seenEditSignatures.add(sig);
+        }
+        cleanedAuditLogs.push(log);
+      }
+
       return {
         members: loadedMembers,
         users: loadedUsers,
@@ -744,7 +858,7 @@ export function readDb(): GlobalStore {
         registrations: loadedRegs,
         posts: Array.isArray(parsed.posts) ? parsed.posts : defaultStore.posts,
         deletedNrps: Array.from(deletedSet),
-        auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
+        auditLogs: cleanedAuditLogs,
       };
     }
   } catch {
@@ -830,6 +944,22 @@ export const serverStore = {
         (m) => !deletedSet.has(m.nrp) && !(m.oldNrp && deletedSet.has(m.oldNrp))
       );
     }
+    // Fast deduplication by nrp and baseName
+    const seenNrps = new Set<string>();
+    const seenNames = new Set<string>();
+    globalStore.members = globalStore.members.filter((m) => {
+      const cleanNrp = (m.nrp || '').trim();
+      const bName = (stripRankFromName(m.namaLengkap || '') || m.namaLengkap || '')
+        .split(',')[0]
+        .trim()
+        .toLowerCase();
+      if (!cleanNrp || seenNrps.has(cleanNrp) || (bName && seenNames.has(bName))) {
+        return false;
+      }
+      seenNrps.add(cleanNrp);
+      if (bName) seenNames.add(bName);
+      return true;
+    });
     const userByNrp = new Map(globalStore.users.map((u) => [u.nrp, u]));
     globalStore.members.forEach((m) => {
       const u = userByNrp.get(m.nrp);
@@ -1168,6 +1298,21 @@ export const serverStore = {
         (u) => !deletedSet.has(u.nrp) && !(u.oldNrp && deletedSet.has(u.oldNrp))
       );
     }
+    // Fast deduplication by nrp and baseName (for non-ADC accounts)
+    const seenNrps = new Set<string>();
+    const seenNames = new Set<string>();
+    globalStore.users = globalStore.users.filter((u) => {
+      const cleanNrp = (u.nrp || '').trim();
+      const bName = (stripRankFromName(u.nama || '') || u.nama || '')
+        .split(',')[0]
+        .trim()
+        .toLowerCase();
+      if (!cleanNrp || seenNrps.has(cleanNrp)) return false;
+      if (!u.isAdcAccount && bName && seenNames.has(bName)) return false;
+      seenNrps.add(cleanNrp);
+      if (!u.isAdcAccount && bName) seenNames.add(bName);
+      return true;
+    });
     const memberByNrp = new Map(globalStore.members.map((m) => [m.nrp, m]));
     const memberById = new Map(globalStore.members.map((m) => [m.id, m]));
     globalStore.users.forEach((u) => {
@@ -1401,26 +1546,40 @@ export const serverStore = {
       return null;
     }
 
-    let idx = globalStore.users.findIndex((u) => u.nrp === cleanOldNrp);
+    const getBasePersonName = (raw?: string) =>
+      (stripRankFromName(raw || '') || raw || '')
+        .split(',')[0]
+        .trim()
+        .toLowerCase();
+    const targetBaseName = updates.nama ? getBasePersonName(updates.nama) : '';
+
+    // 1. If updates.nama is present (and not ADC), match by exact person baseName first so stale oldNrp never clobbers another alumnus
+    let idx = -1;
+    if (targetBaseName && !updates.isAdcAccount) {
+      idx = globalStore.users.findIndex(
+        (u) => !u.isAdcAccount && getBasePersonName(u.nama) === targetBaseName
+      );
+    }
+    if (idx < 0) {
+      idx = globalStore.users.findIndex((u) => u.nrp === cleanOldNrp);
+    }
     if (idx < 0 && cleanOrigNrp) {
       idx = globalStore.users.findIndex(
-        (u) => u.nrp === cleanOrigNrp || u.oldNrp === cleanOrigNrp
+        (u) =>
+          (u.nrp === cleanOrigNrp || u.oldNrp === cleanOrigNrp) &&
+          (!targetBaseName || getBasePersonName(u.nama) === targetBaseName)
       );
     }
     if (idx < 0 && updates.id) {
-      idx = globalStore.users.findIndex((u) => u.id === updates.id);
+      idx = globalStore.users.findIndex(
+        (u) => u.id === updates.id && (!targetBaseName || getBasePersonName(u.nama) === targetBaseName)
+      );
     }
     if (idx < 0) {
       idx = globalStore.users.findIndex(
         (u) =>
-          u.id === `u-${cleanOldNrp}` ||
-          (cleanOrigNrp && u.id === `u-${cleanOrigNrp}`) ||
-          u.nrp === cleanNewNrp
+          u.nrp === cleanNewNrp && (!targetBaseName || getBasePersonName(u.nama) === targetBaseName)
       );
-    }
-    if (idx < 0 && updates.nama) {
-      const targetNama = updates.nama.trim().toLowerCase();
-      idx = globalStore.users.findIndex((u) => u.nama.trim().toLowerCase() === targetNama);
     }
 
     // If serverless instance cold-started and user isn't in globalStore.users yet, upsert!
@@ -1464,6 +1623,13 @@ export const serverStore = {
     );
 
     if (isNrpChanged) {
+      const existingBaseName = getBasePersonName(existingUserAtIdx.nama);
+      if (existingBaseName && !existingUserAtIdx.isAdcAccount) {
+        globalStore.users = globalStore.users.filter(
+          (u, i) => i === idx || u.isAdcAccount || getBasePersonName(u.nama) !== existingBaseName
+        );
+        idx = globalStore.users.indexOf(existingUserAtIdx);
+      }
       const collision = globalStore.users.some((u, i) => i !== idx && u.nrp === cleanNewNrp);
       if (collision) {
         return null;

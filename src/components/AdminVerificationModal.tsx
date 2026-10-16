@@ -122,7 +122,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [userSearch, setUserSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
   const [sortBy, setSortBy] = useState<'DEFAULT' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'>('DEFAULT');
-  const [sortAsc, setSortAsc] = useState<boolean>(true);
+  const [sortDesc, setSortDesc] = useState<boolean>(true);
   const [updatingUserNrp, setUpdatingUserNrp] = useState<string | null>(null);
 
   // CAS-style Add User Modal state (when clicking "+ Tambah Pengguna")
@@ -414,21 +414,63 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           return true;
         });
 
+        const getBasePersonName = (rawName?: string) =>
+          (stripRankFromName(rawName || '') || rawName || '')
+            .split(',')[0]
+            .trim()
+            .toLowerCase();
+
+        // Deduplicate & heal parsedOverrides by baseName so stale oldNrp keys never duplicate a person
+        const cleanedOverridesByKey: Record<string, Partial<AuthUser> & { oldNrp?: string }> = {};
+        const seenOverrideNames = new Map<string, string>();
+        Object.entries(parsedOverrides).forEach(([k, ov]) => {
+          if (!ov || !ov.nrp) return;
+          const bName = getBasePersonName(ov.nama);
+          if (bName && seenOverrideNames.has(bName)) {
+            const prevKey = seenOverrideNames.get(bName)!;
+            cleanedOverridesByKey[prevKey] = { ...cleanedOverridesByKey[prevKey], ...ov };
+          } else {
+            if (bName) seenOverrideNames.set(bName, ov.nrp);
+            cleanedOverridesByKey[ov.nrp] = ov;
+          }
+        });
+        parsedOverrides = cleanedOverridesByKey;
+
+        const consumedOverrideNrps = new Set<string>();
+
         fetchedUsers = fetchedUsers.map((u) => {
-          const ov =
-            parsedOverrides[u.nrp] ||
-            (u.oldNrp ? parsedOverrides[u.oldNrp] : undefined) ||
-            Object.values(parsedOverrides).find(
-              (item) =>
-                item &&
-                (item.oldNrp === u.nrp ||
-                  (u.id && item.id === u.id) ||
-                  (item.oldNrp && u.id === `u-${item.oldNrp}`) ||
-                  (item.nama &&
-                    u.nama &&
-                    item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
-            );
-          if (ov) {
+          const uBaseName = getBasePersonName(u.nama);
+          const isAlumniSlot = Boolean(u.id?.startsWith('u-7409'));
+
+          // 1. Match by exact person baseName first (safest across any NRP or index changes)
+          let ov = Object.values(parsedOverrides).find(
+            (item) =>
+              item &&
+              item.nrp &&
+              !consumedOverrideNrps.has(item.nrp) &&
+              uBaseName &&
+              getBasePersonName(item.nama) === uBaseName
+          );
+
+          // 2. Otherwise match by NRP only if not an alumni slot belonging to someone else
+          if (!ov) {
+            const candidateByNrp =
+              parsedOverrides[u.nrp] || (u.oldNrp ? parsedOverrides[u.oldNrp] : undefined);
+            if (
+              candidateByNrp &&
+              candidateByNrp.nrp &&
+              !consumedOverrideNrps.has(candidateByNrp.nrp) &&
+              (!isAlumniSlot || !candidateByNrp.nama || getBasePersonName(candidateByNrp.nama) === uBaseName)
+            ) {
+              ov = candidateByNrp;
+            }
+          }
+
+          if (ov && ov.nrp) {
+            consumedOverrideNrps.add(ov.nrp);
+            const canonicalOldNrp =
+              (u.id?.startsWith('u-7409') ? u.id.slice(2) : undefined) || u.oldNrp || ov.oldNrp || u.nrp;
+
             const needsServerSync =
               (ov.nrp && u.nrp !== ov.nrp) ||
               (ov.role && u.role !== ov.role) ||
@@ -442,19 +484,44 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  nrp: ov.oldNrp || u.nrp,
-                  originalNrp: ov.oldNrp || u.nrp,
-                  oldNrp: ov.oldNrp || u.nrp,
+                  ...ov,
+                  nrp: u.nrp,
+                  originalNrp: canonicalOldNrp,
+                  oldNrp: canonicalOldNrp,
                   newNrp: ov.nrp || u.nrp,
                   id: u.id,
-                  ...ov,
+                  profileId: u.profileId,
+                  isBackgroundSync: true,
                 }),
               }).catch(() => {});
             }
-            return { ...u, ...ov, nrp: ov.nrp || u.nrp };
+            return {
+              ...u,
+              ...ov,
+              id: u.id,
+              profileId: u.profileId,
+              oldNrp: canonicalOldNrp,
+              nrp: ov.nrp || u.nrp,
+            };
           }
           return u;
         });
+
+        // Strict deduplication of fetchedUsers by NRP and by baseName (for non-ADC accounts)
+        const dedupedUsers: AuthUser[] = [];
+        const seenUserNrps = new Set<string>();
+        const seenUserBaseNames = new Set<string>();
+        for (const u of fetchedUsers) {
+          const cleanNrp = (u.nrp || '').trim();
+          const bName = getBasePersonName(u.nama);
+          if (!cleanNrp) continue;
+          if (seenUserNrps.has(cleanNrp)) continue;
+          if (!u.isAdcAccount && bName && seenUserBaseNames.has(bName)) continue;
+          seenUserNrps.add(cleanNrp);
+          if (!u.isAdcAccount && bName) seenUserBaseNames.add(bName);
+          dedupedUsers.push(u);
+        }
+        fetchedUsers = dedupedUsers;
 
         // Append any locally created or ADC-generated users missing from a cold-started serverless instance
         const existingNrps = new Set<string>();
@@ -468,9 +535,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           if (!ov || !ov.nrp || !ov.nama) return;
           const cleanOvNrp = ov.nrp.trim();
           const cleanOvOld = (ov.oldNrp || '').trim();
+          const bName = getBasePersonName(ov.nama);
+          if (consumedOverrideNrps.has(cleanOvNrp)) return;
+          if (bName && seenUserBaseNames.has(bName)) return;
           if (isUserTombstoned(ov)) return;
           if (!existingNrps.has(cleanOvNrp) && (!cleanOvOld || !existingNrps.has(cleanOvOld))) {
             existingNrps.add(cleanOvNrp);
+            if (bName) seenUserBaseNames.add(bName);
             const reconstructedUser: AuthUser = {
               id: ov.id || `u-${cleanOvNrp}`,
               profileId: ov.profileId || `ws-${cleanOvNrp}`,
@@ -489,8 +560,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               fotoUrl: ov.fotoUrl || '/default-avatar.png',
               mfaEnabled: ov.mfaEnabled ?? false,
               mfaMethod: ov.mfaMethod || 'PIN',
-              status: ov.status || (ov.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD'),
-              password: ov.password,
+              status: 'AKTIF',
+              password: ov.password || `WS96@${cleanOvNrp}`,
               isAdcAccount: ov.isAdcAccount,
               adcOfNrp: ov.adcOfNrp,
               adcOfNama: ov.adcOfNama,
@@ -1697,17 +1768,21 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     getPangkatRankOrder(a.pangkat) - getPangkatRankOrder(b.pangkat);
   const cmpLevelSatker = (a: AuthUser, b: AuthUser) =>
     getLevelSatkerOrder(a.satker, a.polda) - getLevelSatkerOrder(b.satker, b.polda);
-  const cmpNrp = (a: AuthUser, b: AuthUser) =>
-    parseInt((a.nrp || '').replace(/\D/g, '') || '0', 10) -
-      parseInt((b.nrp || '').replace(/\D/g, '') || '0', 10) ||
-    (a.nrp || '').localeCompare(b.nrp || '', undefined, { numeric: true });
+  const cmpNrp = (a: AuthUser, b: AuthUser) => {
+    const digitsA = (a.nrp || '').replace(/\D/g, '');
+    const digitsB = (b.nrp || '').replace(/\D/g, '');
+    const prefixA = parseInt(digitsA.slice(0, 8) || '0', 10);
+    const prefixB = parseInt(digitsB.slice(0, 8) || '0', 10);
+    if (prefixA !== prefixB) return prefixA - prefixB;
+    return digitsA.localeCompare(digitsB, undefined, { numeric: true });
+  };
   const cmpNama = (a: AuthUser, b: AuthUser) =>
     (stripRankFromName(a.nama) || a.nama).localeCompare(stripRankFromName(b.nama) || b.nama, 'id');
   const cmpRole = (a: AuthUser, b: AuthUser) =>
     getRoleRankOrder(a.role) - getRoleRankOrder(b.role);
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
-    const dir = sortAsc ? 1 : -1;
+    const dir = sortDesc ? 1 : -1;
     let res = 0;
     if (sortBy === 'PANGKAT') {
       res = cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpNama(a, b) || cmpRole(a, b);
@@ -1720,7 +1795,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     } else if (sortBy === 'ROLE') {
       res = cmpRole(a, b) || cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpNama(a, b);
     } else {
-      // DEFAULT cascade: Pangkat -> Level Satker -> NRP -> Nama -> Role
+      // DEFAULT unified sort across all data: Pangkat -> Level Satker -> NRP -> Nama -> Role
       res = cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpNama(a, b) || cmpRole(a, b);
     }
     return res * dir;
@@ -2125,8 +2200,46 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       {/* TAB 1: DAFTAR PENGGUNA */}
       {activeTab === 'USERS' && (
         <>
-          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-            <div className="relative flex-1 min-w-[220px]">
+          <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+            {/* Paling Kiri: Sorting Button + Dropdown (Default: Seluruh data diurutkan sekaligus secara Descending) */}
+            <div className="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-2xs shrink-0">
+              <div className="pl-2.5 pr-1.5 py-1.5 flex items-center gap-1 text-red-800 bg-red-50/70 border-r border-slate-200">
+                <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[10px] font-extrabold uppercase tracking-wider">Urutkan</span>
+              </div>
+              <select
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value as 'DEFAULT' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'
+                  )
+                }
+                className="px-2.5 py-1.5 bg-white text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                title="Default: Seluruh data diurutkan sekaligus berdasarkan Pangkat → Level Satker → NRP → Nama → Role secara Descending"
+              >
+                <option value="DEFAULT">Default: Semua (Pangkat • Level Satker • NRP • Nama • Role)</option>
+                <option value="PANGKAT">By Pangkat (Jenderal Polisi → Bharada)</option>
+                <option value="LEVEL_SATKER">By Level Satker (Mabes → Polda → Polres → Polsek)</option>
+                <option value="NRP">By NRP (Angka Kecil → Besar)</option>
+                <option value="NAMA">By Nama (A → Z)</option>
+                <option value="ROLE">By Role (Superadmin → Anggota)</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => setSortDesc((prev) => !prev)}
+                className="px-2.5 py-1.5 border-l border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[11px] transition-colors whitespace-nowrap"
+                title={
+                  sortDesc
+                    ? 'Urutan Default Descending (Tertinggi → Terendah) — Klik untuk balik ke Ascending'
+                    : 'Urutan Ascending (Terbalik) — Klik untuk kembali ke Descending'
+                }
+              >
+                {sortDesc ? '↓ Desc' : '↑ Asc'}
+              </button>
+            </div>
+
+            {/* Searchbox di sebelah kanan tombol Sorting */}
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -2137,40 +2250,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto text-xs flex-wrap sm:flex-nowrap">
-              {/* Sorting Selector + Direction Toggle */}
-              <div className="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-2xs shrink-0">
-                <div className="pl-2.5 pr-1.5 py-1.5 flex items-center gap-1 text-red-800 bg-red-50/60 border-r border-slate-200">
-                  <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider hidden sm:inline">Urutkan</span>
-                </div>
-                <select
-                  value={sortBy}
-                  onChange={(e) =>
-                    setSortBy(
-                      e.target.value as 'DEFAULT' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'
-                    )
-                  }
-                  className="px-2.5 py-1.5 bg-white text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                  title="Pilih kriteria pengurutan daftar pengguna"
-                >
-                  <option value="DEFAULT">Urutan Standar (Pangkat • Satker • NRP)</option>
-                  <option value="PANGKAT">By Pangkat (Jenderal Polisi → Bharada)</option>
-                  <option value="LEVEL_SATKER">By Level Satker (Mabes → Polda → Polres → Polsek)</option>
-                  <option value="NRP">By NRP (Kecil → Besar)</option>
-                  <option value="NAMA">By Nama (A → Z)</option>
-                  <option value="ROLE">By Role (Superadmin → Anggota)</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setSortAsc((prev) => !prev)}
-                  className="px-2.5 py-1.5 border-l border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[11px] transition-colors whitespace-nowrap"
-                  title={sortAsc ? 'Urutan Naik (Ascending) — Klik untuk balik urutan' : 'Urutan Turun (Descending) — Klik untuk balik urutan'}
-                >
-                  {sortAsc ? '↑ Asc' : '↓ Desc'}
-                </button>
-              </div>
-
+            <div className="flex items-center gap-2 overflow-x-auto text-xs flex-wrap sm:flex-nowrap shrink-0">
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as 'ALL' | UserRole)}

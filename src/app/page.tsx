@@ -257,40 +257,78 @@ export default function Home() {
             return true;
           });
 
-          const sanitizedMembers = activeServerList.map((m: AnggotaWiraSatya) => {
-            const localOverride =
-              memberOverrides[m.nrp] ||
-              (m.oldNrp ? memberOverrides[m.oldNrp] : undefined) ||
-              Object.values(memberOverrides).find(
-                (ov) =>
-                  ov &&
-                  (ov.oldNrp === m.nrp ||
-                    ov.id === m.id ||
-                    (ov.namaLengkap &&
-                      m.namaLengkap &&
-                      ov.namaLengkap.trim().toLowerCase() === m.namaLengkap.trim().toLowerCase()))
-              );
-            const uOverride =
-              userOverrides[m.nrp] ||
-              (m.oldNrp ? userOverrides[m.oldNrp] : undefined) ||
-              (localOverride?.nrp ? userOverrides[localOverride.nrp] : undefined) ||
-              Object.values(userOverrides).find(
-                (ov: any) =>
-                  ov &&
-                  (ov.oldNrp === m.nrp ||
-                    ov.id === `u-${m.nrp}` ||
-                    ov.profileId === m.id ||
-                    (ov.nama &&
-                      m.namaLengkap &&
-                      ov.nama.trim().toLowerCase() === m.namaLengkap.trim().toLowerCase()))
-              );
+          const getBasePersonName = (rawName?: string) =>
+            (stripRankFromName(rawName || '') || rawName || '')
+              .split(',')[0]
+              .trim()
+              .toLowerCase();
+
+          const consumedMemberOvNrps = new Set<string>();
+          const consumedUserOvNrps = new Set<string>();
+
+          let sanitizedMembers = activeServerList.map((m: AnggotaWiraSatya) => {
+            const mBaseName = getBasePersonName(m.namaLengkap);
+            const isAlumniSlot = Boolean(m.id?.startsWith('ws-7409'));
+
+            let localOverride = Object.values(memberOverrides).find(
+              (ov) =>
+                ov &&
+                ov.nrp &&
+                !consumedMemberOvNrps.has(ov.nrp) &&
+                mBaseName &&
+                getBasePersonName(ov.namaLengkap) === mBaseName
+            );
+            if (!localOverride) {
+              const cand = memberOverrides[m.nrp] || (m.oldNrp ? memberOverrides[m.oldNrp] : undefined);
+              if (
+                cand &&
+                cand.nrp &&
+                !consumedMemberOvNrps.has(cand.nrp) &&
+                (!isAlumniSlot || !cand.namaLengkap || getBasePersonName(cand.namaLengkap) === mBaseName)
+              ) {
+                localOverride = cand;
+              }
+            }
+            if (localOverride?.nrp) consumedMemberOvNrps.add(localOverride.nrp);
+
+            let uOverride = Object.values(userOverrides).find(
+              (ov: any) =>
+                ov &&
+                ov.nrp &&
+                !consumedUserOvNrps.has(ov.nrp) &&
+                mBaseName &&
+                getBasePersonName(ov.nama) === mBaseName
+            );
+            if (!uOverride) {
+              const candU =
+                userOverrides[m.nrp] ||
+                (m.oldNrp ? userOverrides[m.oldNrp] : undefined) ||
+                (localOverride?.nrp ? userOverrides[localOverride.nrp] : undefined);
+              if (
+                candU &&
+                candU.nrp &&
+                !consumedUserOvNrps.has(candU.nrp) &&
+                (!isAlumniSlot || !candU.nama || getBasePersonName(candU.nama) === mBaseName)
+              ) {
+                uOverride = candU;
+              }
+            }
+            if (uOverride?.nrp) consumedUserOvNrps.add(uOverride.nrp);
+
+            const canonicalOldNrp =
+              (m.id?.startsWith('ws-7409') ? m.id.slice(3) : undefined) ||
+              m.oldNrp ||
+              localOverride?.oldNrp ||
+              uOverride?.oldNrp ||
+              m.nrp;
 
             let baseMember: AnggotaWiraSatya = localOverride
               ? {
                   ...m,
                   ...localOverride,
+                  id: m.id,
                   nrp: localOverride.nrp || m.nrp,
-                  oldNrp: localOverride.oldNrp || m.oldNrp || (localOverride.nrp && localOverride.nrp !== m.nrp ? m.nrp : undefined),
+                  oldNrp: canonicalOldNrp,
                   fotoUrl: resolveAvatarUrl(localOverride.fotoUrl, m.fotoUrl),
                   coverUrl:
                     localOverride.coverUrl && localOverride.coverUrl !== '/default-cover.jpg'
@@ -305,8 +343,9 @@ export default function Home() {
               const calc58 = calculateRetirement58(effectiveBirth || undefined, effectiveNrp);
               baseMember = {
                 ...baseMember,
+                id: m.id,
                 nrp: effectiveNrp,
-                oldNrp: uOverride.oldNrp || baseMember.oldNrp || (effectiveNrp !== m.nrp ? m.nrp : undefined),
+                oldNrp: canonicalOldNrp,
                 namaLengkap: uOverride.nama || baseMember.namaLengkap,
                 pangkat: uOverride.pangkat || baseMember.pangkat,
                 satuanKerja: uOverride.satker || baseMember.satuanKerja,
@@ -360,21 +399,32 @@ export default function Home() {
             }
 
             if (localOverride || uOverride) {
-              fetch('/api/members', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(baseMember),
-              }).catch(() => {});
-              if (uOverride) {
+              const memberChanged =
+                baseMember.nrp !== m.nrp ||
+                baseMember.namaLengkap !== m.namaLengkap ||
+                baseMember.pangkat !== m.pangkat ||
+                baseMember.satuanKerja !== m.satuanKerja ||
+                baseMember.jabatanTerakhir !== m.jabatanTerakhir;
+              if (memberChanged) {
+                fetch('/api/members', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(baseMember),
+                }).catch(() => {});
+              }
+              if (uOverride && memberChanged) {
                 fetch('/api/users', {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    nrp: uOverride.oldNrp || m.nrp,
-                    originalNrp: uOverride.oldNrp || m.nrp,
-                    oldNrp: uOverride.oldNrp || m.nrp,
-                    newNrp: baseMember.nrp,
                     ...uOverride,
+                    nrp: m.nrp,
+                    originalNrp: canonicalOldNrp,
+                    oldNrp: canonicalOldNrp,
+                    newNrp: baseMember.nrp,
+                    id: m.id ? m.id.replace(/^ws-/, 'u-') : undefined,
+                    profileId: m.id,
+                    isBackgroundSync: true,
                   }),
                 }).catch(() => {});
               }
@@ -386,10 +436,25 @@ export default function Home() {
             };
           });
 
+          // Deduplicate sanitizedMembers by NRP and by baseName
+          const dedupedMembers: AnggotaWiraSatya[] = [];
+          const seenMemberNrps = new Set<string>();
+          const seenMemberBaseNames = new Set<string>();
+          for (const sm of sanitizedMembers) {
+            const cleanNrp = (sm.nrp || '').trim();
+            const bName = getBasePersonName(sm.namaLengkap);
+            if (!cleanNrp) continue;
+            if (seenMemberNrps.has(cleanNrp)) continue;
+            if (bName && seenMemberBaseNames.has(bName)) continue;
+            seenMemberNrps.add(cleanNrp);
+            if (bName) seenMemberBaseNames.add(bName);
+            dedupedMembers.push(sm);
+          }
+          sanitizedMembers = dedupedMembers;
+
           // Append any locally created members missing from a cold-started serverless instance
-          const existingMemberNrps = new Set<string>();
+          const existingMemberNrps = new Set<string>(seenMemberNrps);
           sanitizedMembers.forEach((sm) => {
-            if (sm.nrp) existingMemberNrps.add(sm.nrp.trim());
             if (sm.oldNrp) existingMemberNrps.add(sm.oldNrp.trim());
             if (sm.id?.startsWith('ws-')) existingMemberNrps.add(sm.id.slice(3).trim());
           });
@@ -398,9 +463,13 @@ export default function Home() {
             if (!mOv || !mOv.nrp || !mOv.namaLengkap) return;
             const cleanNrp = mOv.nrp.trim();
             const cleanOld = (mOv.oldNrp || '').trim();
+            const bName = getBasePersonName(mOv.namaLengkap);
+            if (consumedMemberOvNrps.has(cleanNrp)) return;
+            if (bName && seenMemberBaseNames.has(bName)) return;
             if (isMemberTombstoned(mOv)) return;
             if (!existingMemberNrps.has(cleanNrp) && (!cleanOld || !existingMemberNrps.has(cleanOld))) {
               existingMemberNrps.add(cleanNrp);
+              if (bName) seenMemberBaseNames.add(bName);
               sanitizedMembers.unshift({
                 ...mOv,
                 fotoUrl: getAvatarUrl(mOv.fotoUrl),

@@ -405,11 +405,10 @@ export function getPangkatRankOrder(pangkat?: string | null): number {
 
 /**
  * Returns numeric Satker level order:
- * 1 = Mabes Polri
+ * 1 = Mabes (Mabes Polri & penugasan tingkat pusat)
  * 2 = Polda
  * 3 = Polres / Polresta / Polrestabes / Polres Metro
  * 4 = Polsek
- * 5 = Luar Struktur / Kementerian / Lembaga
  */
 export function getLevelSatkerOrder(
   satker?: string | null,
@@ -426,23 +425,13 @@ export function getLevelSatkerOrder(
   ) {
     return 3;
   }
+  const p = (polda || '').toUpperCase().trim();
   if (
-    tipeSatker === 'KEMEN/LEMBAGA' ||
-    s.includes('BNN') ||
-    s.includes('BNPT') ||
-    s.includes('KPK') ||
-    s.includes('BIN ') ||
-    s.includes('BADAN INTELIJEN NEGARA') ||
-    s.includes('KEMENTERIAN') ||
-    s.includes('KEMENKO') ||
-    s.includes('LEMHANNAS')
-  ) {
-    return 5;
-  }
-  if (
-    (polda || '').toUpperCase() === 'MABES POLRI' ||
-    (polda || '').toUpperCase() === 'MABES' ||
-    tipeSatker === 'MABES'
+    p === 'MABES POLRI' ||
+    p === 'MABES' ||
+    p === 'KEMEN/LEMBAGA' ||
+    tipeSatker === 'MABES' ||
+    (tipeSatker === 'KEMEN/LEMBAGA' && !p.startsWith('POLDA '))
   ) {
     return 1;
   }
