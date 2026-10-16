@@ -316,9 +316,10 @@ export function readDb(): GlobalStore {
           if (
             !m.jabatanTerakhir ||
             m.jabatanTerakhir.includes('Superadmin / Lead Developer') ||
-            m.jabatanTerakhir === 'Bareskrim Polri'
+            m.jabatanTerakhir === 'Bareskrim Polri' ||
+            m.jabatanTerakhir === 'Lead Developer — Bareskrim Polri'
           ) {
-            m.jabatanTerakhir = 'Lead Developer — Bareskrim Polri';
+            m.jabatanTerakhir = 'Lead Developer';
           }
           m.satuanKerja = m.satuanKerja || 'Bareskrim Polri';
           m.polda = m.polda || 'MABES POLRI';

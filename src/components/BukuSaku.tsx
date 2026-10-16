@@ -7,6 +7,8 @@ import {
   getAvatarUrl,
   resolveAvatarUrl,
   formatMemberDisplayName,
+  cleanJabatanOnly,
+  formatJabatanWithSatker,
   getOrBuildUserProfile,
 } from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
@@ -492,8 +494,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </span>
                 <MetaVerifiedBadge role={currentUser?.role} nrp={currentUser?.nrp} size="md" />
               </h3>
-              <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2" title={`${currentMemberObj?.pangkat || currentUser.pangkat} • ${currentMemberObj?.jabatanTerakhir || currentMemberObj?.satuanKerja || currentUser.satker || 'Mabes Polri'}`}>
-                {`${currentMemberObj?.pangkat || currentUser.pangkat} • ${currentMemberObj?.jabatanTerakhir || currentMemberObj?.satuanKerja || currentUser.satker || 'Mabes Polri'}`}
+              <p
+                className="text-[11px] text-slate-500 mt-0.5 line-clamp-2"
+                title={`${currentMemberObj?.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(currentMemberObj?.jabatanTerakhir, currentMemberObj?.satuanKerja || currentUser.satker)}`}
+              >
+                {`${currentMemberObj?.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(currentMemberObj?.jabatanTerakhir, currentMemberObj?.satuanKerja || currentUser.satker)}`}
               </p>
 
               {/* Metrics */}
@@ -504,8 +509,11 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </div>
                 <div className="flex items-center justify-between gap-2 text-slate-500">
                   <span className="shrink-0">Jabatan Polri:</span>
-                  <span className="font-bold text-slate-800 truncate text-right" title={currentMemberObj?.jabatanTerakhir || currentUser.satker || '-'}>
-                    {currentMemberObj?.jabatanTerakhir || currentUser.satker || '-'}
+                  <span
+                    className="font-bold text-slate-800 truncate text-right"
+                    title={cleanJabatanOnly(currentMemberObj?.jabatanTerakhir) || currentUser.satker || '-'}
+                  >
+                    {cleanJabatanOnly(currentMemberObj?.jabatanTerakhir) || currentUser.satker || '-'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2 text-slate-500">

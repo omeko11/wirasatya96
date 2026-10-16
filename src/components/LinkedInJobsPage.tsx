@@ -7,7 +7,12 @@ import {
   getSatkerUtamaByWilayah,
   getSubSatkerOptionsBySatker,
 } from '@/data/polriStructure';
-import { getAvatarUrl, getOrBuildUserProfile, resolveAvatarUrl } from '@/lib/avatarUtils';
+import {
+  getAvatarUrl,
+  getOrBuildUserProfile,
+  resolveAvatarUrl,
+  formatJabatanWithSatker,
+} from '@/lib/avatarUtils';
 import { MetaVerifiedBadge, resolveRoleForBadge } from './MetaVerifiedBadge';
 import { 
   Briefcase, 
@@ -268,8 +273,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 <span className="truncate">{(myProfile.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}</span>
                 <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
               </h3>
-              <p className="text-xs font-semibold text-red-800 mt-0.5 truncate">
-                {myProfile.pangkat || currentUser.pangkat} &bull; {myProfile.jabatanTerakhir || myProfile.satuanKerja || 'Bareskrim Polri'}
+              <p className="text-xs font-semibold text-red-800 mt-0.5 truncate" title={`${myProfile.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(myProfile.jabatanTerakhir, myProfile.satuanKerja || currentUser.satker)}`}>
+                {myProfile.pangkat || currentUser.pangkat} &bull; {formatJabatanWithSatker(myProfile.jabatanTerakhir, myProfile.satuanKerja || currentUser.satker)}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                 {myProfile.polda || 'MABES POLRI'}

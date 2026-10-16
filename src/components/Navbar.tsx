@@ -21,7 +21,7 @@ import {
   Phone
 } from 'lucide-react';
 import { AuthUser, UserRole, AnggotaWiraSatya } from '@/types';
-import { getAvatarUrl, resolveAvatarUrl } from '@/lib/avatarUtils';
+import { getAvatarUrl, resolveAvatarUrl, formatJabatanWithSatker } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 
@@ -462,9 +462,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                         <p className="text-[11px] text-slate-500 truncate">
                           {currentUser.pangkat} &bull;{' '}
-                          {currentUser.nrp === '98010710'
-                            ? 'Lead Developer — Bareskrim Polri'
-                            : myMember?.satuanKerja || currentUser.satker || 'Mabes Polri'}
+                          {formatJabatanWithSatker(
+                            myMember?.jabatanTerakhir || (currentUser.nrp === '98010710' ? 'Lead Developer' : undefined),
+                            myMember?.satuanKerja || currentUser.satker || 'Mabes Polri'
+                          )}
                         </p>
                         <span className={`inline-block text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border mt-1 ${roleBadgeColors[currentUser.role]}`}>
                           {roleDisplayLabels[currentUser.role]}

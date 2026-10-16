@@ -6,6 +6,7 @@ import {
   getAvatarUrl,
   getCoverUrl,
   resolveAvatarUrl,
+  cleanJabatanOnly,
   DEFAULT_AVATAR_URL,
   DEFAULT_COVER_URL,
 } from '@/lib/avatarUtils';
@@ -172,6 +173,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       const resolvedKind = resolveDefaultJenisAnggota(existingMember, isSelf ? currentUser : undefined);
       setFormData({
         ...existingMember,
+        jabatanTerakhir: cleanJabatanOnly(existingMember.jabatanTerakhir) || existingMember.jabatanTerakhir,
         jenisAnggota: resolvedKind,
         tipeSatker:
           existingMember.tipeSatker ||
@@ -331,7 +333,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       nrp: formData.nrp || '',
       namaLengkap: formData.namaLengkap || '',
       pangkat: formData.pangkat || 'Kombes Pol',
-      jabatanTerakhir: formData.jabatanTerakhir || '',
+      jabatanTerakhir: cleanJabatanOnly(formData.jabatanTerakhir) || formData.jabatanTerakhir || '',
       satuanKerja: derivedSatker,
       tipeSatker:
         formData.tipeSatker || (derivedPolda === 'MABES POLRI' ? 'MABES' : 'POLDA'),
@@ -587,56 +589,42 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 </div>
               </div>
 
-              {/* Satker Melekat Card + Button Pilih Satker Berjenjang */}
-              <div className="p-3.5 bg-white rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0">
-                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Satker Melekat &amp; Wilayah Penugasan
+              {/* Satker Melekat (Pilih Satker Berjenjang) & Jabatan Organisasi Polri Saat Ini */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
+                <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2.5">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="text-[11px] font-bold text-slate-600">
+                      Satker Melekat &amp; Wilayah <span className="text-red-500">*</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                        {formData.satuanKerja || 'Bareskrim Polri'}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-polri-navy/10 text-polri-navy border border-polri-navy/20">
+                        {formData.polda || 'MABES POLRI'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-extrabold text-slate-900 truncate">
-                      {formData.satuanKerja || 'Bareskrim Polri'}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-polri-navy/10 text-polri-navy border border-polri-navy/20">
-                      {formData.polda || 'MABES POLRI'}
-                    </span>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSatkerModalOpen(true)}
+                    className="px-3 py-2 rounded-xl bg-polri-navy hover:bg-polri-navyLight text-polri-gold text-xs font-bold inline-flex items-center justify-center gap-1.5 shadow-xs transition-all flex-shrink-0 cursor-pointer"
+                  >
+                    <Building2 className="w-3.5 h-3.5" />
+                    <span>Pilih Satker</span>
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsSatkerModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-polri-navy hover:bg-polri-navyLight text-polri-gold text-xs font-bold inline-flex items-center justify-center gap-2 shadow-xs transition-all flex-shrink-0"
-                >
-                  <Building2 className="w-4 h-4" />
-                  <span>Pilih Satker Berjenjang</span>
-                </button>
-              </div>
-
-              {/* Jabatan Organisasi Polri Saat Ini & Keterangan Satker Lengkap */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Jabatan Organisasi Polri Saat Ini <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Contoh: Lead Developer / Irwil I Itwasum Polri / Dirreskrimsus"
+                    placeholder="Contoh: Lead Developer / Kabagbinopsnal / Dirreskrimsus"
                     value={formData.jabatanTerakhir || ''}
                     onChange={(e) => handleInputChange('jabatanTerakhir', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Keterangan Satker Lengkap
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Bareskrim Polri / Ditlantas Polda Metro Jaya"
-                    value={formData.satuanKerja || ''}
-                    onChange={(e) => handleInputChange('satuanKerja', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
                   />
                 </div>

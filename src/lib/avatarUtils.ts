@@ -71,6 +71,33 @@ export function formatMemberDisplayName(
 }
 
 /**
+ * Strips any redundant " — <Satker>" suffix from a Jabatan string so the Jabatan field
+ * only stores the organizational position title (e.g. "Lead Developer").
+ */
+export function cleanJabatanOnly(jabatan?: string | null): string {
+  if (!jabatan || typeof jabatan !== 'string') return '';
+  return jabatan.split(' — ')[0].trim();
+}
+
+/**
+ * Combines a member's Jabatan Organisasi Polri and Satuan Kerja cleanly without duplicating Satker.
+ */
+export function formatJabatanWithSatker(
+  jabatan?: string | null,
+  satker?: string | null
+): string {
+  const cleanJab = cleanJabatanOnly(jabatan);
+  const cleanSat = (satker || '').trim();
+  if (!cleanJab && !cleanSat) return 'Mabes Polri';
+  if (!cleanJab) return cleanSat;
+  if (!cleanSat) return cleanJab;
+  if (cleanJab.toLowerCase().includes(cleanSat.toLowerCase())) {
+    return cleanJab;
+  }
+  return `${cleanJab} — ${cleanSat}`;
+}
+
+/**
  * Finds the current user's profile in the directory or constructs a valid profile object from AuthUser
  * so that "Lihat Profil" always works and preserves any custom uploaded photo/cover.
  */
@@ -82,6 +109,7 @@ export function getOrBuildUserProfile(
   if (existing) {
     return {
       ...existing,
+      jabatanTerakhir: cleanJabatanOnly(existing.jabatanTerakhir) || existing.jabatanTerakhir,
       fotoUrl: resolveAvatarUrl(existing.fotoUrl, currentUser.fotoUrl),
       coverUrl:
         existing.coverUrl && existing.coverUrl !== DEFAULT_COVER_URL
@@ -97,7 +125,7 @@ export function getOrBuildUserProfile(
     pangkat: currentUser.pangkat || 'Kombes Pol',
     jabatanTerakhir:
       currentUser.role === 'SUPERADMIN'
-        ? 'Lead Developer — Bareskrim Polri'
+        ? 'Lead Developer'
         : `Perwira ${currentUser.satker || 'Polri'}`,
     satuanKerja: currentUser.satker || 'Mabes Polri',
     tipeSatker:

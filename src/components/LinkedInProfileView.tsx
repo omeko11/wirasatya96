@@ -11,6 +11,8 @@ import {
   getAvatarUrl,
   resolveAvatarUrl,
   formatMemberDisplayName,
+  cleanJabatanOnly,
+  formatJabatanWithSatker,
   DEFAULT_AVATAR_URL,
   DEFAULT_COVER_URL,
 } from '@/lib/avatarUtils';
@@ -344,11 +346,10 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
   const jabatanAngkatanLabel = getJabatanAngkatanLabel(effectiveRole);
 
-  const headlineText = (localMember.jabatanTerakhir || '')
-    .toLowerCase()
-    .includes((localMember.satuanKerja || '').toLowerCase())
-    ? localMember.jabatanTerakhir
-    : `${localMember.jabatanTerakhir} — ${localMember.satuanKerja}`;
+  const headlineText = formatJabatanWithSatker(
+    localMember.jabatanTerakhir,
+    localMember.satuanKerja
+  );
 
   const getPersonnelCategoryLabel = (): string => {
     if (isSuperadminDev) return 'PERSONEL POLRI • LEAD DEVELOPER / SUPERADMIN';
@@ -1336,7 +1337,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 Jabatan Organisasi Polri:
               </span>
               <span className="font-bold text-slate-900">
-                {localMember.jabatanTerakhir} ({localMember.satuanKerja})
+                {cleanJabatanOnly(localMember.jabatanTerakhir)} ({localMember.satuanKerja})
               </span>
             </div>
 
