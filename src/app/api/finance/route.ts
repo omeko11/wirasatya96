@@ -1,26 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverStore, getFinanceConfig, updateFinanceConfig, getFinanceSummary } from '@/lib/serverStore';
+import { withRedisCache, cacheInvalidatePrefix } from '@/lib/redisCache';
 
 export async function GET() {
-  const financeData = serverStore.getFinance();
-  const financeConfig = getFinanceConfig();
-  const summary = getFinanceSummary();
-  return NextResponse.json({
-    success: true,
-    data: {
-      ...financeData,
+  const { data: bundle, cacheMeta } = await withRedisCache(
+    'ws96:finance:bundle',
+    45,
+    () => {
+      const financeData = serverStore.getFinance();
+      const financeConfig = getFinanceConfig();
+      const summary = getFinanceSummary();
+      return {
+        financeData,
+        financeConfig,
+        summary,
+      };
+    }
+  );
+
+  const { financeData, financeConfig, summary } = bundle;
+  return NextResponse.json(
+    {
+      success: true,
+      data: {
+        ...financeData,
+        summary,
+        iuran: financeData.iuranList,
+        iuranList: financeData.iuranList,
+        financeConfig,
+      },
       summary,
+      transactions: financeData.transactions,
       iuran: financeData.iuranList,
       iuranList: financeData.iuranList,
+      assets: financeData.assets,
       financeConfig,
+      cache: cacheMeta,
     },
-    summary,
-    transactions: financeData.transactions,
-    iuran: financeData.iuranList,
-    iuranList: financeData.iuranList,
-    assets: financeData.assets,
-    financeConfig,
-  });
+    {
+      headers: {
+        'X-WS96-Cache': cacheMeta.status,
+        'X-WS96-Cache-Layer': cacheMeta.layer,
+      },
+    }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -54,6 +77,7 @@ export async function POST(req: NextRequest) {
         },
         updatedBy || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara')
       );
+      await cacheInvalidatePrefix('ws96:finance:');
       const financeData = serverStore.getFinance();
       const summary = getFinanceSummary();
       return NextResponse.json({
@@ -85,6 +109,7 @@ export async function POST(req: NextRequest) {
       }
       const financeData = serverStore.getFinance();
       const summary = getFinanceSummary();
+      await cacheInvalidatePrefix('ws96:finance:');
       return NextResponse.json({
         success: true,
         message: 'Pembayaran iuran berhasil dicatat oleh Bendahara / Superadmin',
@@ -135,6 +160,7 @@ export async function POST(req: NextRequest) {
         dicatatOleh: dicatatOleh || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara'),
       });
 
+      await cacheInvalidatePrefix('ws96:finance:');
       const summary = getFinanceSummary();
       return NextResponse.json({
         success: true,
@@ -150,6 +176,7 @@ export async function POST(req: NextRequest) {
       if (!deleted) {
         return NextResponse.json({ success: false, message: 'Data aset tidak ditemukan' }, { status: 404 });
       }
+      await cacheInvalidatePrefix('ws96:finance:');
       return NextResponse.json({
         success: true,
         message: 'Data aset berhasil dihapus oleh Bendahara / Superadmin',
@@ -203,6 +230,7 @@ export async function POST(req: NextRequest) {
       updatedIuran = serverStore.recordIuranPayment(nrpTerkait, Number(nominal), actorName, true);
     }
 
+    await cacheInvalidatePrefix('ws96:finance:');
     const financeData = serverStore.getFinance();
     const summary = getFinanceSummary();
 

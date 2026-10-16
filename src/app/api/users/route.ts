@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverStore } from '@/lib/serverStore';
+import { withRedisCache, cacheInvalidatePrefix } from '@/lib/redisCache';
 import { AuthUser, UserRole } from '@/types';
 
 export async function GET() {
-  const users = serverStore.getUsers();
-  return NextResponse.json({ success: true, count: users.length, data: users });
+  const { data: users, cacheMeta } = await withRedisCache<AuthUser[]>(
+    'ws96:users:all',
+    90,
+    () => serverStore.getUsers()
+  );
+
+  return NextResponse.json(
+    {
+      success: true,
+      count: users.length,
+      data: users,
+      users,
+      cache: cacheMeta,
+    },
+    {
+      headers: {
+        'X-WS96-Cache': cacheMeta.status,
+        'X-WS96-Cache-Layer': cacheMeta.layer,
+      },
+    }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -53,6 +73,8 @@ export async function POST(req: NextRequest) {
     };
 
     const created = serverStore.addUser(newUser);
+    await cacheInvalidatePrefix('ws96:users:');
+    await cacheInvalidatePrefix('ws96:members:');
     return NextResponse.json({
       success: true,
       message: `Pengguna ${created.nama} (NRP ${created.nrp}) berhasil ditambahkan.`,
@@ -107,6 +129,11 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    await cacheInvalidatePrefix('ws96:users:');
+    await cacheInvalidatePrefix('ws96:members:');
+    await cacheInvalidatePrefix('ws96:finance:');
+    await cacheInvalidatePrefix('ws96:posts:');
+
     return NextResponse.json({
       success: true,
       message: `Data pengguna ${updated.nama} (NRP ${updated.nrp}) berhasil diperbarui.`,
@@ -138,6 +165,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json(result, { status: 400 });
     }
 
+    await cacheInvalidatePrefix('ws96:users:');
+    await cacheInvalidatePrefix('ws96:members:');
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Gagal menghapus pengguna', error }, { status: 500 });

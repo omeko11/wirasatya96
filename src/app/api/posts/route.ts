@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { serverStore } from '@/lib/serverStore';
+import { withRedisCache, cacheInvalidatePrefix } from '@/lib/redisCache';
 
 export async function GET() {
-  const posts = serverStore.getPosts();
-  return NextResponse.json({
-    success: true,
-    count: posts.length,
-    posts,
-  });
+  const { data: posts, cacheMeta } = await withRedisCache(
+    'ws96:posts:all',
+    45,
+    () => serverStore.getPosts()
+  );
+
+  return NextResponse.json(
+    {
+      success: true,
+      count: posts.length,
+      posts,
+      cache: cacheMeta,
+    },
+    {
+      headers: {
+        'X-WS96-Cache': cacheMeta.status,
+        'X-WS96-Cache-Layer': cacheMeta.layer,
+      },
+    }
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -17,16 +32,19 @@ export async function POST(req: NextRequest) {
 
     if (action === 'LIKE' && body.postId) {
       const updated = serverStore.toggleLikePost(body.postId);
+      await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: true, post: updated, posts: serverStore.getPosts() });
     }
 
     if (action === 'REPOST' && body.postId) {
       const updated = serverStore.toggleRepost(body.postId);
+      await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: true, post: updated, posts: serverStore.getPosts() });
     }
 
     if (action === 'COMMENT' && body.postId && body.comment) {
       const updated = serverStore.addCommentToPost(body.postId, body.comment);
+      await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: true, post: updated, posts: serverStore.getPosts() });
     }
 
@@ -48,6 +66,7 @@ export async function POST(req: NextRequest) {
       imageUrl: body.imageUrl,
     });
 
+    await cacheInvalidatePrefix('ws96:posts:');
     return NextResponse.json({
       success: true,
       post: created,

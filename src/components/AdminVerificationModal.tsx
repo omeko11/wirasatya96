@@ -5,6 +5,7 @@ import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANG
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
 import { MetaVerifiedBadge, setDynamicRoleMap, updateDynamicUserRole } from './MetaVerifiedBadge';
+import { UserTableSkeleton } from './SkeletonLoader';
 import {
   getJabatanGroupsForPangkat,
   isStandardPolriJabatan,
@@ -1111,7 +1112,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
-            {filteredUsers.length === 0 ? (
+            {loading && users.length === 0 ? (
+              <UserTableSkeleton rows={6} />
+            ) : filteredUsers.length === 0 ? (
               <div className="py-12 text-center">
                 <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="font-bold text-slate-700 text-sm">Tidak ada pengguna ditemukan</p>

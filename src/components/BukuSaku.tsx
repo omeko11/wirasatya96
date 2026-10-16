@@ -15,6 +15,7 @@ import { LinkedInProfileView } from './LinkedInProfileView';
 import { LinkedInPostCard } from './LinkedInPostCard';
 import { CreatePostModal } from './CreatePostModal';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
+import { FeedPostSkeleton, DirectoryCardSkeleton } from './SkeletonLoader';
 import {
   Phone,
   Heart,
@@ -775,7 +776,12 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </div>
 
             {/* Feed Posts List */}
-            {filteredPosts.length > 0 ? (
+            {members.length === 0 ? (
+              <div className="space-y-4">
+                <FeedPostSkeleton count={2} />
+                <DirectoryCardSkeleton count={3} />
+              </div>
+            ) : filteredPosts.length > 0 ? (
               <div className="space-y-4">
                 {filteredPosts.map((post) => (
                   <LinkedInPostCard

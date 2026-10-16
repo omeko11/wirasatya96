@@ -15,6 +15,8 @@ import { LinkedInJobsPage } from '@/components/LinkedInJobsPage';
 import { LinkedInNotificationsPage } from '@/components/LinkedInNotificationsPage';
 import { LinkedInSettingsPage } from '@/components/LinkedInSettingsPage';
 import { LinkedInProfileView } from '@/components/LinkedInProfileView';
+import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
+import { isEffectivelyOnline, getOutboxQueue } from '@/lib/offlineSyncEngine';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
@@ -42,6 +44,25 @@ export default function Home() {
   const [viewingMember, setViewingMember] = useState<AnggotaWiraSatya | null>(null);
   const [editingMember, setEditingMember] = useState<AnggotaWiraSatya | null | 'NEW'>(null);
   const [messagingTargetMember, setMessagingTargetMember] = useState<AnggotaWiraSatya | null>(null);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isOnlineStatus, setIsOnlineStatus] = useState(true);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  useEffect(() => {
+    const syncNetworkBadge = () => {
+      setIsOnlineStatus(isEffectivelyOnline());
+      setPendingSyncCount(getOutboxQueue().length);
+    };
+    syncNetworkBadge();
+    window.addEventListener('ws96_offline_state_changed', syncNetworkBadge);
+    window.addEventListener('online', syncNetworkBadge);
+    window.addEventListener('offline', syncNetworkBadge);
+    return () => {
+      window.removeEventListener('ws96_offline_state_changed', syncNetworkBadge);
+      window.removeEventListener('online', syncNetworkBadge);
+      window.removeEventListener('offline', syncNetworkBadge);
+    };
+  }, []);
 
   // Social Feed & Messaging State
   const [posts, setPosts] = useState<FeedPost[]>(INITIAL_FEED_POSTS);
@@ -981,17 +1002,43 @@ export default function Home() {
         onStopImpersonating={handleStopImpersonating}
       />
 
-      {/* Top Red Ribbon: [Green Lamp Beacon] Online | Running Text Notifikasi */}
+      {/* Top Red Ribbon: [Live Sync & Redis Cache Beacon] Online/Offline | Running Text Notifikasi */}
       <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-900/40 text-slate-200 text-xs py-1.5 px-3 sm:px-6 relative z-20 overflow-hidden">
         <div className="max-w-7xl mx-auto flex items-center gap-2.5 text-[11px]">
-          {/* Left: Green Lamp Beacon + Online */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          {/* Left: Interactive Lamp Beacon + Online/Offline Sync Status */}
+          <button
+            type="button"
+            onClick={() => setIsSyncModalOpen(true)}
+            className="flex items-center gap-1.5 shrink-0 hover:opacity-90 transition cursor-pointer"
+            title="Klik untuk membuka status Redis Cache & Mode Offline Tersinkronisasi"
+          >
             <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+              <span
+                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isOnlineStatus ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
+              />
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  isOnlineStatus
+                    ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]'
+                    : 'bg-amber-500 shadow-[0_0_8px_#f59e0b]'
+                }`}
+              />
             </span>
-            <span className="text-emerald-400 font-extrabold tracking-wide">Online</span>
-          </div>
+            <span
+              className={`font-extrabold tracking-wide ${
+                isOnlineStatus ? 'text-emerald-400' : 'text-amber-300'
+              }`}
+            >
+              {isOnlineStatus ? 'Online' : 'Mode Offline'}
+            </span>
+            {pendingSyncCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-extrabold text-[10px]">
+                {pendingSyncCount} Sync
+              </span>
+            )}
+          </button>
 
           {/* Divider | */}
           <span className="text-red-400/50 font-bold shrink-0 select-none">|</span>
@@ -1016,6 +1063,13 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Offline Sync Alert Bar & Redis Cache Telemetry Modal */}
+      <OfflineSyncBanner
+        onSyncCompleted={fetchPendingVerificationCount}
+        isModalOpenExternal={isSyncModalOpen}
+        onCloseModalExternal={() => setIsSyncModalOpen(false)}
+      />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 pb-24 md:pb-6">
