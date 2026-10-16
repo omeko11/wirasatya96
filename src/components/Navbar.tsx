@@ -394,8 +394,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
 
-              {/* 6. User (Full-Page Tab for Superadmin & Sekretaris Only - Desktop/Tablet) */}
-              {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
+              {/* 6. User (Full-Page Tab for Superadmin, Ketua & Sekretaris - Desktop/Tablet) */}
+              {(currentUser.role === 'SUPERADMIN' ||
+                currentUser.role === 'SEKRETARIAT' ||
+                currentUser.role === 'KETUA') && (
                 <button
                   onClick={() => setActiveTab('users')}
                   className={`hidden md:flex flex-col items-center justify-center px-2 py-1 min-w-[48px] text-center transition-all border-b-2 ${
@@ -403,7 +405,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       ? 'border-red-900 text-red-900 font-bold'
                       : 'border-transparent text-slate-600 hover:text-red-900'
                   }`}
-                  title="Manajemen User & Verifikasi"
+                  title="Manajemen User, Verifikasi & Log Audit"
                 >
                   <div className="relative">
                     <Users className="w-5 h-5" />
@@ -508,8 +510,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </span>
                       </button>
 
-                      {/* User (Hanya Admin & Sekretaris) */}
-                      {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
+                      {/* User (Hanya Admin, Ketua & Sekretaris) */}
+                      {(currentUser.role === 'SUPERADMIN' ||
+                        currentUser.role === 'SEKRETARIAT' ||
+                        currentUser.role === 'KETUA') && (
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
@@ -690,7 +694,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-1 pt-1.5 pb-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
         <div
           className={`grid ${
-            currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT'
+            currentUser.role === 'SUPERADMIN' ||
+            currentUser.role === 'SEKRETARIAT' ||
+            currentUser.role === 'KETUA'
               ? 'grid-cols-6'
               : 'grid-cols-5'
           } gap-0.5 text-[9px]`}
@@ -769,8 +775,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Notif</span>
           </button>
 
-          {/* 6. User (Mobile Bottom Bar for Superadmin & Sekretaris) */}
-          {(currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT') && (
+          {/* 6. User (Mobile Bottom Bar for Superadmin, Ketua & Sekretaris) */}
+          {(currentUser.role === 'SUPERADMIN' ||
+            currentUser.role === 'SEKRETARIAT' ||
+            currentUser.role === 'KETUA') && (
             <button
               onClick={() => setActiveTab('users')}
               className={`flex flex-col items-center justify-center py-1 transition-colors ${

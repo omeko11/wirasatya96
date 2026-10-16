@@ -12,14 +12,16 @@ import {
   MfaMethod,
   AssetPortfolioItem,
   FeedPost,
-  PostComment
+  PostComment,
+  UserAuditLog,
+  UserRole,
 } from '@/types';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { AKPOL_1996_MEMBERS, AKPOL_1996_REGISTRATIONS, AKPOL_1996_USERS } from '@/data/akpol1996Alumni';
-import { calculateRetirement58 } from '@/lib/avatarUtils';
+import { calculateRetirement58, stripRankFromName } from '@/lib/avatarUtils';
 
 export interface FinanceCategoryOption {
   code: string;
@@ -72,6 +74,7 @@ export interface LocalDatabaseSchema {
   registrations: PendingRegistration[];
   posts: FeedPost[];
   deletedNrps?: string[];
+  auditLogs?: UserAuditLog[];
 }
 
 type GlobalStore = LocalDatabaseSchema;
@@ -239,6 +242,7 @@ export function readDb(): GlobalStore {
     registrations: [...INITIAL_REGISTRATIONS],
     posts: [...INITIAL_FEED_POSTS],
     deletedNrps: [],
+    auditLogs: [],
   };
 
   try {
@@ -289,12 +293,50 @@ export function readDb(): GlobalStore {
           : defaultStore.registrations;
       const loadedRegs = rawRegsSource.filter((r) => !isDeletedItem(r.nrp));
 
-      // Build reference lookup for 164 AKPOL 1996 alumni (for Brigjen Pol promotions & canonical names)
-      const akpolRefMap = new Map(AKPOL_1996_USERS.map((u) => [u.nrp, u]));
-      const akpolMemberRefMap = new Map(AKPOL_1996_MEMBERS.map((m) => [m.nrp, m]));
+      // Build reference lookup for 164 AKPOL 1996 alumni (by nrp, oldNrp, id, and stripped base name)
+      const akpolRefMap = new Map<string, AuthUser>();
+      AKPOL_1996_USERS.forEach((u) => {
+        akpolRefMap.set(u.nrp, u);
+        if (u.oldNrp) akpolRefMap.set(u.oldNrp, u);
+        if (u.id) akpolRefMap.set(u.id, u);
+        const baseName = stripRankFromName(u.nama).split(',')[0].trim().toLowerCase();
+        if (baseName) akpolRefMap.set(`name:${baseName}`, u);
+      });
+
+      const akpolMemberRefMap = new Map<string, AnggotaWiraSatya>();
+      AKPOL_1996_MEMBERS.forEach((m) => {
+        akpolMemberRefMap.set(m.nrp, m);
+        if (m.oldNrp) akpolMemberRefMap.set(m.oldNrp, m);
+        if (m.id) akpolMemberRefMap.set(m.id, m);
+        const baseName = stripRankFromName(m.namaLengkap).split(',')[0].trim().toLowerCase();
+        if (baseName) akpolMemberRefMap.set(`name:${baseName}`, m);
+      });
+
       const annualTagihan = (loadedFinanceConfig.iuranWajibPerBulan || 250000) * 12;
 
       loadedUsers.forEach((u) => {
+        u.nama = stripRankFromName(u.nama) || u.nama;
+        const baseNameKey = `name:${stripRankFromName(u.nama).split(',')[0].trim().toLowerCase()}`;
+        const ref =
+          akpolRefMap.get(u.nrp) ||
+          (u.oldNrp ? akpolRefMap.get(u.oldNrp) : undefined) ||
+          (u.id ? akpolRefMap.get(u.id) : undefined) ||
+          (/^74090\d{3}$/.test(u.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
+
+        if (ref) {
+          if (/^74090\d{3}$/.test(u.nrp) && ref.nrp !== u.nrp) {
+            u.oldNrp = u.oldNrp || u.nrp;
+            u.nrp = ref.nrp;
+          }
+          u.nama = stripRankFromName(ref.nama) || u.nama;
+          u.pangkat = ref.pangkat || u.pangkat;
+          u.satker = ref.satker || u.satker;
+          u.polda = ref.polda || u.polda;
+          if (ref.jabatanTerakhir) u.jabatanTerakhir = ref.jabatanTerakhir;
+          if (ref.tanggalLahir) u.tanggalLahir = ref.tanggalLahir;
+          if (ref.tempatLahir) u.tempatLahir = ref.tempatLahir;
+        }
+
         u.email = migrateOfficialEmail(u.nrp, u.email);
         u.satker = cleanSatkerRoleSuffix(u.satker, u.nrp);
         if (u.nrp === '98010710') {
@@ -310,16 +352,42 @@ export function readDb(): GlobalStore {
               'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
           }
         }
-        const ref = akpolRefMap.get(u.nrp);
-        if (ref) {
-          if (!u.pangkat) u.pangkat = ref.pangkat;
-          if (!u.nama) u.nama = ref.nama;
-        }
       });
 
       const userByNrpMap = new Map(loadedUsers.map((u) => [u.nrp, u]));
 
       loadedMembers.forEach((m) => {
+        m.namaLengkap = stripRankFromName(m.namaLengkap) || m.namaLengkap;
+        const baseNameKey = `name:${stripRankFromName(m.namaLengkap).split(',')[0].trim().toLowerCase()}`;
+        const memberRef =
+          akpolMemberRefMap.get(m.nrp) ||
+          (m.oldNrp ? akpolMemberRefMap.get(m.oldNrp) : undefined) ||
+          (m.id ? akpolMemberRefMap.get(m.id) : undefined) ||
+          (/^74090\d{3}$/.test(m.nrp) ? akpolMemberRefMap.get(baseNameKey) : undefined);
+
+        if (memberRef) {
+          if (/^74090\d{3}$/.test(m.nrp) && memberRef.nrp !== m.nrp) {
+            m.oldNrp = m.oldNrp || m.nrp;
+            m.nrp = memberRef.nrp;
+          }
+          m.namaLengkap = stripRankFromName(memberRef.namaLengkap) || m.namaLengkap;
+          m.pangkat = memberRef.pangkat || m.pangkat;
+          m.jabatanTerakhir = memberRef.jabatanTerakhir || m.jabatanTerakhir;
+          m.satuanKerja = memberRef.satuanKerja || m.satuanKerja;
+          m.polda = memberRef.polda || m.polda;
+          if (memberRef.tipeSatker) m.tipeSatker = memberRef.tipeSatker;
+          if (memberRef.tempatLahir && memberRef.tempatLahir !== 'Jakarta') {
+            m.tempatLahir = memberRef.tempatLahir;
+          }
+          if (memberRef.tanggalLahir && (!m.tanggalLahir || m.tanggalLahir.endsWith('-09-01') || m.tanggalLahir === '1974-01-01')) {
+            const calc = calculateRetirement58(memberRef.tanggalLahir, m.nrp);
+            m.tanggalLahir = calc.tanggalLahir;
+            m.usia = calc.usiaTahun;
+            m.tahunPurnaTugas = calc.tahunPurnaTugas;
+            m.sisaTahunDinas = calc.sisaTahunDinas;
+          }
+        }
+
         m.email = migrateOfficialEmail(m.nrp, m.email);
         m.satuanKerja = cleanSatkerRoleSuffix(m.satuanKerja, m.nrp);
         if (m.nrp === '98010710') {
@@ -372,14 +440,8 @@ export function readDb(): GlobalStore {
             m.jabatanTerakhir.includes('Sekretariat Batalyon') ||
             m.jabatanTerakhir.includes('Bendahara Batalyon'))
         ) {
-          const memberRef = akpolMemberRefMap.get(m.nrp);
           m.jabatanTerakhir =
             memberRef?.jabatanTerakhir || `Perwira ${m.satuanKerja || 'Polri'}`;
-        }
-        const ref = akpolRefMap.get(m.nrp);
-        if (ref) {
-          if (!m.pangkat) m.pangkat = ref.pangkat;
-          if (!m.namaLengkap) m.namaLengkap = ref.nama;
         }
         const matchedUser = userByNrpMap.get(m.nrp);
         if (matchedUser) {
@@ -395,6 +457,20 @@ export function readDb(): GlobalStore {
       });
 
       loadedRegs.forEach((r) => {
+        r.nama = stripRankFromName(r.nama) || r.nama;
+        const baseNameKey = `name:${stripRankFromName(r.nama).split(',')[0].trim().toLowerCase()}`;
+        const ref =
+          akpolRefMap.get(r.nrp) ||
+          (/^74090\d{3}$/.test(r.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
+        if (ref) {
+          if (/^74090\d{3}$/.test(r.nrp) && ref.nrp !== r.nrp) {
+            r.nrp = ref.nrp;
+          }
+          r.nama = stripRankFromName(ref.nama) || r.nama;
+          r.pangkat = ref.pangkat || r.pangkat;
+          r.satker = ref.satker || r.satker;
+          r.polda = ref.polda || r.polda;
+        }
         r.email = migrateOfficialEmail(r.nrp, r.email);
         r.satker = cleanSatkerRoleSuffix(r.satker, r.nrp);
         if (r.nrp === '98010710') {
@@ -404,21 +480,24 @@ export function readDb(): GlobalStore {
           r.secondaryEmail = r.secondaryEmail || 'agungkrisdianto98@gmail.com';
           r.status = 'AKTIF';
         }
-        const ref = akpolRefMap.get(r.nrp);
-        if (ref) {
-          if (!r.pangkat) r.pangkat = ref.pangkat;
-          if (!r.nama) r.nama = ref.nama;
-        }
       });
 
       loadedIuran.forEach((i) => {
+        i.namaLengkap = stripRankFromName(i.namaLengkap) || i.namaLengkap;
+        const baseNameKey = `name:${stripRankFromName(i.namaLengkap).split(',')[0].trim().toLowerCase()}`;
+        const ref =
+          akpolRefMap.get(i.nrp) ||
+          (/^74090\d{3}$/.test(i.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
+        if (ref) {
+          if (/^74090\d{3}$/.test(i.nrp) && ref.nrp !== i.nrp) {
+            i.nrp = ref.nrp;
+          }
+          i.namaLengkap = stripRankFromName(ref.nama) || i.namaLengkap;
+          i.pangkat = ref.pangkat || i.pangkat;
+          i.polda = ref.polda || i.polda;
+        }
         if (i.nrp === '98010710' && (!i.namaLengkap || i.namaLengkap === 'Eko Agung')) {
           i.namaLengkap = 'Eko Agung Krisdianto, S.Kom.';
-        }
-        const ref = akpolRefMap.get(i.nrp);
-        if (ref) {
-          if (!i.pangkat) i.pangkat = ref.pangkat;
-          if (!i.namaLengkap) i.namaLengkap = ref.nama;
         }
         i.totalTagihan = annualTagihan;
         if (i.totalTerbayar >= annualTagihan) {
@@ -432,6 +511,7 @@ export function readDb(): GlobalStore {
 
       const activeSession = parsed.activeSession || defaultStore.activeSession;
       if (activeSession) {
+        activeSession.nama = stripRankFromName(activeSession.nama) || activeSession.nama;
         activeSession.email = migrateOfficialEmail(activeSession.nrp, activeSession.email);
         activeSession.satker = cleanSatkerRoleSuffix(activeSession.satker, activeSession.nrp);
         if (activeSession.nrp === '98010710') {
@@ -452,7 +532,7 @@ export function readDb(): GlobalStore {
         const ref = akpolRefMap.get(activeSession.nrp);
         if (ref) {
           activeSession.pangkat = ref.pangkat;
-          activeSession.nama = ref.nama;
+          activeSession.nama = stripRankFromName(ref.nama) || activeSession.nama;
         }
         const matchedUser = userByNrpMap.get(activeSession.nrp);
         if (matchedUser) {
@@ -479,6 +559,7 @@ export function readDb(): GlobalStore {
         registrations: loadedRegs,
         posts: Array.isArray(parsed.posts) ? parsed.posts : defaultStore.posts,
         deletedNrps: Array.from(deletedSet),
+        auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [],
       };
     }
   } catch {
@@ -508,6 +589,42 @@ persistLocalStore(globalStore);
 
 export const serverStore = {
   getDeletedNrps: (): string[] => globalStore.deletedNrps || [],
+
+  getAuditLogs: (): UserAuditLog[] => {
+    if (!Array.isArray(globalStore.auditLogs)) {
+      globalStore.auditLogs = [];
+    }
+    return globalStore.auditLogs;
+  },
+
+  addAuditLog: (
+    entry: Omit<UserAuditLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }
+  ): UserAuditLog => {
+    if (!Array.isArray(globalStore.auditLogs)) {
+      globalStore.auditLogs = [];
+    }
+    const newEntry: UserAuditLog = {
+      id: entry.id || `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: entry.timestamp || new Date().toISOString(),
+      action: entry.action,
+      actorName: entry.actorName || 'Superadmin',
+      actorNrp: entry.actorNrp,
+      actorRole: entry.actorRole || 'SUPERADMIN',
+      targetNrp: entry.targetNrp,
+      targetNama: stripRankFromName(entry.targetNama) || entry.targetNama,
+      targetPangkat: entry.targetPangkat,
+      targetRole: entry.targetRole,
+      reason: entry.reason,
+      details: entry.details,
+      snapshotUser: entry.snapshotUser,
+    };
+    globalStore.auditLogs = [
+      newEntry,
+      ...globalStore.auditLogs.filter((l) => l.id !== newEntry.id),
+    ].slice(0, 250);
+    persistLocalStore(globalStore);
+    return newEntry;
+  },
 
   getMembers: () => {
     const deletedSet = new Set(globalStore.deletedNrps || []);
@@ -1298,11 +1415,53 @@ export const serverStore = {
     return updatedUser;
   },
 
-  deleteUser: (nrp: string) => {
+  deleteUser: (
+    nrp: string,
+    meta?: {
+      actorName?: string;
+      actorNrp?: string;
+      actorRole?: UserRole;
+      reason?: string;
+      snapshotUser?: AuthUser;
+    }
+  ) => {
     const cleanNrp = (nrp || '').trim();
     if (cleanNrp === '98010710') {
       return { success: false, message: 'Akun Superadmin utama tidak dapat dihapus.' };
     }
+
+    const existingTarget =
+      globalStore.users.find(
+        (u) => u.nrp === cleanNrp || u.oldNrp === cleanNrp || u.id === `u-${cleanNrp}`
+      ) || meta?.snapshotUser;
+
+    const actorRole: UserRole = meta?.actorRole || 'SUPERADMIN';
+    if (actorRole === 'BENDAHARA' || actorRole === 'ANGGOTA') {
+      return {
+        success: false,
+        message: 'Akses Ditolak: Role Bendahara dan Anggota tidak memiliki wewenang menghapus pengguna.',
+      };
+    }
+    if (
+      actorRole === 'SEKRETARIAT' &&
+      existingTarget?.role &&
+      existingTarget.role !== 'ANGGOTA'
+    ) {
+      return {
+        success: false,
+        message: `Akses Ditolak: Sekretaris hanya berwenang menghapus akun berstatus Anggota (tidak dapat menghapus ${existingTarget.role}).`,
+      };
+    }
+    if (
+      actorRole === 'KETUA' &&
+      (existingTarget?.role === 'SUPERADMIN' || existingTarget?.role === 'KETUA')
+    ) {
+      return {
+        success: false,
+        message: 'Akses Ditolak: Ketua tidak dapat menghapus akun Superadmin atau sesama Ketua.',
+      };
+    }
+
     const tombstones = new Set<string>(globalStore.deletedNrps || []);
     tombstones.add(cleanNrp);
 
@@ -1350,11 +1509,97 @@ export const serverStore = {
     globalStore.iuranList = globalStore.iuranList.filter(
       (i) => !tombstones.has(i.nrp)
     );
+
+    const auditEntry = serverStore.addAuditLog({
+      action: 'HAPUS_USER',
+      actorName: meta?.actorName || 'Superadmin',
+      actorNrp: meta?.actorNrp,
+      actorRole,
+      targetNrp: cleanNrp,
+      targetNama: existingTarget?.nama || `Personel NRP ${cleanNrp}`,
+      targetPangkat: existingTarget?.pangkat || 'Kombes Pol',
+      targetRole: existingTarget?.role || 'ANGGOTA',
+      reason: meta?.reason || 'Penghapusan akun melalui Manajemen User',
+      details: `Dihapus oleh ${meta?.actorName || actorRole} (${actorRole}). Tombstone aktif: ${Array.from(tombstones).filter((t) => t === cleanNrp || t === existingTarget?.oldNrp).join(', ')}`,
+      snapshotUser: existingTarget,
+    });
+
     persistLocalStore(globalStore);
     return {
       success: true,
       deletedNrps: globalStore.deletedNrps,
-      message: `Pengguna NRP ${cleanNrp} berhasil dihapus secara permanen.`,
+      auditLog: auditEntry,
+      auditLogs: globalStore.auditLogs,
+      message: `Pengguna ${existingTarget?.nama || ''} (NRP ${cleanNrp}) berhasil dihapus dan tercatat di Log Audit.`,
+    };
+  },
+
+  restoreDeletedUser: (
+    nrp: string,
+    snapshotUser?: Partial<AuthUser>,
+    meta?: { actorName?: string; actorNrp?: string; actorRole?: UserRole }
+  ) => {
+    const cleanNrp = (nrp || '').trim();
+    const cleanOld = (snapshotUser?.oldNrp || '').trim();
+    const tombstones = new Set<string>(globalStore.deletedNrps || []);
+    tombstones.delete(cleanNrp);
+    if (cleanOld) tombstones.delete(cleanOld);
+    globalStore.deletedNrps = Array.from(tombstones);
+
+    // Find canonical reference or use snapshotUser
+    const canonicalUser =
+      AKPOL_1996_USERS.find((u) => u.nrp === cleanNrp || u.oldNrp === cleanNrp || (cleanOld && u.nrp === cleanOld)) ||
+      PRESET_USERS.find((u) => u.nrp === cleanNrp);
+
+    const restoredUserPayload: AuthUser = {
+      id: snapshotUser?.id || canonicalUser?.id || `u-${cleanNrp}`,
+      profileId: snapshotUser?.profileId || canonicalUser?.profileId || `ws-${cleanNrp}`,
+      nrp: cleanNrp,
+      oldNrp: snapshotUser?.oldNrp || canonicalUser?.oldNrp,
+      nama: stripRankFromName(snapshotUser?.nama || canonicalUser?.nama || `Perwira ${cleanNrp}`),
+      pangkat: snapshotUser?.pangkat || canonicalUser?.pangkat || 'Kombes Pol',
+      role: (snapshotUser?.role as UserRole) || canonicalUser?.role || 'ANGGOTA',
+      email: snapshotUser?.email || canonicalUser?.email || `${cleanNrp}@polri.go.id`,
+      secondaryEmail: snapshotUser?.secondaryEmail || canonicalUser?.secondaryEmail,
+      noHp: snapshotUser?.noHp || canonicalUser?.noHp || '',
+      satker: snapshotUser?.satker || canonicalUser?.satker || 'Mabes Polri',
+      polda: snapshotUser?.polda || canonicalUser?.polda || 'MABES POLRI',
+      jabatanTerakhir: snapshotUser?.jabatanTerakhir || canonicalUser?.jabatanTerakhir,
+      tanggalLahir: snapshotUser?.tanggalLahir || canonicalUser?.tanggalLahir,
+      tempatLahir: snapshotUser?.tempatLahir || canonicalUser?.tempatLahir,
+      fotoUrl: snapshotUser?.fotoUrl || canonicalUser?.fotoUrl || '/default-avatar.png',
+      mfaEnabled: snapshotUser?.mfaEnabled ?? false,
+      mfaMethod: snapshotUser?.mfaMethod || 'PIN',
+      status: snapshotUser?.status || canonicalUser?.status || 'DISETUJUI_BELUM_PASSWORD',
+      password: snapshotUser?.password || canonicalUser?.password,
+      isAdcAccount: snapshotUser?.isAdcAccount,
+      adcOfNrp: snapshotUser?.adcOfNrp,
+      adcOfNama: snapshotUser?.adcOfNama,
+      adcOfPangkat: snapshotUser?.adcOfPangkat,
+    };
+
+    const restored = serverStore.addUser(restoredUserPayload);
+    const auditEntry = serverStore.addAuditLog({
+      action: 'PULIHKAN_USER',
+      actorName: meta?.actorName || 'Superadmin',
+      actorNrp: meta?.actorNrp,
+      actorRole: meta?.actorRole || 'SUPERADMIN',
+      targetNrp: restored.nrp,
+      targetNama: restored.nama,
+      targetPangkat: restored.pangkat,
+      targetRole: restored.role,
+      reason: 'Pemulihan akun pengguna dari Log Audit (Restore)',
+      details: `Akun NRP ${restored.nrp} (${restored.nama}) dipulihkan kembali ke Direktori & Daftar Pengguna.`,
+    });
+
+    persistLocalStore(globalStore);
+    return {
+      success: true,
+      data: restored,
+      deletedNrps: globalStore.deletedNrps,
+      auditLog: auditEntry,
+      auditLogs: globalStore.auditLogs,
+      message: `Pengguna ${restored.nama} (NRP ${restored.nrp}) berhasil dipulihkan kembali!`,
     };
   },
 

@@ -49,6 +49,22 @@ export function resolveAvatarUrl(
   return DEFAULT_AVATAR_URL;
 }
 
+const LEADING_RANK_PREFIX_REGEX =
+  /^(?:jenderal\s+polisi|komjen\s+pol\.?|irjen\s+pol\.?|brigjen\s+pol\.?|kombes\s+pol\.?|akbp\.?|kompol\.?|akp\.?|iptu\.?|ipda\.?|aiptu\.?|aipda\.?|bripka\.?|brigpol\.?|brigadir\s+polisi|briptu\.?|bripda\.?|abrip\.?|abriptu\.?|abripda\.?|bharaka\.?|bharatu\.?|bharada\.?)\s+/i;
+
+/**
+ * Strips any leading Polri rank prefix (e.g. "Kombes Pol. ", "Brigjen Pol. ", "Irjen Pol. ")
+ * so the Name field stores ONLY the person's Full Name & Academic Degrees.
+ */
+export function stripRankFromName(nama?: string | null): string {
+  if (!nama || typeof nama !== 'string') return '';
+  let cleaned = nama.trim();
+  while (LEADING_RANK_PREFIX_REGEX.test(cleaned)) {
+    cleaned = cleaned.replace(LEADING_RANK_PREFIX_REGEX, '').trim();
+  }
+  return cleaned;
+}
+
 /**
  * Formats a member's rank and full name without duplicating the rank prefix
  * (e.g., avoids "Kombes Pol Kombes Pol. Daniel...").
@@ -57,18 +73,14 @@ export function formatMemberDisplayName(
   pangkat?: string | null,
   namaLengkap?: string | null
 ): string {
-  const cleanName = (namaLengkap || '').replace(/\(.*?\)/g, '').trim();
+  const cleanName = stripRankFromName((namaLengkap || '').replace(/\(.*?\)/g, '').trim());
   const cleanRank = (pangkat || '').trim();
   if (!cleanRank) return cleanName;
   if (!cleanName) return cleanRank;
 
-  const normName = cleanName.toLowerCase().replace(/\./g, '');
-  const normRank = cleanRank.toLowerCase().replace(/\./g, '');
-  if (normName.startsWith(normRank)) {
-    return cleanName;
-  }
   return `${cleanRank} ${cleanName}`;
 }
+
 
 /**
  * Strips any redundant " — <Satker>" suffix from a Jabatan string so the Jabatan field

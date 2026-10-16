@@ -28,9 +28,10 @@ import {
   isCustomAvatarUrl,
   getOrBuildUserProfile,
   calculateRetirement58,
+  stripRankFromName,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v10';
+const STORAGE_VERSION = 'ws96_akpol96_real_v11';
 
 export default function Home() {
   const router = useRouter();
@@ -323,6 +324,10 @@ export default function Home() {
             if (baseMember.jabatanTerakhir === 'Lead Developer') {
               baseMember = { ...baseMember, jabatanTerakhir: 'Staf' };
             }
+            const cleanBaseName = stripRankFromName(baseMember.namaLengkap);
+            if (cleanBaseName && cleanBaseName !== baseMember.namaLengkap) {
+              baseMember = { ...baseMember, namaLengkap: cleanBaseName };
+            }
 
             if (authUser && (baseMember.nrp === authUser.nrp || (authUser.oldNrp && baseMember.nrp === authUser.oldNrp))) {
               const merged: AnggotaWiraSatya = {
@@ -510,9 +515,34 @@ export default function Home() {
 
   // Load from localStorage or API on initial mount
   useEffect(() => {
-    // Non-destructively record storage version without wiping user edits
+    // Non-destructively record storage version and clean legacy rank prefixes in cached overrides
     const currentVersion = localStorage.getItem('ws96_storage_version');
     if (currentVersion !== STORAGE_VERSION) {
+      localStorage.removeItem('wirasatya96_members');
+      try {
+        const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+        if (rawUOv) {
+          const parsedUOv = JSON.parse(rawUOv) || {};
+          Object.keys(parsedUOv).forEach((k) => {
+            if (parsedUOv[k]?.nama) {
+              parsedUOv[k].nama = stripRankFromName(parsedUOv[k].nama) || parsedUOv[k].nama;
+            }
+          });
+          localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
+        }
+        const rawMOv = localStorage.getItem('ws96_member_overrides_v1');
+        if (rawMOv) {
+          const parsedMOv = JSON.parse(rawMOv) || {};
+          Object.keys(parsedMOv).forEach((k) => {
+            if (parsedMOv[k]?.namaLengkap) {
+              parsedMOv[k].namaLengkap = stripRankFromName(parsedMOv[k].namaLengkap) || parsedMOv[k].namaLengkap;
+            }
+          });
+          localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(parsedMOv));
+        }
+      } catch {
+        // ignore storage parse error
+      }
       localStorage.setItem('ws96_storage_version', STORAGE_VERSION);
     }
 
@@ -549,6 +579,9 @@ export default function Home() {
           ) {
             parsed.nama = 'Eko Agung Krisdianto, S.Kom.';
             parsed.pangkat = parsed.pangkat || 'Briptu';
+          }
+          if (parsed.nama) {
+            parsed.nama = stripRankFromName(parsed.nama) || parsed.nama;
           }
           const sanitizedUser: AuthUser = {
             ...parsed,
@@ -590,6 +623,7 @@ export default function Home() {
             )
             .map((m: AnggotaWiraSatya) => ({
               ...m,
+              namaLengkap: stripRankFromName(m.namaLengkap) || m.namaLengkap,
               fotoUrl: getAvatarUrl(m.fotoUrl),
             }));
           setMembers(sanitizedMembers);

@@ -1,7 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANGKAT_POLRI } from '@/types';
+import {
+  AuthUser,
+  PendingRegistration,
+  UserAccountStatus,
+  UserRole,
+  UserAuditLog,
+  UserAuditAction,
+  DAFTAR_PANGKAT_POLRI,
+} from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
 import { MetaVerifiedBadge, setDynamicRoleMap, updateDynamicUserRole } from './MetaVerifiedBadge';
@@ -16,6 +24,7 @@ import {
   calculateRetirement58,
   deriveBirthDateFromNrp,
   RETIREMENT_AGE_POLRI,
+  stripRankFromName,
 } from '@/lib/avatarUtils';
 import { 
   ShieldCheck, 
@@ -41,7 +50,10 @@ import {
   EyeOff,
   IdCard,
   Check,
-  Info
+  Info,
+  History,
+  RotateCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 interface AdminVerificationModalProps {
@@ -51,7 +63,7 @@ interface AdminVerificationModalProps {
   onVerificationUpdate?: () => void;
   onOpenFullWizard?: () => void;
   onEditMemberByNrp?: (nrp: string) => void;
-  initialTab?: 'USERS' | 'VERIFICATION' | 'ADD_USER';
+  initialTab?: 'USERS' | 'VERIFICATION' | 'AUDIT_LOG' | 'ADD_USER';
   asPage?: boolean;
   currentUserRole?: UserRole;
   currentUserNrp?: string;
@@ -64,6 +76,13 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: 'BENDAHARA', label: 'Bendahara (Pengelola Kas & Aset)' },
   { value: 'KETUA', label: 'Ketua Paguyuban (Pengurus Pusat)' },
   { value: 'SUPERADMIN', label: 'Superadmin (Administrator Sistem)' },
+];
+
+const DELETE_REASON_PRESETS = [
+  'Akun duplikat / ganda',
+  'Bukan personel terdaftar Wira Satya 96',
+  'Penonaktifan akun ADC / staf pendamping',
+  'Permintaan koreksi data personel',
 ];
 
 const PANGKAT_OPTIONS = [...DAFTAR_PANGKAT_POLRI];
@@ -81,10 +100,19 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   currentUserNrp,
   onImpersonateUser,
 }) => {
-  const [activeTab, setActiveTab] = useState<'USERS' | 'VERIFICATION' | 'ADD_USER'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'USERS' | 'VERIFICATION' | 'AUDIT_LOG' | 'ADD_USER'>(initialTab);
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [registrations, setRegistrations] = useState<PendingRegistration[]>([]);
+  const [auditLogs, setAuditLogs] = useState<UserAuditLog[]>([]);
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditFilterAction, setAuditFilterAction] = useState<'ALL' | UserAuditAction>('ALL');
+  const [restoringLogId, setRestoringLogId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Delete Confirmation Modal State
+  const [userPendingDelete, setUserPendingDelete] = useState<AuthUser | null>(null);
+  const [deleteReason, setDeleteReason] = useState('Akun duplikat / ganda');
+  const [isDeletingConfirmed, setIsDeletingConfirmed] = useState(false);
 
   // Filters for Users tab
   const [userSearch, setUserSearch] = useState('');
@@ -144,10 +172,85 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  const effectiveActorRole: UserRole =
+    currentUserRole ||
+    (currentUserNrp === '98010710' || adminName.toLowerCase().includes('eko agung')
+      ? 'SUPERADMIN'
+      : 'SEKRETARIAT');
+
   const canImpersonate =
-    currentUserRole === 'SUPERADMIN' ||
+    effectiveActorRole === 'SUPERADMIN' ||
     currentUserNrp === '98010710' ||
     adminName.toLowerCase().includes('eko agung');
+
+  // Role Authority Matrix for User Deletion:
+  // - SUPERADMIN: can delete anyone except primary Superadmin 98010710
+  // - KETUA: can delete ANGGOTA, SEKRETARIAT, BENDAHARA (cannot delete SUPERADMIN or KETUA)
+  // - SEKRETARIAT: can ONLY delete ANGGOTA (cannot delete SUPERADMIN, KETUA, or BENDAHARA)
+  // - BENDAHARA & ANGGOTA: cannot delete any user
+  const getDeleteAuthorityCheck = (target: AuthUser): { allowed: boolean; reason?: string } => {
+    if (target.nrp === '98010710') {
+      return { allowed: false, reason: 'Akun Superadmin Utama (98010710) dilindungi sistem dan tidak dapat dihapus.' };
+    }
+    if (target.nrp === currentUserNrp) {
+      return { allowed: false, reason: 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif login.' };
+    }
+    if (effectiveActorRole === 'SUPERADMIN') {
+      return { allowed: true };
+    }
+    if (effectiveActorRole === 'KETUA') {
+      if (target.role === 'SUPERADMIN' || target.role === 'KETUA') {
+        return {
+          allowed: false,
+          reason: `Ketua Angkatan tidak memiliki otoritas untuk menghapus akun ber-role ${target.role}.`,
+        };
+      }
+      return { allowed: true };
+    }
+    if (effectiveActorRole === 'SEKRETARIAT') {
+      if (target.role !== 'ANGGOTA') {
+        return {
+          allowed: false,
+          reason: `Sekretaris hanya berwenang menghapus akun ANGGOTA. Akun Pejabat Angkatan (${target.role}) hanya dapat dihapus oleh Ketua Angkatan atau Superadmin.`,
+        };
+      }
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      reason: `Role ${effectiveActorRole} tidak memiliki otoritas menghapus pengguna.`,
+    };
+  };
+
+  const appendClientAuditLog = (entry: Omit<UserAuditLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }) => {
+    const newLog: UserAuditLog = {
+      id: entry.id || `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      timestamp: entry.timestamp || new Date().toISOString(),
+      action: entry.action,
+      actorNrp: entry.actorNrp || currentUserNrp || '98010710',
+      actorName: entry.actorName || adminName || 'Admin',
+      actorRole: entry.actorRole || effectiveActorRole,
+      targetNrp: entry.targetNrp,
+      targetName: entry.targetName,
+      targetPangkat: entry.targetPangkat,
+      targetRole: entry.targetRole,
+      reason: entry.reason,
+      details: entry.details,
+      snapshotUser: entry.snapshotUser,
+    };
+    setAuditLogs((prev) => {
+      const merged = [newLog, ...prev.filter((l) => l.id !== newLog.id)].slice(0, 500);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('ws96_audit_logs_v1', JSON.stringify(merged));
+        } catch {
+          // ignore
+        }
+      }
+      return merged;
+    });
+    return newLog;
+  };
 
   const openSatkerPicker = (mode: 'ADD' | 'EDIT') => {
     setSatkerPickerMode(mode);
@@ -226,6 +329,25 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           }
         } catch {
           deletedSet = new Set();
+        }
+
+        try {
+          const rawAudit = localStorage.getItem('ws96_audit_logs_v1');
+          const localAudit: UserAuditLog[] = rawAudit ? JSON.parse(rawAudit) : [];
+          const serverAudit: UserAuditLog[] = Array.isArray(usersData.auditLogs) ? usersData.auditLogs : [];
+          const byId = new Map<string, UserAuditLog>();
+          [...serverAudit, ...localAudit].forEach((item) => {
+            if (item && item.id) byId.set(item.id, item);
+          });
+          const mergedLogs = Array.from(byId.values()).sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+          setAuditLogs(mergedLogs);
+          localStorage.setItem('ws96_audit_logs_v1', JSON.stringify(mergedLogs.slice(0, 500)));
+        } catch {
+          if (Array.isArray(usersData.auditLogs)) {
+            setAuditLogs(usersData.auditLogs);
+          }
         }
 
         try {
@@ -407,15 +529,26 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   };
 
   const handleRoleChange = async (nrp: string, nextRole: UserRole) => {
+    const targetUser = users.find((u) => u.nrp === nrp);
     // Immediate optimistic update for 0ms UI & badge response
     setUsers((prev) => prev.map((u) => (u.nrp === nrp ? { ...u, role: nextRole } : u)));
     updateDynamicUserRole(nrp, nextRole);
+
+    if (targetUser) {
+      appendClientAuditLog({
+        action: 'UBAH_ROLE',
+        targetNrp: nrp,
+        targetName: stripRankFromName(targetUser.nama) || targetUser.nama,
+        targetPangkat: targetUser.pangkat,
+        targetRole: nextRole,
+        details: `Mengubah role akses dari ${targetUser.role} menjadi ${nextRole}`,
+      });
+    }
 
     if (typeof window !== 'undefined') {
       try {
         const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
         const parsedOverrides = rawOverrides ? JSON.parse(rawOverrides) : {};
-        const targetUser = users.find((u) => u.nrp === nrp);
         parsedOverrides[nrp] = {
           ...(targetUser || {}),
           ...(parsedOverrides[nrp] || {}),
@@ -434,7 +567,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       const res = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nrp, role: nextRole }),
+        body: JSON.stringify({
+          nrp,
+          role: nextRole,
+          actorNrp: currentUserNrp || '98010710',
+          actorName: adminName || 'Admin',
+          actorRole: effectiveActorRole,
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -478,7 +617,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 (knownOldNrp && m.id === `ws-${knownOldNrp}`) ||
                 (m.namaLengkap &&
                   u.nama &&
-                  m.namaLengkap.trim().toLowerCase() === u.nama.trim().toLowerCase())
+                  stripRankFromName(m.namaLengkap).toLowerCase() === stripRankFromName(u.nama).toLowerCase())
             );
             if (matchedMember) {
               if (matchedMember.jabatanTerakhir) memberJabatan = matchedMember.jabatanTerakhir;
@@ -500,7 +639,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     (knownOldNrp && item.oldNrp === knownOldNrp) ||
                     (item.namaLengkap &&
                       u.nama &&
-                      item.namaLengkap.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+                      stripRankFromName(item.namaLengkap).toLowerCase() === stripRankFromName(u.nama).toLowerCase()))
               );
             if (mOv) {
               if (mOv.jabatanTerakhir) memberJabatan = mOv.jabatanTerakhir;
@@ -523,7 +662,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     (u.id && item.id === u.id) ||
                     (item.nama &&
                       u.nama &&
-                      item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+                      stripRankFromName(item.nama).toLowerCase() === stripRankFromName(u.nama).toLowerCase()))
               );
             if (uOv) {
               if (uOv.jabatanTerakhir) memberJabatan = uOv.jabatanTerakhir;
@@ -546,7 +685,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
     setEditingUser(u);
     setEditNrp(u.nrp);
-    setEditNama(u.nama);
+    setEditNama(stripRankFromName(u.nama) || u.nama);
     setEditPangkat(u.pangkat || 'Kombes Pol');
     setEditRole(u.role);
     setEditJabatan(defaultJab);
@@ -574,6 +713,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       return;
     }
 
+    const cleanNamaNoRank = stripRankFromName(editNama.trim()) || editNama.trim();
     const composedSatker = (
       editComposedSatker ||
       (editSubSatker && editSubSatker !== 'Pimpinan / Staf Utama Satker'
@@ -627,7 +767,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           profileId: editingUser.profileId || `ws-${preservedOldNrp}`,
           oldNrp: preservedOldNrp,
           nrp: nextNrp,
-          nama: editNama.trim(),
+          nama: cleanNamaNoRank,
           pangkat: editPangkat,
           role: editRole,
           jabatanTerakhir: cleanedJabatan || undefined,
@@ -651,7 +791,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               (preservedOldNrp && item.adcOfNrp === preservedOldNrp))
           ) {
             item.adcOfNrp = nextNrp;
-            item.adcOfNama = editNama.trim();
+            item.adcOfNama = cleanNamaNoRank;
             item.adcOfPangkat = editPangkat;
             if (effectivePassword) {
               item.password = effectivePassword;
@@ -678,7 +818,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           id: editingUser.profileId || `ws-${preservedOldNrp}`,
           oldNrp: preservedOldNrp,
           nrp: nextNrp,
-          namaLengkap: editNama.trim(),
+          namaLengkap: cleanNamaNoRank,
           pangkat: editPangkat,
           satuanKerja: composedSatker,
           polda: editPolda || 'MABES POLRI',
@@ -707,12 +847,12 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               (preservedOldNrp && m.id === `ws-${preservedOldNrp}`) ||
               (m.namaLengkap &&
                 editingUser.nama &&
-                m.namaLengkap.trim().toLowerCase() === editingUser.nama.trim().toLowerCase())
+                stripRankFromName(m.namaLengkap).toLowerCase() === stripRankFromName(editingUser.nama).toLowerCase())
                 ? {
                     ...m,
                     oldNrp: preservedOldNrp,
                     nrp: nextNrp,
-                    namaLengkap: editNama.trim(),
+                    namaLengkap: cleanNamaNoRank,
                     pangkat: editPangkat,
                     satuanKerja: composedSatker,
                     polda: editPolda || 'MABES POLRI',
@@ -746,7 +886,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               ...parsedAuth,
               oldNrp: preservedOldNrp,
               nrp: nextNrp,
-              nama: editNama.trim(),
+              nama: cleanNamaNoRank,
               pangkat: editPangkat,
               role: editRole,
               jabatanTerakhir: cleanedJabatan || parsedAuth.jabatanTerakhir,
@@ -769,6 +909,17 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       }
     }
 
+    appendClientAuditLog({
+      action: 'EDIT_USER',
+      targetNrp: nextNrp,
+      targetName: cleanNamaNoRank,
+      targetPangkat: editPangkat,
+      targetRole: editRole,
+      details: `Memperbarui data personel (${editPangkat} • ${cleanedJabatan || composedSatker}${
+        nextNrp !== targetNrp ? ` • NRP ${targetNrp} → ${nextNrp}` : ''
+      })`,
+    });
+
     // Immediate optimistic update on users state and dynamic badge role map
     setUsers((prev) =>
       prev.map((u) =>
@@ -777,7 +928,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               ...u,
               oldNrp: preservedOldNrp,
               nrp: nextNrp,
-              nama: editNama.trim(),
+              nama: cleanNamaNoRank,
               pangkat: editPangkat,
               role: editRole,
               jabatanTerakhir: cleanedJabatan || u.jabatanTerakhir,
@@ -805,7 +956,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           originalNrp: preservedOldNrp,
           oldNrp: preservedOldNrp,
           newNrp: nextNrp,
-          nama: editNama.trim(),
+          nama: cleanNamaNoRank,
           pangkat: editPangkat,
           role: editRole,
           jabatanTerakhir: cleanedJabatan || undefined,
@@ -816,12 +967,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           secondaryEmail: cleanedSecondaryEmail,
           noHp: cleanedNoHp,
           password: effectivePassword,
+          actorNrp: currentUserNrp || '98010710',
+          actorName: adminName || 'Admin',
+          actorRole: effectiveActorRole,
         }),
       });
       const data = await res.json();
       if (data.success) {
         showToast(
-          `Data pengguna ${editNama.trim()} (NRP ${nextNrp}) berhasil diperbarui.`,
+          `Data pengguna ${cleanNamaNoRank} (NRP ${nextNrp}) berhasil diperbarui.`,
           'success'
         );
         setEditingUser(null);
@@ -833,7 +987,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       }
     } catch {
       showToast(
-        `Data pengguna ${editNama.trim()} (NRP ${nextNrp}) disimpan secara lokal.`,
+        `Data pengguna ${cleanNamaNoRank} (NRP ${nextNrp}) disimpan secara lokal.`,
         'success'
       );
       setEditingUser(null);
@@ -843,12 +997,34 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     }
   };
 
-  const handleDeleteUser = async (user: AuthUser) => {
-    if (user.nrp === '98010710') {
-      showToast('Akun Superadmin utama tidak dapat dihapus.', 'error');
+  // Opens Confirmation Modal instead of deleting immediately without confirmation
+  const handleRequestDeleteUser = (user: AuthUser) => {
+    const authCheck = getDeleteAuthorityCheck(user);
+    if (!authCheck.allowed) {
+      showToast(authCheck.reason || 'Akses ditolak untuk menghapus pengguna ini.', 'error');
+      return;
+    }
+    setUserPendingDelete(user);
+    setDeleteReason(
+      user.isAdcAccount
+        ? 'Penonaktifan akun ADC / staf pendamping'
+        : 'Akun duplikat / ganda'
+    );
+  };
+
+  const handleConfirmDeleteUser = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!userPendingDelete) return;
+
+    const user = userPendingDelete;
+    const authCheck = getDeleteAuthorityCheck(user);
+    if (!authCheck.allowed) {
+      showToast(authCheck.reason || 'Akses ditolak untuk menghapus pengguna ini.', 'error');
+      setUserPendingDelete(null);
       return;
     }
 
+    const finalReason = deleteReason.trim() || 'Penghapusan akun melalui Manajemen User';
     const cleanNrp = (user.nrp || '').trim();
     const origFromId = user.id?.startsWith('u-') ? user.id.slice(2).trim() : '';
     const cleanOld = (user.oldNrp || origFromId || '').trim();
@@ -859,6 +1035,23 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       if (u.isAdcAccount && (u.adcOfNrp === cleanNrp || (cleanOld && u.adcOfNrp === cleanOld))) {
         if (u.nrp && u.nrp !== '98010710') nrpsToTombstone.add(u.nrp.trim());
       }
+    });
+
+    setIsDeletingConfirmed(true);
+
+    // Record to client audit log with full snapshot so user can be restored anytime
+    appendClientAuditLog({
+      action: 'HAPUS_USER',
+      actorNrp: currentUserNrp || '98010710',
+      actorName: adminName || 'Admin',
+      actorRole: effectiveActorRole,
+      targetNrp: user.nrp,
+      targetName: stripRankFromName(user.nama) || user.nama,
+      targetPangkat: user.pangkat,
+      targetRole: user.role,
+      reason: finalReason,
+      details: `Menghapus akun ${user.pangkat || ''} ${stripRankFromName(user.nama) || user.nama} (NRP ${user.nrp} • Role: ${user.role})`,
+      snapshotUser: { ...user },
     });
 
     if (typeof window !== 'undefined') {
@@ -939,25 +1132,129 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       )
     );
     setRegistrations((prev) => prev.filter((r) => !nrpsToTombstone.has((r.nrp || '').trim())));
+    setUserPendingDelete(null);
 
     setUpdatingUserNrp(user.nrp);
     try {
       const res = await fetch(`/api/users?nrp=${encodeURIComponent(user.nrp)}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nrp: user.nrp,
+          actorNrp: currentUserNrp || '98010710',
+          actorName: adminName || 'Admin',
+          actorRole: effectiveActorRole,
+          reason: finalReason,
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus secara permanen.`, 'success');
+        showToast(
+          `Pengguna ${stripRankFromName(user.nama) || user.nama} (NRP ${user.nrp}) dihapus & tercatat di Log Audit.`,
+          'success'
+        );
         if (onVerificationUpdate) onVerificationUpdate();
       } else {
-        showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus.`, 'success');
+        showToast(
+          data.message || `Pengguna ${stripRankFromName(user.nama) || user.nama} (NRP ${user.nrp}) dihapus & tercatat di Log Audit.`,
+          data.message ? 'error' : 'success'
+        );
         if (onVerificationUpdate) onVerificationUpdate();
       }
     } catch {
-      showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus.`, 'success');
+      showToast(
+        `Pengguna ${stripRankFromName(user.nama) || user.nama} (NRP ${user.nrp}) dihapus & tercatat di Log Audit.`,
+        'success'
+      );
       if (onVerificationUpdate) onVerificationUpdate();
     } finally {
       setUpdatingUserNrp(null);
+      setIsDeletingConfirmed(false);
+    }
+  };
+
+  const handleRestoreDeletedUser = async (logEntry: UserAuditLog) => {
+    const snap = logEntry.snapshotUser || {
+      id: `u-${logEntry.targetNrp}`,
+      profileId: `ws-${logEntry.targetNrp}`,
+      nrp: logEntry.targetNrp,
+      nama: stripRankFromName(logEntry.targetName) || logEntry.targetName,
+      pangkat: logEntry.targetPangkat || 'Kombes Pol',
+      role: logEntry.targetRole || 'ANGGOTA',
+      email: `${logEntry.targetNrp}@polri.go.id`,
+      satker: 'Mabes Polri',
+      polda: 'MABES POLRI',
+      mfaEnabled: false,
+      mfaMethod: 'PIN' as const,
+      status: 'DISETUJUI_BELUM_PASSWORD' as const,
+    };
+
+    const cleanNrp = snap.nrp.trim();
+    const cleanOld = (snap.oldNrp || '').trim();
+    setRestoringLogId(logEntry.id);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
+        if (rawDeleted) {
+          const parsedDeleted: string[] = JSON.parse(rawDeleted) || [];
+          const nextDeleted = parsedDeleted.filter((n) => n !== cleanNrp && (!cleanOld || n !== cleanOld));
+          localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(nextDeleted));
+        }
+
+        const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+        const parsedUOv = rawUOv ? JSON.parse(rawUOv) : {};
+        parsedUOv[cleanNrp] = {
+          ...snap,
+          nama: stripRankFromName(snap.nama) || snap.nama,
+          updatedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
+      } catch {
+        // ignore
+      }
+    }
+
+    appendClientAuditLog({
+      action: 'PULIHKAN_USER',
+      actorNrp: currentUserNrp || '98010710',
+      actorName: adminName || 'Admin',
+      actorRole: effectiveActorRole,
+      targetNrp: snap.nrp,
+      targetName: stripRankFromName(snap.nama) || snap.nama,
+      targetPangkat: snap.pangkat,
+      targetRole: snap.role,
+      details: `Memulihkan (Restore) akun pengguna yang sebelumnya dihapus`,
+    });
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'RESTORE_USER',
+          snapshotUser: snap,
+          actorNrp: currentUserNrp || '98010710',
+          actorName: adminName || 'Admin',
+          actorRole: effectiveActorRole,
+        }),
+      });
+      const data = await res.json();
+      await fetchAllData();
+      if (onVerificationUpdate) onVerificationUpdate();
+      showToast(
+        data.message || `Akun ${stripRankFromName(snap.nama) || snap.nama} (NRP ${snap.nrp}) berhasil dipulihkan!`,
+        'success'
+      );
+    } catch {
+      await fetchAllData();
+      if (onVerificationUpdate) onVerificationUpdate();
+      showToast(
+        `Akun ${stripRankFromName(snap.nama) || snap.nama} (NRP ${snap.nrp}) berhasil dipulihkan!`,
+        'success'
+      );
+    } finally {
+      setRestoringLogId(null);
     }
   };
 
@@ -966,6 +1263,22 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     const assignedRole = selectedApproveRoles[reg.id] || 'ANGGOTA';
     const nextStatus = action === 'APPROVE' ? 'DISETUJUI_BELUM_PASSWORD' : 'DITOLAK';
     const nowIso = new Date().toISOString();
+    const cleanRegNama = stripRankFromName(reg.nama) || reg.nama;
+
+    appendClientAuditLog({
+      action: 'VERIFIKASI_PENDAFTAR',
+      actorNrp: currentUserNrp || '98010710',
+      actorName: adminName || 'Admin',
+      actorRole: effectiveActorRole,
+      targetNrp: reg.nrp,
+      targetName: cleanRegNama,
+      targetPangkat: reg.pangkat,
+      targetRole: assignedRole,
+      details:
+        action === 'APPROVE'
+          ? `Menyetujui pendaftaran akun sebagai ${assignedRole}`
+          : `Menolak pengajuan pendaftaran akun`,
+    });
 
     if (typeof window !== 'undefined') {
       try {
@@ -973,6 +1286,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         const parsedRegOv = rawRegOv ? JSON.parse(rawRegOv) : {};
         parsedRegOv[reg.nrp] = {
           ...reg,
+          nama: cleanRegNama,
           status: nextStatus,
           role: assignedRole,
           verifiedBy: adminName || 'Admin / Sekretaris WS96',
@@ -988,7 +1302,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             id: `u-${reg.nrp}`,
             profileId: `ws-${reg.nrp}`,
             nrp: reg.nrp,
-            nama: reg.nama,
+            nama: cleanRegNama,
             pangkat: reg.pangkat || 'Kombes Pol',
             role: assignedRole,
             satker: reg.satker || 'Mabes Polri',
@@ -1011,6 +1325,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         r.id === reg.id || r.nrp === reg.nrp
           ? {
               ...r,
+              nama: cleanRegNama,
               status: nextStatus,
               verifiedBy: adminName || 'Admin / Sekretaris WS96',
               verifiedAt: nowIso,
@@ -1036,8 +1351,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       if (data.success) {
         showToast(
           action === 'APPROVE' 
-            ? `Pendaftaran ${reg.nama} disetujui sebagai ${assignedRole}!` 
-            : `Pendaftaran ${reg.nama} telah ditolak.`,
+            ? `Pendaftaran ${cleanRegNama} disetujui sebagai ${assignedRole}!` 
+            : `Pendaftaran ${cleanRegNama} telah ditolak.`,
           'success'
         );
         await fetchAllData();
@@ -1045,8 +1360,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       } else {
         showToast(
           action === 'APPROVE'
-            ? `Pendaftaran ${reg.nama} disetujui sebagai ${assignedRole}!`
-            : `Pendaftaran ${reg.nama} telah ditolak.`,
+            ? `Pendaftaran ${cleanRegNama} disetujui sebagai ${assignedRole}!`
+            : `Pendaftaran ${cleanRegNama} telah ditolak.`,
           'success'
         );
         if (onVerificationUpdate) onVerificationUpdate();
@@ -1054,8 +1369,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     } catch {
       showToast(
         action === 'APPROVE'
-          ? `Pendaftaran ${reg.nama} disetujui sebagai ${assignedRole}!`
-          : `Pendaftaran ${reg.nama} telah ditolak.`,
+          ? `Pendaftaran ${cleanRegNama} disetujui sebagai ${assignedRole}!`
+          : `Pendaftaran ${cleanRegNama} telah ditolak.`,
         'success'
       );
       if (onVerificationUpdate) onVerificationUpdate();
@@ -1097,7 +1412,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     }
 
     const cleanNrp = newNrp.trim();
-    const cleanNama = newNama.trim();
+    const cleanNama = stripRankFromName(newNama.trim()) || newNama.trim();
     const cleanSatker = newComposedSatker || newSatkerUtama || 'MABES POLRI';
     const cleanPolda = newPolda || 'MABES POLRI';
     const rawEmail = newEmail.trim();
@@ -1109,6 +1424,18 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         : rawEmail;
     const calc58 = calculateRetirement58(undefined, cleanNrp);
     const nowIso = new Date().toISOString();
+
+    appendClientAuditLog({
+      action: 'TAMBAH_USER',
+      actorNrp: currentUserNrp || '98010710',
+      actorName: adminName || 'Admin',
+      actorRole: effectiveActorRole,
+      targetNrp: cleanNrp,
+      targetName: cleanNama,
+      targetPangkat: newPangkat,
+      targetRole: newRole,
+      details: `Menambahkan pengguna baru pada satker ${cleanSatker} (${cleanPolda})`,
+    });
 
     if (typeof window !== 'undefined') {
       try {
@@ -1211,6 +1538,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           secondaryEmail: newSecondaryEmail.trim() || undefined,
           noHp: newNoHp.trim(),
           password: newPassword.trim() || undefined,
+          actorNrp: currentUserNrp || '98010710',
+          actorName: adminName || 'Admin',
+          actorRole: effectiveActorRole,
         }),
       });
       const data = await res.json();
@@ -1326,7 +1656,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               name="ws96_new_nama"
               value={newNama}
               onChange={(e) => setNewNama(e.target.value)}
-              placeholder="Contoh: Kombes Pol. Budi Santoso, S.I.K."
+              placeholder="Contoh: Budi Santoso, S.I.K., M.Si. (Tanpa Pangkat)"
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -1584,14 +1914,14 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               <h3 className="font-bold text-base sm:text-lg text-white flex items-center gap-1.5">
                 <span>User</span>
                 <span
-                  title="Kelola daftar pengguna, hak akses role, impersonate, dan verifikasi pendaftaran"
+                  title="Kelola daftar pengguna, hak akses role, verifikasi pendaftaran, serta log audit & pemulihan akun"
                   className="inline-flex items-center text-slate-300 hover:text-white cursor-help"
                 >
                   <Info className="w-4 h-4" />
                 </span>
               </h3>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
-                Otoritas: Sekretaris
+                Otoritas: {currentUserRole === 'SUPERADMIN' ? 'Superadmin' : currentUserRole === 'KETUA' ? 'Ketua Angkatan' : 'Sekretaris'}
               </span>
               {pendingCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold animate-pulse">
@@ -1641,6 +1971,18 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 {pendingCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('AUDIT_LOG')}
+            className={`px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-2 border-t border-x transition-all whitespace-nowrap ${
+              activeTab === 'AUDIT_LOG'
+                ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
+                : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span>Log Audit ({auditLogs.length})</span>
           </button>
         </div>
 
@@ -1729,9 +2071,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     : u.role === 'BENDAHARA'
                     ? 'Jabatan Angkatan: Bendahara'
                     : null;
-                const showPangkat =
-                  Boolean(u.pangkat) &&
-                  !u.nama.toLowerCase().trim().startsWith((u.pangkat || '').toLowerCase().trim());
+                const cleanNameNoRank = stripRankFromName(u.nama) || u.nama;
+                const deleteAuth = getDeleteAuthorityCheck(u);
 
                 return (
                   <div
@@ -1741,12 +2082,12 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold text-sm text-slate-900 flex items-center gap-1.5">
-                          <span>{u.nama}</span>
+                          <span>{cleanNameNoRank}</span>
                           <MetaVerifiedBadge role={u.role} nrp={u.nrp} size="sm" />
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded-md bg-slate-100 font-semibold text-slate-600">
                           NRP {u.nrp}
-                          {showPangkat ? ` • ${u.pangkat}` : ''}
+                          {u.pangkat ? ` • ${u.pangkat}` : ''}
                         </span>
                         {dynamicJabatanAngkatan && (
                           <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 font-bold text-amber-800">
@@ -1839,10 +2180,18 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       {u.nrp !== '98010710' && (
                         <button
                           type="button"
-                          onClick={() => handleDeleteUser(u)}
+                          onClick={() => handleRequestDeleteUser(u)}
                           disabled={updatingUserNrp === u.nrp}
-                          className="mt-4 p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                          title="Hapus Pengguna"
+                          className={`mt-4 p-2 rounded-lg border transition-colors disabled:opacity-50 ${
+                            deleteAuth.allowed
+                              ? 'border-red-200 text-red-600 hover:bg-red-50'
+                              : 'border-slate-200 text-slate-300 cursor-not-allowed bg-slate-50'
+                          }`}
+                          title={
+                            deleteAuth.allowed
+                              ? 'Hapus Pengguna (Dengan Konfirmasi & Pencatatan Log Audit)'
+                              : deleteAuth.reason || 'Role Anda tidak memiliki otoritas menghapus pengguna ini'
+                          }
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1924,7 +2273,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-extrabold text-sm text-slate-900">
-                          {reg.nama}
+                          {stripRankFromName(reg.nama) || reg.nama}
                         </span>
                         <span className="text-xs px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
                           NRP {reg.nrp}
@@ -2051,14 +2400,179 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         </>
       )}
 
-      {/* TAB 3: TAMBAH PENGGUNA BARU (CAS 2-COLUMN LAYOUT) */}
+      {/* TAB 3: LOG AUDIT & RIWAYAT AKTIVITAS MANAJEMEN USER */}
+      {activeTab === 'AUDIT_LOG' && (
+        <>
+          <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-3">
+            {/* Matriks Otoritas Hapus & Kelola User */}
+            <div className="bg-white border border-slate-200 rounded-xl p-3.5 text-xs space-y-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-red-800" />
+                  <span>Matriks Otoritas &amp; Hak Hapus Pengguna</span>
+                </span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Wajib Konfirmasi + Tercatat Otomatis di Log Audit
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px]">
+                <div className="p-2 rounded-lg bg-slate-900 text-white">
+                  <div className="font-extrabold text-amber-300">1. SUPERADMIN</div>
+                  <div className="text-slate-300 mt-0.5">Otoritas penuh: kelola, hapus, &amp; pulihkan seluruh akun (kecuali akun Superadmin utama).</div>
+                </div>
+                <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-red-950">
+                  <div className="font-extrabold text-red-800">2. KETUA ANGKATAN</div>
+                  <div className="text-red-900/80 mt-0.5">Dapat mengelola user, memverifikasi pendaftar, melihat log audit, &amp; menghapus Anggota / Pengurus di bawahnya.</div>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
+                  <div className="font-extrabold text-amber-900">3. SEKRETARIS</div>
+                  <div className="text-amber-900/80 mt-0.5">Dapat mengelola user, memverifikasi pendaftar, melihat log audit, &amp; menghapus akun berstatus ANGGOTA.</div>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700">
+                  <div className="font-extrabold text-slate-800">4. BENDAHARA &amp; ANGGOTA</div>
+                  <div className="text-slate-500 mt-0.5">Tidak memiliki akses ke menu Manajemen User dan tidak dapat menghapus pengguna.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter & Pencarian Log Audit */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  placeholder="Cari log berdasarkan nama pelaku, NRP target, nama user, atau keterangan..."
+                  className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                />
+              </div>
+              <select
+                value={auditActionFilter}
+                onChange={(e) => setAuditActionFilter(e.target.value as 'ALL' | UserAuditAction)}
+                className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-800"
+              >
+                <option value="ALL">Semua Aktivitas ({auditLogs.length})</option>
+                <option value="HAPUS_USER">Hapus Pengguna</option>
+                <option value="PULIHKAN_USER">Pemulihan Pengguna (Restore)</option>
+                <option value="TAMBAH_USER">Tambah Pengguna</option>
+                <option value="EDIT_USER">Edit Data Pengguna</option>
+                <option value="UBAH_ROLE">Ubah Role Akses</option>
+                <option value="VERIFIKASI_PENDAFTAR">Verifikasi Pendaftar</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
+            {(() => {
+              const q = auditSearch.trim().toLowerCase();
+              const filteredLogs = auditLogs.filter((log) => {
+                if (auditActionFilter !== 'ALL' && log.action !== auditActionFilter) return false;
+                if (!q) return true;
+                return (
+                  (log.actorNama || '').toLowerCase().includes(q) ||
+                  (log.actorNrp || '').toLowerCase().includes(q) ||
+                  (log.targetNama || '').toLowerCase().includes(q) ||
+                  (log.targetNrp || '').toLowerCase().includes(q) ||
+                  (log.details || '').toLowerCase().includes(q)
+                );
+              });
+
+              if (filteredLogs.length === 0) {
+                return (
+                  <div className="py-12 text-center">
+                    <History className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="font-bold text-slate-700 text-sm">Belum ada catatan aktivitas di Log Audit</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Setiap penghapusan, pemulihan, penambahan, perubahan data, atau perubahan role pengguna akan otomatis tercatat di sini.
+                    </p>
+                  </div>
+                );
+              }
+
+              const badgeStyleByAction: Record<UserAuditAction, { label: string; cls: string }> = {
+                HAPUS_USER: { label: 'HAPUS USER', cls: 'bg-red-100 text-red-800 border-red-200' },
+                PULIHKAN_USER: { label: 'PULIHKAN USER', cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+                TAMBAH_USER: { label: 'TAMBAH USER', cls: 'bg-blue-100 text-blue-800 border-blue-200' },
+                EDIT_USER: { label: 'EDIT DATA USER', cls: 'bg-amber-100 text-amber-900 border-amber-200' },
+                UBAH_ROLE: { label: 'UBAH ROLE', cls: 'bg-purple-100 text-purple-800 border-purple-200' },
+                VERIFIKASI_PENDAFTAR: { label: 'VERIFIKASI', cls: 'bg-teal-100 text-teal-800 border-teal-200' },
+              };
+
+              return filteredLogs.map((log) => {
+                const badge = badgeStyleByAction[log.action] || {
+                  label: log.action,
+                  cls: 'bg-slate-100 text-slate-700 border-slate-200',
+                };
+                const isCurrentlyDeleted =
+                  log.action === 'HAPUS_USER' &&
+                  !users.some((u) => u.nrp === log.targetNrp);
+
+                return (
+                  <div
+                    key={log.id}
+                    className="bg-white rounded-xl border border-slate-200 p-3.5 hover:border-slate-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${badge.cls}`}>
+                          {badge.label}
+                        </span>
+                        <span className="font-bold text-xs text-slate-900">
+                          Target: {log.targetPangkat ? `${log.targetPangkat} ` : ''}{stripRankFromName(log.targetNama) || log.targetNama} (NRP {log.targetNrp})
+                        </span>
+                        {log.targetRole && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-600">
+                            Role: {log.targetRole === 'SEKRETARIAT' ? 'SEKRETARIS' : log.targetRole}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-slate-600">
+                        {log.details}
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-0.5">
+                        <span>
+                          Dieksekusi oleh:{' '}
+                          <strong className="text-slate-700">
+                            {log.actorNama} (NRP {log.actorNrp} • {log.actorRole === 'SEKRETARIAT' ? 'SEKRETARIS' : log.actorRole})
+                          </strong>
+                        </span>
+                        <span>
+                          Waktu: {new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isCurrentlyDeleted && (
+                      <button
+                        type="button"
+                        onClick={() => handleRestoreDeletedUser(log)}
+                        disabled={restoringLogId === log.id}
+                        className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center gap-1.5 shrink-0 transition-colors disabled:opacity-50"
+                        title="Pulihkan kembali akun pengguna yang telah dihapus ini"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>{restoringLogId === log.id ? 'Memulihkan...' : 'Pulihkan User'}</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </>
+      )}
+
+      {/* TAB 4: TAMBAH PENGGUNA BARU (CAS 2-COLUMN LAYOUT) */}
       {activeTab === 'ADD_USER' && (
         <div className="flex-1 overflow-y-auto p-5 sm:p-6">
           <div className="max-w-3xl mx-auto">
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-5 flex items-start justify-between gap-3">
               <div>
                 <h4 className="text-xs font-extrabold text-amber-900">
-                  Penambahan Langsung oleh Sekretaris
+                  Penambahan Langsung oleh Pengurus / Sekretaris
                 </h4>
                 <p className="text-[11px] text-amber-800 mt-0.5">
                   Akun yang ditambahkan di sini langsung terdaftar sebagai pengguna terverifikasi, masuk ke Direktori Anggota, dan terdaftar di Buku Kas/Iuran.
@@ -2066,6 +2580,107 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               </div>
             </div>
             {renderCasAddUserForm(() => setActiveTab('USERS'))}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* MODAL KONFIRMASI HAPUS PENGGUNA (DENGAN PENCATATAN LOG AUDIT) */}
+      {/* ============================================================ */}
+      {userPendingDelete && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div
+            className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-red-200 overflow-hidden animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 bg-red-50 border-b border-red-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-sm">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-red-950">
+                    Konfirmasi Hapus Pengguna
+                  </h4>
+                  <p className="text-[11px] text-red-700 font-medium">
+                    Tindakan ini akan dicatat ke dalam Log Audit Sistem
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUserPendingDelete(null);
+                  setDeleteReason('');
+                }}
+                className="p-1.5 rounded-lg text-red-400 hover:text-red-700 hover:bg-red-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Target Akun yang Akan Dihapus
+                </div>
+                <div className="font-extrabold text-sm text-slate-900">
+                  {userPendingDelete.pangkat ? `${userPendingDelete.pangkat} ` : ''}
+                  {stripRankFromName(userPendingDelete.nama) || userPendingDelete.nama}
+                </div>
+                <div className="text-slate-600 font-medium">
+                  NRP: <span className="font-mono font-bold text-slate-800">{userPendingDelete.nrp}</span> &bull; Role:{' '}
+                  <span className="font-bold text-red-800">
+                    {userPendingDelete.role === 'SEKRETARIAT' ? 'SEKRETARIS' : userPendingDelete.role}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Satker: {(userPendingDelete.satker || 'Mabes Polri').split(' / ')[0]} ({userPendingDelete.polda || 'MABES POLRI'})
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Alasan Penghapusan <span className="text-slate-400 font-normal">(Tercatat di Log Audit)</span>
+                </label>
+                <input
+                  type="text"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="Contoh: Duplikasi data / akun pengujian / koreksi sekretariat..."
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:outline-none"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+                <strong>Catatan Keamanan:</strong> Penghapusan ini akan dicatat atas nama{' '}
+                <strong>{adminName} ({currentUserRole === 'SEKRETARIAT' ? 'SEKRETARIS' : currentUserRole})</strong>. Apabila diperlukan di kemudian hari, akun dapat dipulihkan kembali melalui tab <strong>Log Audit</strong>.
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserPendingDelete(null);
+                    setDeleteReason('');
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-bold text-xs transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteUser}
+                  disabled={updatingUserNrp === userPendingDelete.nrp}
+                  className="px-4 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>
+                    {updatingUserNrp === userPendingDelete.nrp ? 'Menghapus...' : 'Ya, Hapus Pengguna'}
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

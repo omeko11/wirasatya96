@@ -97,7 +97,7 @@ export const ROLE_PERMISSIONS: Record<
 > = {
   SUPERADMIN: {
     label: 'Superadmin',
-    description: 'Otoritas penuh sistem, manajemen pengguna, verifikasi, akses kas & portofolio aset (testing/perbaikan), dan konfigurasi.',
+    description: 'Otoritas penuh sistem, manajemen & penghapusan seluruh pengguna, pemulihan log audit, verifikasi, dan akses kas/aset.',
     badgeColor: 'bg-red-900 text-amber-300 border border-amber-500/40',
     canEditAllMembers: true,
     canManageUsers: true,
@@ -107,7 +107,7 @@ export const ROLE_PERMISSIONS: Record<
   },
   SEKRETARIAT: {
     label: 'Sekretaris',
-    description: 'Pengelola pendataan anggota, penambahan user, dan verifikasi pendaftaran.',
+    description: 'Pengelola pendataan anggota, penambahan/edit user, verifikasi pendaftaran, dan penghapusan akun Anggota (tercatat di Log Audit).',
     badgeColor: 'bg-blue-700 text-white',
     canEditAllMembers: true,
     canManageUsers: true,
@@ -117,17 +117,17 @@ export const ROLE_PERMISSIONS: Record<
   },
   KETUA: {
     label: 'Ketua Paguyuban',
-    description: 'Pimpinan paguyuban, rekap laporan kas & aset, serta pemantauan anev leting.',
+    description: 'Pimpinan paguyuban, pengawasan manajemen user & log audit, verifikasi anggota, rekap laporan kas & aset, serta pemantauan anev.',
     badgeColor: 'bg-amber-600 text-white',
-    canEditAllMembers: false,
-    canManageUsers: false,
+    canEditAllMembers: true,
+    canManageUsers: true,
     canManageFinance: false,
     canRekapFinance: true,
     canViewExecutiveAnalytics: true,
   },
   BENDAHARA: {
     label: 'Bendahara',
-    description: 'Pengelola penginputan arus kas, portofolio aset, pencatatan iuran, dan rekap laporan.',
+    description: 'Pengelola penginputan arus kas, portofolio aset, pencatatan iuran, dan rekap laporan (tanpa akses manajemen/hapus user).',
     badgeColor: 'bg-emerald-700 text-white',
     canEditAllMembers: false,
     canManageUsers: false,
@@ -137,7 +137,7 @@ export const ROLE_PERMISSIONS: Record<
   },
   ANGGOTA: {
     label: 'Anggota',
-    description: 'Perwira alumni batalyon & ADC (termasuk fungsi pengawasan terbuka kas & direktori).',
+    description: 'Perwira alumni batalyon & ADC (pengawasan terbuka kas & direktori, tanpa akses manajemen/hapus user).',
     badgeColor: 'bg-slate-700 text-white',
     canEditAllMembers: false,
     canManageUsers: false,

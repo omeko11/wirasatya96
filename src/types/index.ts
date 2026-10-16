@@ -372,4 +372,29 @@ export interface ChatMessage {
   isRead: boolean;
 }
 
+// ==============================================================
+// MODUL AUDIT LOG MANAJEMEN USER & VERIFIKASI
+// ==============================================================
+export type UserAuditAction =
+  | 'HAPUS_USER'
+  | 'PULIHKAN_USER'
+  | 'TAMBAH_USER'
+  | 'EDIT_USER'
+  | 'UBAH_ROLE'
+  | 'VERIFIKASI_PENDAFTAR';
 
+export interface UserAuditLog {
+  id: string;
+  timestamp: string;
+  action: UserAuditAction;
+  actorName: string;
+  actorNrp?: string;
+  actorRole: UserRole;
+  targetNrp: string;
+  targetNama: string;
+  targetPangkat?: string;
+  targetRole?: UserRole;
+  reason?: string;
+  details?: string;
+  snapshotUser?: AuthUser;
+}
