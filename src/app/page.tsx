@@ -19,7 +19,7 @@ import { OfflineSyncBanner } from '@/components/OfflineSyncBanner';
 import { isEffectivelyOnline, getOutboxQueue } from '@/lib/offlineSyncEngine';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
-import { PURGED_NON_1996_BASE_NAMES } from '@/data/akpol1996Alumni';
+import { PURGED_NON_1996_BASE_NAMES, NON_AKTIF_IURAN_NRPS } from '@/data/akpol1996Alumni';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { INITIAL_FINANCE_SUMMARY, INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_ASSETS } from '@/data/mockFinance';
 import { AnggotaWiraSatya, AuthUser, KasTransaction, IuranAnggota, FinanceSummary, AssetPortfolioItem, FeedPost, ChatMessage } from '@/types';
@@ -35,7 +35,7 @@ import {
   isSuperadminAccount,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v14';
+const STORAGE_VERSION = 'ws96_akpol96_real_v15';
 
 export default function Home() {
   const router = useRouter();
@@ -558,15 +558,20 @@ export default function Home() {
 
           if (Array.isArray(res.data.iuranList) && res.data.iuranList.length > 0) {
             const annualTarget = effectiveIuranPerBulan * 12;
-            const syncedIuran = res.data.iuranList.map((item: IuranAnggota) => {
-              const status: IuranAnggota['status'] =
-                item.totalTerbayar >= annualTarget
-                  ? 'LUNAS'
-                  : item.totalTerbayar > 0
-                  ? 'SEBAGIAN'
-                  : 'BELUM_BAYAR';
-              return { ...item, totalTagihan: annualTarget, status };
-            });
+            const syncedIuran = res.data.iuranList
+              .filter(
+                (item: IuranAnggota) =>
+                  !isSuperadminAccount(item.nrp) && !NON_AKTIF_IURAN_NRPS.has(item.nrp)
+              )
+              .map((item: IuranAnggota) => {
+                const status: IuranAnggota['status'] =
+                  item.totalTerbayar >= annualTarget
+                    ? 'LUNAS'
+                    : item.totalTerbayar > 0
+                    ? 'SEBAGIAN'
+                    : 'BELUM_BAYAR';
+                return { ...item, totalTagihan: annualTarget, status };
+              });
             setIuranList(syncedIuran);
           }
 
@@ -596,6 +601,7 @@ export default function Home() {
     const currentVersion = localStorage.getItem('ws96_storage_version');
     if (currentVersion !== STORAGE_VERSION) {
       localStorage.removeItem('wirasatya96_members');
+      localStorage.removeItem('wirasatya96_finance');
       try {
         const rawDel = localStorage.getItem('ws96_deleted_nrps_v1');
         if (rawDel) {
@@ -752,7 +758,9 @@ export default function Home() {
           setIuranList(
             parsed.iuranList.filter(
               (i: IuranAnggota) =>
-                !deletedOnMount.has((i.nrp || '').trim()) && !isSuperadminAccount(i.nrp)
+                !deletedOnMount.has((i.nrp || '').trim()) &&
+                !isSuperadminAccount(i.nrp) &&
+                !NON_AKTIF_IURAN_NRPS.has(i.nrp)
             )
           );
         }
@@ -1137,6 +1145,15 @@ export default function Home() {
     persistMemberOverride(cleanMember);
     if (typeof window !== 'undefined') {
       localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
+    }
+
+    const memberStatus = cleanMember.statusKedinasan || cleanMember.statusDinas || 'AKTIF';
+    if (memberStatus !== 'AKTIF') {
+      setIuranList((prev) =>
+        prev.filter(
+          (i) => i.nrp !== cleanMember.nrp && (!preservedOldNrp || i.nrp !== preservedOldNrp)
+        )
+      );
     }
 
     // If the user updated their own profile, sync currentUser as well

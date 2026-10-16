@@ -14,6 +14,7 @@ import {
 } from '@/types';
 import { generateLeakageTrackedFileName } from '@/lib/mediaSecurity';
 import { isSuperadminAccount } from '@/lib/avatarUtils';
+import { NON_AKTIF_IURAN_NRPS } from '@/data/akpol1996Alumni';
 import {
   Wallet,
   ArrowUpRight,
@@ -151,8 +152,19 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<'SEMUA' | 'MASUK' | 'KELUAR'>('SEMUA');
   const [showReadOnlyInfo, setShowReadOnlyInfo] = useState(false);
 
-  const filterOutSuperadminIuran = (list: IuranAnggota[]) =>
-    (list || []).filter((item) => !isSuperadminAccount(item.nrp));
+  const filterOutSuperadminIuran = (list: IuranAnggota[]) => {
+    const nonAktifMemberNrps = new Set<string>(NON_AKTIF_IURAN_NRPS);
+    (members || []).forEach((m) => {
+      const st = m.statusKedinasan || m.statusDinas || 'AKTIF';
+      if (st !== 'AKTIF') {
+        if (m.nrp) nonAktifMemberNrps.add(m.nrp);
+        if (m.oldNrp) nonAktifMemberNrps.add(m.oldNrp);
+      }
+    });
+    return (list || []).filter(
+      (item) => !isSuperadminAccount(item.nrp) && !nonAktifMemberNrps.has(item.nrp)
+    );
+  };
 
   // Local synced state for finance data & config
   const [localSummary, setLocalSummary] = useState<FinanceSummary & { totalKasMasuk?: number; totalKasKeluar?: number }>(
@@ -174,7 +186,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
   useEffect(() => {
     setLocalIuranList(filterOutSuperadminIuran(iuranList || []));
-  }, [iuranList]);
+  }, [iuranList, members]);
 
   useEffect(() => {
     if (propAssets) {
@@ -925,12 +937,15 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       }))
   );
 
-  const filteredMemberOptions = alumniMembers.filter(
-    (m) =>
+  const filteredMemberOptions = alumniMembers.filter((m) => {
+    const st = m.statusKedinasan || m.statusDinas || 'AKTIF';
+    if (st !== 'AKTIF' || NON_AKTIF_IURAN_NRPS.has(m.nrp)) return false;
+    return (
       !memberSearchQuery.trim() ||
       m.namaLengkap.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
       m.nrp.includes(memberSearchQuery.trim())
-  );
+    );
+  });
 
   return (
     <div className="space-y-6 pb-20 md:pb-8">
@@ -2008,7 +2023,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                           className="w-full px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-white font-semibold text-xs"
                         >
                           <option value="">-- Pilih Personel (Atau Isi Manual) --</option>
-                          {filteredMemberOptions.slice(0, 170).map((m) => (
+                          {filteredMemberOptions.slice(0, 300).map((m) => (
                             <option key={m.nrp} value={m.nrp}>
                               {m.namaLengkap} ({m.nrp})
                             </option>

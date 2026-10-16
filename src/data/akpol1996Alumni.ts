@@ -473,7 +473,16 @@ export const AKPOL_1996_REGISTRATIONS: PendingRegistration[] = RAW_AKPOL_1996_AL
   };
 });
 
-export const AKPOL_1996_IURAN: IuranAnggota[] = RAW_AKPOL_1996_ALUMNI.map((item) => {
+export const NON_AKTIF_IURAN_NRPS: Set<string> = new Set(
+  RAW_AKPOL_1996_ALUMNI.filter((item) => item.statusKedinasan && item.statusKedinasan !== 'AKTIF').flatMap((item) => {
+    const legacyNrp = `7409${String(item.no).padStart(4, '0')}`;
+    return item.nrp && item.nrp !== legacyNrp ? [item.nrp, legacyNrp] : [legacyNrp];
+  })
+);
+
+export const AKPOL_1996_IURAN: IuranAnggota[] = RAW_AKPOL_1996_ALUMNI.filter(
+  (item) => !item.statusKedinasan || item.statusKedinasan === 'AKTIF'
+).map((item) => {
   const legacyNrp = `7409${String(item.no).padStart(4, '0')}`;
   const nrp = item.nrp || legacyNrp;
   const cleanNama = stripRankFromName(item.nama) || item.nama;

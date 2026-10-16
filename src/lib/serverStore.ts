@@ -27,6 +27,7 @@ import {
   AKPOL_1996_MEMBERS,
   AKPOL_1996_REGISTRATIONS,
   AKPOL_1996_USERS,
+  NON_AKTIF_IURAN_NRPS,
   PURGED_NON_1996_BASE_NAMES,
 } from '@/data/akpol1996Alumni';
 import { calculateRetirement58, stripRankFromName } from '@/lib/avatarUtils';
@@ -760,6 +761,22 @@ export function readDb(): GlobalStore {
         }
       });
 
+      const exemptIuranNrps = new Set<string>(NON_AKTIF_IURAN_NRPS);
+      loadedMembers.forEach((m) => {
+        const st = m.statusKedinasan || m.statusDinas || 'AKTIF';
+        if (st !== 'AKTIF') {
+          if (m.nrp) exemptIuranNrps.add(m.nrp);
+          if (m.oldNrp) exemptIuranNrps.add(m.oldNrp);
+        }
+      });
+      loadedUsers.forEach((u) => {
+        const st = u.statusKedinasan || 'AKTIF';
+        if (st !== 'AKTIF' || u.isAdcAccount || u.role === 'SUPERADMIN' || u.nrp === '98010710') {
+          if (u.nrp) exemptIuranNrps.add(u.nrp);
+          if (u.oldNrp) exemptIuranNrps.add(u.oldNrp);
+        }
+      });
+
       loadedIuran.forEach((i) => {
         i.namaLengkap = stripRankFromName(i.namaLengkap) || i.namaLengkap;
         const baseNameKey = `name:${stripRankFromName(i.namaLengkap).split(',')[0].trim().toLowerCase()}`;
@@ -777,9 +794,6 @@ export function readDb(): GlobalStore {
           i.pangkat = ref.pangkat || i.pangkat;
           i.polda = ref.polda || i.polda;
         }
-        if (i.nrp === '98010710' && (!i.namaLengkap || i.namaLengkap === 'Eko Agung')) {
-          i.namaLengkap = 'Eko Agung Krisdianto, S.Kom.';
-        }
         i.totalTagihan = annualTagihan;
         if (i.totalTerbayar >= annualTagihan) {
           i.status = 'LUNAS';
@@ -790,7 +804,11 @@ export function readDb(): GlobalStore {
         }
       });
 
-      // Ensure any officer in AKPOL_1996_IURAN not yet in loadedIuran (and not deleted) is automatically added
+      const activeLoadedIuran = loadedIuran.filter((i) => !exemptIuranNrps.has(i.nrp));
+      loadedIuran.length = 0;
+      loadedIuran.push(...activeLoadedIuran);
+
+      // Ensure any active officer in AKPOL_1996_IURAN not yet in loadedIuran (and not deleted) is automatically added
       const existingIuranKeys = new Set<string>();
       loadedIuran.forEach((i) => {
         existingIuranKeys.add(i.nrp);
@@ -799,7 +817,7 @@ export function readDb(): GlobalStore {
         if (bn) existingIuranKeys.add(`name:${bn}`);
       });
       AKPOL_1996_IURAN.forEach((ai) => {
-        if (isDeletedItem(ai.nrp)) return;
+        if (isDeletedItem(ai.nrp) || exemptIuranNrps.has(ai.nrp)) return;
         const bn = stripRankFromName(ai.namaLengkap).split(',')[0].trim().toLowerCase();
         if (
           !existingIuranKeys.has(ai.nrp) &&
@@ -1132,12 +1150,33 @@ export const serverStore = {
         globalStore.registrations[rIdx].polda = savedMember.polda;
         if (savedMember.noHp) globalStore.registrations[rIdx].noHp = savedMember.noHp;
       }
-      const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === oldNrp || i.nrp === newNrp);
-      if (iIdx >= 0) {
-        globalStore.iuranList[iIdx].nrp = newNrp;
-        globalStore.iuranList[iIdx].namaLengkap = savedMember.namaLengkap;
-        globalStore.iuranList[iIdx].pangkat = savedMember.pangkat;
-        globalStore.iuranList[iIdx].polda = savedMember.polda;
+      if (resolvedStatusKedinasan !== 'AKTIF' || newNrp === '98010710') {
+        globalStore.iuranList = globalStore.iuranList.filter(
+          (i) => i.nrp !== oldNrp && i.nrp !== newNrp && (!preservedOldNrp || i.nrp !== preservedOldNrp)
+        );
+      } else {
+        const iIdx = globalStore.iuranList.findIndex(
+          (i) => i.nrp === oldNrp || i.nrp === newNrp || (preservedOldNrp && i.nrp === preservedOldNrp)
+        );
+        if (iIdx >= 0) {
+          globalStore.iuranList[iIdx].nrp = newNrp;
+          globalStore.iuranList[iIdx].namaLengkap = savedMember.namaLengkap;
+          globalStore.iuranList[iIdx].pangkat = savedMember.pangkat;
+          globalStore.iuranList[iIdx].polda = savedMember.polda;
+        } else {
+          globalStore.iuranList.push({
+            id: 'iur-' + newNrp,
+            nrp: newNrp,
+            namaLengkap: savedMember.namaLengkap,
+            pangkat: savedMember.pangkat,
+            polda: savedMember.polda,
+            tahun: globalStore.financeConfig?.tahunBuku || 2026,
+            bulanTerbayar: [],
+            totalTagihan: annualTagihan,
+            totalTerbayar: 0,
+            status: 'BELUM_BAYAR',
+          });
+        }
       }
       if (oldNrp !== newNrp) {
         globalStore.posts.forEach((p) => {
@@ -1220,20 +1259,24 @@ export const serverStore = {
           verifiedBy: 'Admin / Kesekretariatan',
         });
       }
-      // Ensure iuran entry exists
-      if (!globalStore.iuranList.some((i) => i.nrp === member.nrp)) {
-        globalStore.iuranList.push({
-          id: 'iur-' + member.nrp,
-          nrp: member.nrp,
-          namaLengkap: member.namaLengkap,
-          pangkat: member.pangkat,
-          polda: member.polda,
-          tahun: globalStore.financeConfig?.tahunBuku || 2026,
-          bulanTerbayar: [],
-          totalTagihan: annualTagihan,
-          totalTerbayar: 0,
-          status: 'BELUM_BAYAR',
-        });
+      // Ensure iuran entry exists ONLY for AKTIF non-Superadmin alumni
+      if (resolvedStatusKedinasan === 'AKTIF' && member.nrp !== '98010710') {
+        if (!globalStore.iuranList.some((i) => i.nrp === member.nrp)) {
+          globalStore.iuranList.push({
+            id: 'iur-' + member.nrp,
+            nrp: member.nrp,
+            namaLengkap: member.namaLengkap,
+            pangkat: member.pangkat,
+            polda: member.polda,
+            tahun: globalStore.financeConfig?.tahunBuku || 2026,
+            bulanTerbayar: [],
+            totalTagihan: annualTagihan,
+            totalTerbayar: 0,
+            status: 'BELUM_BAYAR',
+          });
+        }
+      } else {
+        globalStore.iuranList = globalStore.iuranList.filter((i) => i.nrp !== member.nrp);
       }
     }
 
@@ -1520,21 +1563,26 @@ export const serverStore = {
         }
       }
 
-      // Ensure iuran entry exists
-      const existingIuran = globalStore.iuranList.find((i) => i.nrp === user.nrp);
-      if (!existingIuran) {
-        globalStore.iuranList.push({
-          id: 'iur-' + user.nrp,
-          nrp: user.nrp,
-          namaLengkap: user.nama,
-          pangkat: user.pangkat,
-          polda: user.polda || 'MABES POLRI',
-          tahun: globalStore.financeConfig?.tahunBuku || 2026,
-          bulanTerbayar: [],
-          totalTagihan: annualTagihan,
-          totalTerbayar: 0,
-          status: 'BELUM_BAYAR',
-        });
+      // Ensure iuran entry exists ONLY for AKTIF non-Superadmin alumni
+      const effectiveAddStatus = user.statusKedinasan || existingMember?.statusKedinasan || existingMember?.statusDinas || 'AKTIF';
+      if (effectiveAddStatus === 'AKTIF' && user.role !== 'SUPERADMIN' && user.nrp !== '98010710') {
+        const existingIuran = globalStore.iuranList.find((i) => i.nrp === user.nrp);
+        if (!existingIuran) {
+          globalStore.iuranList.push({
+            id: 'iur-' + user.nrp,
+            nrp: user.nrp,
+            namaLengkap: user.nama,
+            pangkat: user.pangkat,
+            polda: user.polda || 'MABES POLRI',
+            tahun: globalStore.financeConfig?.tahunBuku || 2026,
+            bulanTerbayar: [],
+            totalTagihan: annualTagihan,
+            totalTerbayar: 0,
+            status: 'BELUM_BAYAR',
+          });
+        }
+      } else {
+        globalStore.iuranList = globalStore.iuranList.filter((i) => i.nrp !== user.nrp);
       }
     }
 
@@ -1834,18 +1882,38 @@ export const serverStore = {
       }
     }
 
-    const iIdx = globalStore.iuranList.findIndex(
-      (i) =>
-        i.nrp === effectiveOldNrp ||
-        i.nrp === cleanOldNrp ||
-        i.nrp === cleanNewNrp ||
-        (preservedOldNrp && i.nrp === preservedOldNrp)
-    );
-    if (iIdx >= 0) {
-      globalStore.iuranList[iIdx].nrp = cleanNewNrp;
-      if (updates.nama) globalStore.iuranList[iIdx].namaLengkap = updates.nama;
-      if (updates.pangkat) globalStore.iuranList[iIdx].pangkat = updates.pangkat;
-      if (updates.polda) globalStore.iuranList[iIdx].polda = updates.polda;
+    const effectiveUserStatus: StatusKedinasan =
+      updatedUser.statusKedinasan ||
+      (mIdx >= 0 ? globalStore.members[mIdx].statusKedinasan || globalStore.members[mIdx].statusDinas : undefined) ||
+      'AKTIF';
+
+    if (
+      effectiveUserStatus !== 'AKTIF' ||
+      updatedUser.isAdcAccount ||
+      updatedUser.role === 'SUPERADMIN' ||
+      cleanNewNrp === '98010710'
+    ) {
+      globalStore.iuranList = globalStore.iuranList.filter(
+        (i) =>
+          i.nrp !== effectiveOldNrp &&
+          i.nrp !== cleanOldNrp &&
+          i.nrp !== cleanNewNrp &&
+          (!preservedOldNrp || i.nrp !== preservedOldNrp)
+      );
+    } else {
+      const iIdx = globalStore.iuranList.findIndex(
+        (i) =>
+          i.nrp === effectiveOldNrp ||
+          i.nrp === cleanOldNrp ||
+          i.nrp === cleanNewNrp ||
+          (preservedOldNrp && i.nrp === preservedOldNrp)
+      );
+      if (iIdx >= 0) {
+        globalStore.iuranList[iIdx].nrp = cleanNewNrp;
+        if (updates.nama) globalStore.iuranList[iIdx].namaLengkap = updates.nama;
+        if (updates.pangkat) globalStore.iuranList[iIdx].pangkat = updates.pangkat;
+        if (updates.polda) globalStore.iuranList[iIdx].polda = updates.polda;
+      }
     }
 
     if (isNrpChanged) {
@@ -2640,15 +2708,29 @@ export const serverStore = {
     );
     const iuranWajibPerBulan = globalStore.financeConfig?.iuranWajibPerBulan || 250000;
 
-    const superadminNrps = new Set(
-      (globalStore.users || [])
-        .filter((u) => u.role === 'SUPERADMIN' || u.nrp === '98010710')
-        .map((u) => u.nrp)
-    );
-    superadminNrps.add('98010710');
+    const exemptIuranNrps = new Set<string>(NON_AKTIF_IURAN_NRPS);
+    exemptIuranNrps.add('98010710');
+    (globalStore.users || []).forEach((u) => {
+      if (
+        u.role === 'SUPERADMIN' ||
+        u.nrp === '98010710' ||
+        u.isAdcAccount ||
+        (u.statusKedinasan && u.statusKedinasan !== 'AKTIF')
+      ) {
+        if (u.nrp) exemptIuranNrps.add(u.nrp);
+        if (u.oldNrp) exemptIuranNrps.add(u.oldNrp);
+      }
+    });
+    (globalStore.members || []).forEach((m) => {
+      const mStatus = m.statusKedinasan || m.statusDinas || 'AKTIF';
+      if (mStatus !== 'AKTIF') {
+        if (m.nrp) exemptIuranNrps.add(m.nrp);
+        if (m.oldNrp) exemptIuranNrps.add(m.oldNrp);
+      }
+    });
 
     globalStore.iuranList = (globalStore.iuranList || []).filter(
-      (i) => !superadminNrps.has(i.nrp)
+      (i) => !exemptIuranNrps.has(i.nrp)
     );
     const iuranList = globalStore.iuranList;
     const totalTargetIuran = iuranList.reduce((s, i) => s + (Number(i.totalTagihan) || 0), 0);
