@@ -83,9 +83,6 @@ export function resolveRoleForBadge(nrp?: string, explicitRole?: UserRole | stri
     return dynamicRole;
   }
   if (cleanNrp === '98010710') return 'SUPERADMIN';
-  if (cleanNrp === '980107102') return 'KETUA';
-  if (cleanNrp === '980107103') return 'SEKRETARIAT';
-  if (cleanNrp === '980107104') return 'BENDAHARA';
   return 'ANGGOTA';
 }
 

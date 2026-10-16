@@ -110,89 +110,14 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Sistem Otentikasi Bareskrim Polri (Dev Lead)',
   },
-  {
-    id: 'reg-980107102',
-    nrp: '980107102',
-    nama: 'Eko_2',
-    pangkat: 'Irjen Pol',
-    satker: 'Itwasum Polri',
-    polda: 'MABES POLRI',
-    noHp: '0812980107102',
-    email: '980107102@polri.go.id',
-    alasanDaftar: 'Akun Testing Role KETUA Batalyon Wira Satya 96.',
-    password: 'WS96@980107102',
-    status: 'AKTIF',
-    createdAt: new Date().toISOString(),
-    verifiedAt: new Date().toISOString(),
-    verifiedBy: 'Eko Agung (Superadmin)',
-  },
-  {
-    id: 'reg-980107103',
-    nrp: '980107103',
-    nama: 'Eko_3',
-    pangkat: 'Brigjen Pol',
-    satker: 'SSDM Polri',
-    polda: 'MABES POLRI',
-    noHp: '0812980107103',
-    email: '980107103@polri.go.id',
-    alasanDaftar: 'Akun Testing Role SEKRETARIAT Batalyon Wira Satya 96.',
-    password: 'WS96@980107103',
-    status: 'AKTIF',
-    createdAt: new Date().toISOString(),
-    verifiedAt: new Date().toISOString(),
-    verifiedBy: 'Eko Agung (Superadmin)',
-  },
-  {
-    id: 'reg-980107104',
-    nrp: '980107104',
-    nama: 'Eko_4',
-    pangkat: 'Kombes Pol',
-    satker: 'Puskeu Polri',
-    polda: 'MABES POLRI',
-    noHp: '0812980107104',
-    email: '980107104@polri.go.id',
-    alasanDaftar: 'Akun Testing Role BENDAHARA Batalyon Wira Satya 96.',
-    password: 'WS96@980107104',
-    status: 'AKTIF',
-    createdAt: new Date().toISOString(),
-    verifiedAt: new Date().toISOString(),
-    verifiedBy: 'Eko Agung (Superadmin)',
-  },
-  {
-    id: 'reg-980107105',
-    nrp: '980107105',
-    nama: 'Eko_5',
-    pangkat: 'Kombes Pol',
-    satker: 'Ditreskrimsus Polda Metro Jaya',
-    polda: 'MABES POLRI',
-    noHp: '0812980107105',
-    email: '980107105@polri.go.id',
-    alasanDaftar: 'Akun Testing Role ANGGOTA Batalyon Wira Satya 96.',
-    password: 'WS96@980107105',
-    status: 'AKTIF',
-    createdAt: new Date().toISOString(),
-    verifiedAt: new Date().toISOString(),
-    verifiedBy: 'Eko Agung (Superadmin)',
-  },
-  {
-    id: 'reg-980107106',
-    nrp: '980107106',
-    nama: 'Eko_6',
-    pangkat: 'Kombes Pol',
-    satker: 'Ditlantas Polda Jawa Barat',
-    polda: 'POLDA JAWA BARAT',
-    noHp: '0812980107106',
-    email: '980107106@polri.go.id',
-    alasanDaftar: 'Akun Testing Calon Anggota Menunggu Verifikasi Superadmin / Sekretariat.',
-    status: 'PENDING_VERIFIKASI',
-    createdAt: new Date().toISOString(),
-  },
   ...AKPOL_1996_REGISTRATIONS,
 ];
 
+const PURGED_DUMMY_NRPS = new Set(['980107102', '980107103', '980107104', '980107105', '980107106']);
+
 const LOCAL_DB_PATH = path.join(process.cwd(), '.data', 'local_db.json');
 
-function cleanSatkerRoleSuffix(satker?: string, nrp?: string): string {
+function cleanSatkerRoleSuffix(satker?: string, _nrp?: string): string {
   let cleaned = (satker || '').trim();
   if (
     cleaned.includes(' / Ketua') ||
@@ -202,9 +127,6 @@ function cleanSatkerRoleSuffix(satker?: string, nrp?: string): string {
     cleaned.includes(' / Bendahara')
   ) {
     cleaned = cleaned.split(' / ')[0].trim();
-  }
-  if (nrp === '980107102' && (!cleaned || cleaned === 'Mabes Polri')) {
-    return 'Itwasum Polri';
   }
   return cleaned || 'Mabes Polri';
 }
@@ -286,7 +208,10 @@ export function readDb(): GlobalStore {
         Array.isArray(parsed.deletedNrps) ? parsed.deletedNrps.map((n) => String(n).trim()).filter(Boolean) : []
       );
       const isDeletedItem = (nrp?: string, oldNrp?: string) =>
-        Boolean((nrp && deletedSet.has(nrp.trim())) || (oldNrp && deletedSet.has(oldNrp.trim())));
+        Boolean(
+          (nrp && (deletedSet.has(nrp.trim()) || PURGED_DUMMY_NRPS.has(nrp.trim()))) ||
+            (oldNrp && (deletedSet.has(oldNrp.trim()) || PURGED_DUMMY_NRPS.has(oldNrp.trim())))
+        );
       const isPurgedNon1996 = (rawName?: string) => {
         const bn = (stripRankFromName(rawName || '') || rawName || '').split(',')[0].trim().toLowerCase();
         return Boolean(bn && PURGED_NON_1996_BASE_NAMES.has(bn));
@@ -330,7 +255,7 @@ export function readDb(): GlobalStore {
           !isDeletedItem(i.nrp) &&
           !isPurgedNon1996(i.namaLengkap) &&
           i.nrp !== '98010710' &&
-          !['980107102', '980107103', '980107104', '980107105'].includes(i.nrp)
+          !PURGED_DUMMY_NRPS.has(i.nrp)
       );
       const rawRegsSource =
         Array.isArray(parsed.registrations) && parsed.registrations.length >= 10
@@ -595,24 +520,6 @@ export function readDb(): GlobalStore {
             m.bio =
               'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
           }
-        } else if (m.nrp === '980107102') {
-          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Ketua')) {
-            m.jabatanTerakhir = 'Irwil I Itwasum Polri';
-          }
-          m.satuanKerja = m.satuanKerja || 'Itwasum Polri';
-          m.polda = m.polda || 'MABES POLRI';
-        } else if (m.nrp === '980107103') {
-          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Sekretar')) {
-            m.jabatanTerakhir = 'Karobinkar SSDM Polri';
-          }
-          m.satuanKerja = m.satuanKerja || 'SSDM Polri';
-          m.polda = m.polda || 'MABES POLRI';
-        } else if (m.nrp === '980107104') {
-          if (!m.jabatanTerakhir || m.jabatanTerakhir.includes('Bendahara')) {
-            m.jabatanTerakhir = 'Kabagrenmin Puskeu Polri';
-          }
-          m.satuanKerja = m.satuanKerja || 'Puskeu Polri';
-          m.polda = m.polda || 'MABES POLRI';
         } else if (
           m.jabatanTerakhir &&
           (m.jabatanTerakhir.includes('Ketua Batalyon') ||
@@ -979,21 +886,28 @@ export const serverStore = {
 
   getMembers: () => {
     const deletedSet = new Set(globalStore.deletedNrps || []);
-    if (deletedSet.size > 0) {
-      globalStore.members = globalStore.members.filter(
-        (m) => !deletedSet.has(m.nrp) && !(m.oldNrp && deletedSet.has(m.oldNrp))
-      );
-    }
-    // Fast deduplication by nrp and baseName
+    // Fast deduplication and purge by nrp and baseName
     const seenNrps = new Set<string>();
     const seenNames = new Set<string>();
     globalStore.members = globalStore.members.filter((m) => {
       const cleanNrp = (m.nrp || '').trim();
+      const cleanOldNrp = (m.oldNrp || '').trim();
+      if (
+        !cleanNrp ||
+        deletedSet.has(cleanNrp) ||
+        PURGED_DUMMY_NRPS.has(cleanNrp) ||
+        (cleanOldNrp && (deletedSet.has(cleanOldNrp) || PURGED_DUMMY_NRPS.has(cleanOldNrp)))
+      ) {
+        return false;
+      }
       const bName = (stripRankFromName(m.namaLengkap || '') || m.namaLengkap || '')
         .split(',')[0]
         .trim()
         .toLowerCase();
-      if (!cleanNrp || seenNrps.has(cleanNrp) || (bName && seenNames.has(bName))) {
+      if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) {
+        return false;
+      }
+      if (seenNrps.has(cleanNrp) || (bName && seenNames.has(bName))) {
         return false;
       }
       seenNrps.add(cleanNrp);
@@ -1358,21 +1272,26 @@ export const serverStore = {
 
   getUsers: () => {
     const deletedSet = new Set(globalStore.deletedNrps || []);
-    if (deletedSet.size > 0) {
-      globalStore.users = globalStore.users.filter(
-        (u) => !deletedSet.has(u.nrp) && !(u.oldNrp && deletedSet.has(u.oldNrp))
-      );
-    }
-    // Fast deduplication by nrp and baseName (for non-ADC accounts)
+    // Fast deduplication and purge by nrp and baseName (for non-ADC accounts)
     const seenNrps = new Set<string>();
     const seenNames = new Set<string>();
     globalStore.users = globalStore.users.filter((u) => {
       const cleanNrp = (u.nrp || '').trim();
+      const cleanOldNrp = (u.oldNrp || '').trim();
+      if (
+        !cleanNrp ||
+        deletedSet.has(cleanNrp) ||
+        PURGED_DUMMY_NRPS.has(cleanNrp) ||
+        (cleanOldNrp && (deletedSet.has(cleanOldNrp) || PURGED_DUMMY_NRPS.has(cleanOldNrp)))
+      ) {
+        return false;
+      }
       const bName = (stripRankFromName(u.nama || '') || u.nama || '')
         .split(',')[0]
         .trim()
         .toLowerCase();
-      if (!cleanNrp || seenNrps.has(cleanNrp)) return false;
+      if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) return false;
+      if (seenNrps.has(cleanNrp)) return false;
       if (!u.isAdcAccount && bName && seenNames.has(bName)) return false;
       seenNrps.add(cleanNrp);
       if (!u.isAdcAccount && bName) seenNames.add(bName);
@@ -1805,20 +1724,12 @@ export const serverStore = {
           currentJabatan.includes('Sekretariat Batalyon') ||
           currentJabatan.includes('Bendahara Batalyon')
         ) {
-          if (cleanNewNrp === '980107102') {
-            globalStore.members[mIdx].jabatanTerakhir = 'Irwil I Itwasum Polri';
-          } else if (cleanNewNrp === '980107103') {
-            globalStore.members[mIdx].jabatanTerakhir = 'Karobinkar SSDM Polri';
-          } else if (cleanNewNrp === '980107104') {
-            globalStore.members[mIdx].jabatanTerakhir = 'Kabagrenmin Puskeu Polri';
-          } else {
-            const refMember = AKPOL_1996_MEMBERS.find(
-              (am) => am.nrp === cleanNewNrp || (preservedOldNrp && am.nrp === preservedOldNrp)
-            );
-            globalStore.members[mIdx].jabatanTerakhir =
-              refMember?.jabatanTerakhir ||
-              `Perwira ${globalStore.members[mIdx].satuanKerja || 'Polri'}`;
-          }
+          const refMember = AKPOL_1996_MEMBERS.find(
+            (am) => am.nrp === cleanNewNrp || (preservedOldNrp && am.nrp === preservedOldNrp)
+          );
+          globalStore.members[mIdx].jabatanTerakhir =
+            refMember?.jabatanTerakhir ||
+            `Perwira ${globalStore.members[mIdx].satuanKerja || 'Polri'}`;
         }
         if (!updatedUser.jabatanTerakhir) {
           updatedUser.jabatanTerakhir = globalStore.members[mIdx].jabatanTerakhir;
@@ -2173,7 +2084,20 @@ export const serverStore = {
   // ==============================================================
   // REGISTRATION & VERIFICATION METHODS
   // ==============================================================
-  getRegistrations: () => globalStore.registrations,
+  getRegistrations: () => {
+    const deletedSet = new Set(globalStore.deletedNrps || []);
+    globalStore.registrations = (globalStore.registrations || []).filter((r) => {
+      const cleanNrp = (r.nrp || '').trim();
+      if (!cleanNrp || deletedSet.has(cleanNrp) || PURGED_DUMMY_NRPS.has(cleanNrp)) return false;
+      const bName = (stripRankFromName(r.nama || '') || r.nama || '')
+        .split(',')[0]
+        .trim()
+        .toLowerCase();
+      if (bName && PURGED_NON_1996_BASE_NAMES.has(bName)) return false;
+      return true;
+    });
+    return globalStore.registrations;
+  },
 
   registerUser: (regData: {
     nrp: string;
