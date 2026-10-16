@@ -56,6 +56,16 @@ export interface Anak {
   biayaPendidikanTahunan?: '< 5.000.000' | '5.000.000 S.D. 25.000.000' | '> 25.000.000';
 }
 
+export interface AdcPersonel {
+  id: string;
+  nama: string;
+  nrp?: string;
+  pangkat: string;
+  jabatan?: string;
+  noHp: string;
+  email?: string;
+}
+
 export interface TanggunganLain {
   jumlah: number;
   rincian: string;
@@ -90,6 +100,7 @@ export interface AnggotaWiraSatya {
   secondaryEmail?: string;
   kontakAdc?: string;
   namaAdc?: string;
+  daftarAdc?: AdcPersonel[];
   fotoUrl?: string;
   coverUrl?: string;
   bio?: string;

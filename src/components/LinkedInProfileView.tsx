@@ -1639,6 +1639,49 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   {localMember.statusTempatTinggal})
                 </span>
               </div>
+
+              {((localMember.daftarAdc && localMember.daftarAdc.length > 0) ||
+                localMember.kontakAdc) && (
+                <div className="pt-2.5 border-t border-slate-100 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-700 block">
+                    Data ADC / Ajudan / Spri
+                  </span>
+                  {localMember.daftarAdc && localMember.daftarAdc.length > 0 ? (
+                    <div className="space-y-2">
+                      {localMember.daftarAdc.map((adc, idx) => (
+                        <div
+                          key={adc.id || idx}
+                          className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 truncate">
+                              {formatMemberDisplayName(adc.pangkat, adc.nama)}
+                            </p>
+                            <p className="text-[10px] text-slate-500 truncate">
+                              {adc.jabatan || 'ADC / Ajudan'}
+                              {adc.nrp ? ` • NRP ${adc.nrp}` : ''}
+                              {adc.noHp ? ` • ${adc.noHp}` : ''}
+                            </p>
+                          </div>
+                          {adc.noHp && (
+                            <a
+                              href={getWaUrl(adc.noHp)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] flex items-center gap-1 shrink-0"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>WA ADC</span>
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="font-semibold text-slate-800">{localMember.kontakAdc}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">

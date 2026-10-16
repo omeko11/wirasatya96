@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AnggotaWiraSatya, Anak, AuthUser, DAFTAR_PANGKAT_POLRI } from '@/types';
+import { AnggotaWiraSatya, Anak, AdcPersonel, AuthUser, DAFTAR_PANGKAT_POLRI } from '@/types';
 import {
   getAvatarUrl,
   getCoverUrl,
@@ -145,6 +145,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     statusPerkawinan: 'MENIKAH',
     jumlahAnak: 0,
     daftarAnak: [],
+    daftarAdc: [],
     tahunPurnaTugas: 2032,
     sisaTahunDinas: 6,
     statusRumahPurnaTugas: 'MILIK PRIBADI',
@@ -171,10 +172,32 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     if (existingMember) {
       const isSelf = existingMember.nrp === currentUser.nrp;
       const resolvedKind = resolveDefaultJenisAnggota(existingMember, isSelf ? currentUser : undefined);
+
+      // Build initial daftarAdc from existingMember.daftarAdc or migrate legacy kontakAdc/namaAdc
+      let initialDaftarAdc: AdcPersonel[] = [];
+      if (Array.isArray(existingMember.daftarAdc) && existingMember.daftarAdc.length > 0) {
+        initialDaftarAdc = existingMember.daftarAdc;
+      } else if (existingMember.kontakAdc?.trim() || existingMember.namaAdc?.trim()) {
+        const raw = (existingMember.kontakAdc || '').trim();
+        const parts = raw.split(/\s*-\s*|\s*•\s*/);
+        initialDaftarAdc = [
+          {
+            id: 'adc-init-1',
+            nama: existingMember.namaAdc?.trim() || parts[0] || '',
+            nrp: '',
+            pangkat: 'Briptu',
+            jabatan: 'ADC / Ajudan',
+            noHp: parts.length > 1 ? parts.slice(1).join(' ') : raw,
+            email: '',
+          },
+        ];
+      }
+
       setFormData({
         ...existingMember,
         jabatanTerakhir: cleanJabatanOnly(existingMember.jabatanTerakhir) || existingMember.jabatanTerakhir,
         jenisAnggota: resolvedKind,
+        daftarAdc: initialDaftarAdc,
         tipeSatker:
           existingMember.tipeSatker ||
           (existingMember.polda?.toUpperCase().includes('MABES') ? 'MABES' : 'POLDA'),
@@ -218,6 +241,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         email: currentUser.email || (currentUser.nrp ? `${currentUser.nrp}@polri.go.id` : ''),
         secondaryEmail: currentUser.secondaryEmail || '',
         bio: currentUser.bio || '',
+        daftarAdc: [],
       }));
     } else {
       // Clean form for adding new member
@@ -238,6 +262,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         bio: '',
         fotoUrl: DEFAULT_AVATAR_URL,
         coverUrl: undefined,
+        daftarAdc: [],
       }));
       setPenyakitLainnya('');
     }
@@ -248,6 +273,52 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     value: string | number | string[] | undefined
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddAdc = () => {
+    const newAdc: AdcPersonel = {
+      id: 'adc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      nama: '',
+      nrp: '',
+      pangkat: 'Briptu',
+      jabatan: 'ADC / Ajudan',
+      noHp: '',
+      email: '',
+    };
+    setFormData((prev) => ({
+      ...prev,
+      daftarAdc: [...(prev.daftarAdc || []), newAdc],
+    }));
+  };
+
+  const handleRemoveAdc = (index: number) => {
+    setFormData((prev) => {
+      const updated = [...(prev.daftarAdc || [])];
+      updated.splice(index, 1);
+      return {
+        ...prev,
+        daftarAdc: updated,
+      };
+    });
+  };
+
+  const handleUpdateAdc = (index: number, field: keyof AdcPersonel, value: string) => {
+    setFormData((prev) => {
+      const updated = [...(prev.daftarAdc || [])];
+      const currentItem = updated[index];
+      if (!currentItem) return prev;
+      const nextItem: AdcPersonel = { ...currentItem, [field]: value };
+      // Auto-fill official email when NRP is typed
+      if (field === 'nrp') {
+        const cleanNrp = value.replace(/\s+/g, '');
+        const oldAutoEmail = currentItem.nrp ? `${currentItem.nrp.replace(/\s+/g, '')}@polri.go.id` : '';
+        if (!currentItem.email || currentItem.email === oldAutoEmail) {
+          nextItem.email = cleanNrp ? `${cleanNrp}@polri.go.id` : '';
+        }
+      }
+      updated[index] = nextItem;
+      return { ...prev, daftarAdc: updated };
+    });
   };
 
   const handleAddChild = () => {
@@ -328,6 +399,20 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       ? DEFAULT_AVATAR_URL
       : resolveAvatarUrl(formData.fotoUrl, existingMember?.fotoUrl);
 
+    const validAdcList = (formData.daftarAdc || []).filter(
+      (a) => a.nama.trim().length > 0 || a.noHp.trim().length > 0
+    );
+    const syncedKontakAdc =
+      validAdcList.length > 0
+        ? validAdcList
+            .map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}${a.noHp ? ' - ' + a.noHp : ''}`.trim())
+            .join(' • ')
+        : '';
+    const syncedNamaAdc =
+      validAdcList.length > 0
+        ? validAdcList.map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}`.trim()).join(', ')
+        : '';
+
     const memberToSave: AnggotaWiraSatya = {
       id: existingMember?.id || 'ws-' + (formData.nrp || Date.now()),
       nrp: formData.nrp || '',
@@ -352,8 +437,9 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       noHp: formData.noHp || '',
       email: formData.email || `${formData.nrp}@polri.go.id`,
       secondaryEmail: formData.secondaryEmail || '',
-      kontakAdc: formData.kontakAdc || '',
-      namaAdc: formData.namaAdc || '',
+      kontakAdc: syncedKontakAdc,
+      namaAdc: syncedNamaAdc,
+      daftarAdc: validAdcList,
       fotoUrl: finalFotoUrl,
       coverUrl: formData.coverUrl,
       bio: formData.bio || '',
@@ -831,19 +917,6 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Kontak ADC / Ajudan (Opsional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Bripka Aryo - 08123456789"
-                    value={formData.kontakAdc || ''}
-                    onChange={(e) => handleInputChange('kontakAdc', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
                     Status Tempat Tinggal Saat Ini
                   </label>
                   <select
@@ -858,7 +931,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   </select>
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Alamat Domisili Saat Ini
                   </label>
@@ -883,6 +956,143 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Rincian Data ADC / Ajudan / Spri (Dynamic Repeatable Identity Cards like Tambah Anak) */}
+              <div className="pt-4 border-t border-slate-200/80 space-y-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-800">
+                      Data ADC / Ajudan / Spri (Opsional)
+                    </label>
+                    <span className="text-[11px] text-slate-500">
+                      Identitas personel pendamping untuk koordinasi kedinasan
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddAdc}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-polri-navy text-polri-gold text-xs font-bold hover:bg-polri-navyLight transition-colors cursor-pointer flex-shrink-0 shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah ADC</span>
+                  </button>
+                </div>
+
+                {(!formData.daftarAdc || formData.daftarAdc.length === 0) && (
+                  <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-white/70 text-center text-xs text-slate-400">
+                    Belum ada data ADC / Ajudan. Klik &ldquo;Tambah ADC&rdquo; jika memiliki personel pendamping.
+                  </div>
+                )}
+
+                {formData.daftarAdc?.map((adc, idx) => (
+                  <div
+                    key={adc.id || idx}
+                    className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <span className="text-xs font-extrabold text-polri-navy flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5 text-polri-gold" />
+                        <span>ADC / Ajudan ke-{idx + 1}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAdc(idx)}
+                        className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Nama Lengkap &amp; Gelar ADC <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Aryo Pratama, S.H."
+                          value={adc.nama}
+                          onChange={(e) => handleUpdateAdc(idx, 'nama', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          NRP / NIP ADC
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: 99040123"
+                          value={adc.nrp || ''}
+                          onChange={(e) => handleUpdateAdc(idx, 'nrp', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Pangkat / Golongan ADC
+                        </label>
+                        <select
+                          value={adc.pangkat || 'Briptu'}
+                          onChange={(e) => handleUpdateAdc(idx, 'pangkat', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                        >
+                          {DAFTAR_PANGKAT_POLRI.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Peran / Jabatan Pendamping
+                        </label>
+                        <select
+                          value={adc.jabatan || 'ADC / Ajudan'}
+                          onChange={(e) => handleUpdateAdc(idx, 'jabatan', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                        >
+                          <option value="ADC / Ajudan">ADC / Ajudan</option>
+                          <option value="Spri / Sekpri">Spri / Sekpri</option>
+                          <option value="Walpri">Walpri</option>
+                          <option value="Staf Pribadi">Staf Pribadi</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Nomor WhatsApp Aktif ADC <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="0812-xxxx-xxxx"
+                          value={adc.noHp}
+                          onChange={(e) => handleUpdateAdc(idx, 'noHp', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                          Email Dinas / Pribadi ADC
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="Contoh: 99040123@polri.go.id"
+                          value={adc.email || ''}
+                          onChange={(e) => handleUpdateAdc(idx, 'email', e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
