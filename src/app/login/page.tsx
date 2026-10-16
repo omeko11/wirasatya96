@@ -192,6 +192,25 @@ export default function LoginPage() {
       setErrorMessage('Harap centang kotak verifikasi keamanan "I\'m not a robot" terlebih dahulu.');
       return;
     }
+    try {
+      const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
+      if (rawDeleted) {
+        const deletedList: string[] = JSON.parse(rawDeleted);
+        const idWithoutDomain = cleanIdentifier.split('@')[0].trim();
+        if (
+          Array.isArray(deletedList) &&
+          (deletedList.includes(cleanIdentifier) || deletedList.includes(idWithoutDomain)) &&
+          idWithoutDomain !== '98010710'
+        ) {
+          fetch(`/api/users?nrp=${encodeURIComponent(idWithoutDomain)}`, { method: 'DELETE' }).catch(() => {});
+          setErrorMessage('Akun pengguna ini telah dihapus dari sistem oleh Admin / Sekretaris.');
+          setIsCaptchaChecked(false);
+          return;
+        }
+      }
+    } catch {
+      // ignore
+    }
 
     setLoading(true);
 

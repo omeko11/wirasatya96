@@ -71,6 +71,7 @@ export interface LocalDatabaseSchema {
   messages: ChatMessage[];
   registrations: PendingRegistration[];
   posts: FeedPost[];
+  deletedNrps?: string[];
 }
 
 type GlobalStore = LocalDatabaseSchema;
@@ -237,12 +238,18 @@ export function readDb(): GlobalStore {
     messages: [...INITIAL_MESSAGES],
     registrations: [...INITIAL_REGISTRATIONS],
     posts: [...INITIAL_FEED_POSTS],
+    deletedNrps: [],
   };
 
   try {
     if (fs.existsSync(LOCAL_DB_PATH)) {
       const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<GlobalStore> & { iuran?: IuranAnggota[] };
+      const deletedSet = new Set<string>(
+        Array.isArray(parsed.deletedNrps) ? parsed.deletedNrps.map((n) => String(n).trim()).filter(Boolean) : []
+      );
+      const isDeletedItem = (nrp?: string, oldNrp?: string) =>
+        Boolean((nrp && deletedSet.has(nrp.trim())) || (oldNrp && deletedSet.has(oldNrp.trim())));
 
       const loadedFinanceConfig: FinanceConfig = {
         ...DEFAULT_FINANCE_CONFIG,
@@ -260,21 +267,27 @@ export function readDb(): GlobalStore {
             : [...DEFAULT_FINANCE_CONFIG.subKategoriKeluar],
       };
 
-      // Ensure 164 AKPOL 96 officers are present if DB was from an older version
-      const loadedMembers =
-        Array.isArray(parsed.members) && parsed.members.length >= 160 ? parsed.members : defaultStore.members;
-      const loadedUsers =
-        Array.isArray(parsed.users) && parsed.users.length >= 160 ? parsed.users : defaultStore.users;
+      const rawMembersSource =
+        Array.isArray(parsed.members) && parsed.members.length >= 10 ? parsed.members : defaultStore.members;
+      const loadedMembers = rawMembersSource.filter((m) => !isDeletedItem(m.nrp, m.oldNrp));
+
+      const rawUsersSource =
+        Array.isArray(parsed.users) && parsed.users.length >= 10 ? parsed.users : defaultStore.users;
+      const loadedUsers = rawUsersSource.filter((u) => !isDeletedItem(u.nrp, u.oldNrp));
+
       const rawIuranSource = Array.isArray(parsed.iuranList)
         ? parsed.iuranList
         : Array.isArray(parsed.iuran)
         ? parsed.iuran
         : [];
-      const loadedIuran = rawIuranSource.length >= 160 ? rawIuranSource : defaultStore.iuranList;
-      const loadedRegs =
-        Array.isArray(parsed.registrations) && parsed.registrations.length >= 160
+      const loadedIuran = (rawIuranSource.length >= 10 ? rawIuranSource : defaultStore.iuranList).filter(
+        (i) => !isDeletedItem(i.nrp)
+      );
+      const rawRegsSource =
+        Array.isArray(parsed.registrations) && parsed.registrations.length >= 10
           ? parsed.registrations
           : defaultStore.registrations;
+      const loadedRegs = rawRegsSource.filter((r) => !isDeletedItem(r.nrp));
 
       // Build reference lookup for 164 AKPOL 1996 alumni (for Brigjen Pol promotions & canonical names)
       const akpolRefMap = new Map(AKPOL_1996_USERS.map((u) => [u.nrp, u]));
@@ -465,6 +478,7 @@ export function readDb(): GlobalStore {
         messages: Array.isArray(parsed.messages) ? parsed.messages : defaultStore.messages,
         registrations: loadedRegs,
         posts: Array.isArray(parsed.posts) ? parsed.posts : defaultStore.posts,
+        deletedNrps: Array.from(deletedSet),
       };
     }
   } catch {
@@ -493,7 +507,15 @@ const globalStore: GlobalStore = loadInitialStore();
 persistLocalStore(globalStore);
 
 export const serverStore = {
+  getDeletedNrps: (): string[] => globalStore.deletedNrps || [],
+
   getMembers: () => {
+    const deletedSet = new Set(globalStore.deletedNrps || []);
+    if (deletedSet.size > 0) {
+      globalStore.members = globalStore.members.filter(
+        (m) => !deletedSet.has(m.nrp) && !(m.oldNrp && deletedSet.has(m.oldNrp))
+      );
+    }
     const userByNrp = new Map(globalStore.users.map((u) => [u.nrp, u]));
     globalStore.members.forEach((m) => {
       const u = userByNrp.get(m.nrp);
@@ -516,10 +538,23 @@ export const serverStore = {
       (m) => m.id === idOrNrp || m.nrp === idOrNrp || (m.oldNrp && m.oldNrp === idOrNrp)
     ),
   
-  saveMember: (member: AnggotaWiraSatya) => {
+  saveMember: (member: AnggotaWiraSatya, options?: { isNewCreate?: boolean }) => {
     const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
     const cleanNewNrp = (member.nrp || '').trim();
     const cleanOrigNrp = (member.oldNrp || '').trim();
+    const deletedSet = new Set(globalStore.deletedNrps || []);
+    if (options?.isNewCreate) {
+      deletedSet.delete(cleanNewNrp);
+      if (cleanOrigNrp) deletedSet.delete(cleanOrigNrp);
+      globalStore.deletedNrps = Array.from(deletedSet);
+    } else if (
+      deletedSet.has(cleanNewNrp) ||
+      (cleanOrigNrp && deletedSet.has(cleanOrigNrp))
+    ) {
+      // Do not resurrect a tombstoned member from a background PUT sync
+      return member;
+    }
+
     const idx = globalStore.members.findIndex(
       (m) =>
         m.id === member.id ||
@@ -781,6 +816,12 @@ export const serverStore = {
   },
 
   getUsers: () => {
+    const deletedSet = new Set(globalStore.deletedNrps || []);
+    if (deletedSet.size > 0) {
+      globalStore.users = globalStore.users.filter(
+        (u) => !deletedSet.has(u.nrp) && !(u.oldNrp && deletedSet.has(u.oldNrp))
+      );
+    }
     const memberByNrp = new Map(globalStore.members.map((m) => [m.nrp, m]));
     const memberById = new Map(globalStore.members.map((m) => [m.id, m]));
     globalStore.users.forEach((u) => {
@@ -811,6 +852,12 @@ export const serverStore = {
   },
 
   addUser: (user: AuthUser & { noHp?: string }) => {
+    const cleanAddNrp = (user.nrp || '').trim();
+    if (globalStore.deletedNrps && globalStore.deletedNrps.length > 0) {
+      globalStore.deletedNrps = globalStore.deletedNrps.filter(
+        (d) => d !== cleanAddNrp && d !== user.oldNrp
+      );
+    }
     const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
     user.satker = cleanSatkerRoleSuffix(user.satker, user.nrp);
     const calc58 = calculateRetirement58(user.tanggalLahir, user.nrp);
@@ -946,6 +993,15 @@ export const serverStore = {
     const cleanOldNrp = nrp.trim();
     const cleanOrigNrp = (updates.originalNrp || updates.oldNrp || '').trim();
     const cleanNewNrp = (updates.newNrp || updates.nrp || cleanOldNrp).trim();
+
+    const deletedSet = new Set(globalStore.deletedNrps || []);
+    if (
+      deletedSet.has(cleanOldNrp) ||
+      (cleanOrigNrp && deletedSet.has(cleanOrigNrp)) ||
+      deletedSet.has(cleanNewNrp)
+    ) {
+      return null;
+    }
 
     let idx = globalStore.users.findIndex((u) => u.nrp === cleanOldNrp);
     if (idx < 0 && cleanOrigNrp) {
@@ -1243,15 +1299,63 @@ export const serverStore = {
   },
 
   deleteUser: (nrp: string) => {
-    if (nrp === '98010710') {
+    const cleanNrp = (nrp || '').trim();
+    if (cleanNrp === '98010710') {
       return { success: false, message: 'Akun Superadmin utama tidak dapat dihapus.' };
     }
-    globalStore.users = globalStore.users.filter((u) => u.nrp !== nrp);
-    globalStore.registrations = globalStore.registrations.filter((r) => r.nrp !== nrp);
-    globalStore.members = globalStore.members.filter((m) => m.nrp !== nrp);
-    globalStore.iuranList = globalStore.iuranList.filter((i) => i.nrp !== nrp);
+    const tombstones = new Set<string>(globalStore.deletedNrps || []);
+    tombstones.add(cleanNrp);
+
+    globalStore.users.forEach((u) => {
+      if (
+        u.nrp === cleanNrp ||
+        u.oldNrp === cleanNrp ||
+        u.id === `u-${cleanNrp}` ||
+        (u.isAdcAccount && u.adcOfNrp === cleanNrp)
+      ) {
+        if (u.nrp) tombstones.add(u.nrp);
+        if (u.oldNrp) tombstones.add(u.oldNrp);
+        if (u.id?.startsWith('u-')) tombstones.add(u.id.slice(2));
+      }
+    });
+
+    globalStore.members.forEach((m) => {
+      if (
+        m.nrp === cleanNrp ||
+        m.oldNrp === cleanNrp ||
+        m.id === `ws-${cleanNrp}`
+      ) {
+        if (m.nrp) tombstones.add(m.nrp);
+        if (m.oldNrp) tombstones.add(m.oldNrp);
+        if (m.id?.startsWith('ws-')) tombstones.add(m.id.slice(3));
+      }
+    });
+
+    // Never allow Superadmin 98010710 in tombstones
+    tombstones.delete('98010710');
+    globalStore.deletedNrps = Array.from(tombstones);
+
+    globalStore.users = globalStore.users.filter(
+      (u) =>
+        !tombstones.has(u.nrp) &&
+        !(u.oldNrp && tombstones.has(u.oldNrp)) &&
+        !(u.isAdcAccount && u.adcOfNrp && tombstones.has(u.adcOfNrp))
+    );
+    globalStore.registrations = globalStore.registrations.filter(
+      (r) => !tombstones.has(r.nrp)
+    );
+    globalStore.members = globalStore.members.filter(
+      (m) => !tombstones.has(m.nrp) && !(m.oldNrp && tombstones.has(m.oldNrp))
+    );
+    globalStore.iuranList = globalStore.iuranList.filter(
+      (i) => !tombstones.has(i.nrp)
+    );
     persistLocalStore(globalStore);
-    return { success: true, message: `Pengguna NRP ${nrp} berhasil dihapus.` };
+    return {
+      success: true,
+      deletedNrps: globalStore.deletedNrps,
+      message: `Pengguna NRP ${cleanNrp} berhasil dihapus secara permanen.`,
+    };
   },
 
   getSession: () => globalStore.activeSession,

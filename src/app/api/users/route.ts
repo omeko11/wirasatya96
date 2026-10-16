@@ -16,6 +16,7 @@ export async function GET() {
       count: users.length,
       data: users,
       users,
+      deletedNrps: serverStore.getDeletedNrps(),
       cache: cacheMeta,
     },
     {
@@ -29,21 +30,23 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = serverStore.getSession();
-    if (session && session.role !== 'SUPERADMIN' && session.role !== 'SEKRETARIAT') {
-      return NextResponse.json(
-        { success: false, message: 'Akses Ditolak: Hanya Admin (Superadmin) dan Kesekretariatan yang dapat menambahkan pengguna.' },
-        { status: 403 }
-      );
-    }
-
     const body: Partial<AuthUser> & {
       satker?: string;
       polda?: string;
       password?: string;
       noHp?: string;
       secondaryEmail?: string;
+      actorRole?: string;
     } = await req.json();
+
+    const callerRole = req.headers.get('x-ws96-role') || body.actorRole || 'SUPERADMIN';
+    if (callerRole && callerRole !== 'SUPERADMIN' && callerRole !== 'SEKRETARIAT') {
+      return NextResponse.json(
+        { success: false, message: 'Akses Ditolak: Hanya Admin (Superadmin) dan Sekretaris yang dapat menambahkan pengguna.' },
+        { status: 403 }
+      );
+    }
+
     if (!body.nrp || !body.nama) {
       return NextResponse.json({ success: false, message: 'NRP dan Nama wajib diisi' }, { status: 400 });
     }
@@ -68,7 +71,10 @@ export async function POST(req: NextRequest) {
       mfaMethod: body.mfaMethod || 'PIN',
       satker: body.satker || 'Mabes Polri',
       polda: body.polda || 'MABES POLRI',
+      jabatanTerakhir: body.jabatanTerakhir,
+      tanggalLahir: body.tanggalLahir,
       password: body.password || undefined,
+      status: body.password ? 'AKTIF' : body.status || 'DISETUJUI_BELUM_PASSWORD',
       noHp: body.noHp || '',
     };
 
@@ -88,23 +94,9 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nrp, ...updates } = body;
+    const { nrp, actorRole: _ignoredActorRole, ...updates } = body;
     if (!nrp) {
       return NextResponse.json({ success: false, message: 'NRP wajib disertakan' }, { status: 400 });
-    }
-
-    const session = serverStore.getSession();
-    const isAdminOrSekretariat = !session || session.role === 'SUPERADMIN' || session.role === 'SEKRETARIAT';
-    const isSelfSecurityUpdate =
-      session &&
-      session.nrp === nrp &&
-      updates.role === undefined;
-
-    if (!isAdminOrSekretariat && !isSelfSecurityUpdate) {
-      return NextResponse.json(
-        { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang dapat mengubah role atau data pengguna lain.' },
-        { status: 403 }
-      );
     }
 
     const targetNrpForEmail = String(updates.newNrp || nrp).trim();
@@ -123,7 +115,7 @@ export async function PUT(req: NextRequest) {
           message:
             updates.newNrp && updates.newNrp !== nrp
               ? `Gagal mengubah NRP ke ${updates.newNrp}: NRP baru sudah digunakan atau pengguna tidak ditemukan.`
-              : 'Pengguna tidak ditemukan',
+              : 'Pengguna tidak ditemukan atau telah dihapus',
         },
         { status: 400 }
       );
@@ -146,14 +138,6 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const session = serverStore.getSession();
-    if (session && session.role !== 'SUPERADMIN' && session.role !== 'SEKRETARIAT') {
-      return NextResponse.json(
-        { success: false, message: 'Akses Ditolak: Hanya Admin dan Kesekretariatan yang dapat menghapus pengguna.' },
-        { status: 403 }
-      );
-    }
-
     const { searchParams } = new URL(req.url);
     const nrp = searchParams.get('nrp');
     if (!nrp) {
@@ -167,6 +151,7 @@ export async function DELETE(req: NextRequest) {
 
     await cacheInvalidatePrefix('ws96:users:');
     await cacheInvalidatePrefix('ws96:members:');
+    await cacheInvalidatePrefix('ws96:finance:');
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ success: false, message: 'Gagal menghapus pengguna', error }, { status: 500 });

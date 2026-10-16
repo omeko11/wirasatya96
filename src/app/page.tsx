@@ -77,11 +77,42 @@ export default function Home() {
 
   // Helper to refresh pending verification count & synced data
   const fetchPendingVerificationCount = useCallback(() => {
+    const readDeletedSet = (extraDeleted?: string[]): Set<string> => {
+      if (typeof window === 'undefined') return new Set();
+      try {
+        const raw = localStorage.getItem('ws96_deleted_nrps_v1');
+        const parsed: string[] = raw ? JSON.parse(raw) : [];
+        const combined = [...parsed, ...(Array.isArray(extraDeleted) ? extraDeleted : [])]
+          .map((n) => String(n).trim())
+          .filter((n) => n && n !== '98010710');
+        const set = new Set(combined);
+        if (set.size > 0) {
+          localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(Array.from(set)));
+        }
+        return set;
+      } catch {
+        return new Set();
+      }
+    };
+
     fetch('/api/auth/register')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && Array.isArray(data.registrations)) {
-          const count = data.registrations.filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
+          const deletedSet = readDeletedSet();
+          let regOverrides: Record<string, any> = {};
+          if (typeof window !== 'undefined') {
+            try {
+              const rawROv = localStorage.getItem('ws96_reg_overrides_v1');
+              if (rawROv) regOverrides = JSON.parse(rawROv) || {};
+            } catch {
+              regOverrides = {};
+            }
+          }
+          const count = data.registrations
+            .filter((r: any) => !deletedSet.has(String(r.nrp || '').trim()))
+            .map((r: any) => (regOverrides[r.nrp] ? { ...r, ...regOverrides[r.nrp] } : r))
+            .filter((r: any) => r.status === 'PENDING_VERIFIKASI').length;
           setPendingVerificationCount(count);
         }
       })
@@ -92,6 +123,7 @@ export default function Home() {
       .then((data) => {
         const usersList = data.users || data.data;
         if (data.success && Array.isArray(usersList)) {
+          const deletedSet = readDeletedSet(data.deletedNrps);
           let userOverrides: Record<string, any> = {};
           if (typeof window !== 'undefined') {
             try {
@@ -103,6 +135,9 @@ export default function Home() {
           }
           const roleMap: Record<string, string> = {};
           usersList.forEach((u: AuthUser) => {
+            if (deletedSet.has((u.nrp || '').trim()) || (u.oldNrp && deletedSet.has(u.oldNrp.trim()))) {
+              return;
+            }
             const ov =
               userOverrides[u.nrp] ||
               Object.values(userOverrides).find(
@@ -116,7 +151,7 @@ export default function Home() {
               );
             const effectiveNrp = ov?.nrp || u.nrp;
             const effectiveRole = ov?.role || u.role;
-            if (effectiveNrp && effectiveRole) {
+            if (effectiveNrp && effectiveRole && !deletedSet.has(effectiveNrp)) {
               roleMap[effectiveNrp] = effectiveRole;
             }
           });
@@ -168,6 +203,7 @@ export default function Home() {
       .then((data) => {
         const list = data.members || data.data;
         if (data.success && Array.isArray(list) && list.length > 0) {
+          const deletedSet = readDeletedSet(data.deletedNrps);
           let authUser: AuthUser | null = null;
           let memberOverrides: Record<string, AnggotaWiraSatya> = {};
           let userOverrides: Record<string, any> = {};
@@ -198,7 +234,27 @@ export default function Home() {
             }
           }
 
-          const sanitizedMembers = list.map((m: AnggotaWiraSatya) => {
+          const isMemberTombstoned = (m: { nrp?: string; oldNrp?: string; id?: string }) => {
+            const cleanNrp = (m.nrp || '').trim();
+            const cleanOld = (m.oldNrp || '').trim();
+            const cleanFromId = m.id?.startsWith('ws-') ? m.id.slice(3).trim() : '';
+            return Boolean(
+              (cleanNrp && deletedSet.has(cleanNrp)) ||
+              (cleanOld && deletedSet.has(cleanOld)) ||
+              (cleanFromId && deletedSet.has(cleanFromId))
+            );
+          };
+
+          // Filter out tombstoned members; if server still had one (cold instance), sync DELETE in background
+          const activeServerList = (list as AnggotaWiraSatya[]).filter((m) => {
+            if (isMemberTombstoned(m)) {
+              fetch(`/api/users?nrp=${encodeURIComponent(m.nrp)}`, { method: 'DELETE' }).catch(() => {});
+              return false;
+            }
+            return true;
+          });
+
+          const sanitizedMembers = activeServerList.map((m: AnggotaWiraSatya) => {
             const localOverride =
               memberOverrides[m.nrp] ||
               (m.oldNrp ? memberOverrides[m.oldNrp] : undefined) ||
@@ -322,10 +378,38 @@ export default function Home() {
               fotoUrl: getAvatarUrl(baseMember.fotoUrl),
             };
           });
+
+          // Append any locally created members missing from a cold-started serverless instance
+          const existingMemberNrps = new Set<string>();
+          sanitizedMembers.forEach((sm) => {
+            if (sm.nrp) existingMemberNrps.add(sm.nrp.trim());
+            if (sm.oldNrp) existingMemberNrps.add(sm.oldNrp.trim());
+            if (sm.id?.startsWith('ws-')) existingMemberNrps.add(sm.id.slice(3).trim());
+          });
+
+          Object.values(memberOverrides).forEach((mOv) => {
+            if (!mOv || !mOv.nrp || !mOv.namaLengkap) return;
+            const cleanNrp = mOv.nrp.trim();
+            const cleanOld = (mOv.oldNrp || '').trim();
+            if (isMemberTombstoned(mOv)) return;
+            if (!existingMemberNrps.has(cleanNrp) && (!cleanOld || !existingMemberNrps.has(cleanOld))) {
+              existingMemberNrps.add(cleanNrp);
+              sanitizedMembers.unshift({
+                ...mOv,
+                fotoUrl: getAvatarUrl(mOv.fotoUrl),
+              });
+              fetch('/api/members', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(mOv),
+              }).catch(() => {});
+            }
+          });
+
           setMembers(sanitizedMembers);
           setViewingMember((prev) =>
             prev
-              ? sanitizedMembers.find((sm: AnggotaWiraSatya) => sm.nrp === prev.nrp || sm.id === prev.id) || prev
+              ? sanitizedMembers.find((sm: AnggotaWiraSatya) => sm.nrp === prev.nrp || sm.id === prev.id) || null
               : null
           );
           localStorage.setItem('wirasatya96_members', JSON.stringify(sanitizedMembers));
@@ -481,16 +565,33 @@ export default function Home() {
       }
     }
 
-    // Load Members (only use cache if it already has all 164+ AKPOL 96 officers)
+    // Load Members while respecting tombstoned NRPs
+    const rawDeletedOnMount = localStorage.getItem('ws96_deleted_nrps_v1');
+    let deletedOnMount = new Set<string>();
+    if (rawDeletedOnMount) {
+      try {
+        const parsedDel: string[] = JSON.parse(rawDeletedOnMount);
+        deletedOnMount = new Set(parsedDel.map((n) => String(n).trim()).filter(Boolean));
+      } catch {
+        deletedOnMount = new Set();
+      }
+    }
+
     const savedMembers = localStorage.getItem('wirasatya96_members');
     if (savedMembers) {
       try {
         const parsed = JSON.parse(savedMembers);
-        if (Array.isArray(parsed) && parsed.length >= 160) {
-          const sanitizedMembers = parsed.map((m: AnggotaWiraSatya) => ({
-            ...m,
-            fotoUrl: getAvatarUrl(m.fotoUrl),
-          }));
+        if (Array.isArray(parsed) && parsed.length >= 10) {
+          const sanitizedMembers = parsed
+            .filter(
+              (m: AnggotaWiraSatya) =>
+                !deletedOnMount.has((m.nrp || '').trim()) &&
+                !(m.oldNrp && deletedOnMount.has(m.oldNrp.trim()))
+            )
+            .map((m: AnggotaWiraSatya) => ({
+              ...m,
+              fotoUrl: getAvatarUrl(m.fotoUrl),
+            }));
           setMembers(sanitizedMembers);
         }
       } catch (err) {
@@ -506,7 +607,11 @@ export default function Home() {
         if (parsed.summary) setFinanceSummary(parsed.summary);
         if (parsed.transactions) setTransactions(parsed.transactions);
         if (parsed.assets) setAssets(parsed.assets);
-        if (parsed.iuranList && parsed.iuranList.length >= 160) setIuranList(parsed.iuranList);
+        if (parsed.iuranList && parsed.iuranList.length >= 10) {
+          setIuranList(
+            parsed.iuranList.filter((i: IuranAnggota) => !deletedOnMount.has((i.nrp || '').trim()))
+          );
+        }
       } catch (err) {
         console.error('Failed to parse saved finance data', err);
       }
@@ -555,11 +660,31 @@ export default function Home() {
       }
     };
 
+    const handleUserDeletedEvent = (evt: Event) => {
+      const customEvt = evt as CustomEvent<{ nrps?: string[] }>;
+      const nrps = customEvt.detail?.nrps || [];
+      if (nrps.length === 0) return;
+      const delSet = new Set(nrps.map((n) => String(n).trim()).filter(Boolean));
+      setMembers((prev) =>
+        prev.filter(
+          (m) => !delSet.has((m.nrp || '').trim()) && !(m.oldNrp && delSet.has(m.oldNrp.trim()))
+        )
+      );
+      setIuranList((prev) => prev.filter((i) => !delSet.has((i.nrp || '').trim())));
+      setViewingMember((prev) =>
+        prev && (delSet.has((prev.nrp || '').trim()) || (prev.oldNrp && delSet.has(prev.oldNrp.trim())))
+          ? null
+          : prev
+      );
+    };
+
     window.addEventListener('ws96_messages_updated', refreshMessages);
     window.addEventListener('ws96_user_updated', handleUserUpdatedEvent);
+    window.addEventListener('ws96_user_deleted', handleUserDeletedEvent);
     return () => {
       window.removeEventListener('ws96_messages_updated', refreshMessages);
       window.removeEventListener('ws96_user_updated', handleUserUpdatedEvent);
+      window.removeEventListener('ws96_user_deleted', handleUserDeletedEvent);
     };
   }, [fetchPendingVerificationCount]);
 
@@ -803,6 +928,18 @@ export default function Home() {
         id: cleanMember.id || ('ws-' + Date.now()),
       };
       updatedList = [createdMember, ...members];
+      if (typeof window !== 'undefined') {
+        try {
+          const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
+          if (rawDeleted) {
+            const parsedDeleted: string[] = JSON.parse(rawDeleted);
+            const nextDeleted = parsedDeleted.filter((n) => n !== cleanMember.nrp);
+            localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(nextDeleted));
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
     setMembers(updatedList);
     persistMemberOverride(cleanMember);
@@ -852,9 +989,9 @@ export default function Home() {
     }
   };
 
-  // Add new cash transaction (Strictly BENDAHARA only)
+  // Add new cash transaction (BENDAHARA & SUPERADMIN)
   const handleAddTransaction = async (trxData: Omit<KasTransaction, 'id' | 'createdAt'>) => {
-    if (currentUser.role !== 'BENDAHARA') return;
+    if (currentUser.role !== 'BENDAHARA' && currentUser.role !== 'SUPERADMIN') return;
 
     const newTrx: KasTransaction = {
       ...trxData,
@@ -902,9 +1039,9 @@ export default function Home() {
     }
   };
 
-  // Add new portfolio asset (Strictly BENDAHARA only)
+  // Add new portfolio asset (BENDAHARA & SUPERADMIN)
   const handleAddAsset = async (assetData: Omit<AssetPortfolioItem, 'id' | 'updatedAt'>) => {
-    if (currentUser.role !== 'BENDAHARA') return;
+    if (currentUser.role !== 'BENDAHARA' && currentUser.role !== 'SUPERADMIN') return;
 
     const newAsset: AssetPortfolioItem = {
       ...assetData,
@@ -940,9 +1077,9 @@ export default function Home() {
     }
   };
 
-  // Delete portfolio asset (Strictly BENDAHARA only)
+  // Delete portfolio asset (BENDAHARA & SUPERADMIN)
   const handleDeleteAsset = async (id: string) => {
-    if (currentUser.role !== 'BENDAHARA') return;
+    if (currentUser.role !== 'BENDAHARA' && currentUser.role !== 'SUPERADMIN') return;
 
     const updatedAssets = assets.filter((a) => a.id !== id);
     setAssets(updatedAssets);
@@ -973,9 +1110,9 @@ export default function Home() {
     }
   };
 
-  // Pay membership dues (Strictly BENDAHARA only)
+  // Pay membership dues (BENDAHARA & SUPERADMIN)
   const handlePayIuran = async (nrp: string, nominal: number) => {
-    if (currentUser.role !== 'BENDAHARA') return;
+    if (currentUser.role !== 'BENDAHARA' && currentUser.role !== 'SUPERADMIN') return;
 
     const updatedList = iuranList.map((i) => {
       if (i.nrp === nrp) {

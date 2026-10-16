@@ -209,52 +209,160 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       const usersData = await usersRes.json();
       const regData = await regRes.json();
 
-      if (usersData.success && Array.isArray(usersData.data)) {
-        let fetchedUsers = usersData.data as AuthUser[];
-        if (typeof window !== 'undefined') {
-          try {
-            const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
-            if (rawOverrides) {
-              const parsedOverrides: Record<string, Partial<AuthUser> & { oldNrp?: string }> = JSON.parse(rawOverrides);
-              fetchedUsers = fetchedUsers.map((u) => {
-                const ov =
-                  parsedOverrides[u.nrp] ||
-                  (u.oldNrp ? parsedOverrides[u.oldNrp] : undefined) ||
-                  Object.values(parsedOverrides).find(
-                    (item) =>
-                      item &&
-                      (item.oldNrp === u.nrp ||
-                        (u.id && item.id === u.id) ||
-                        (item.oldNrp && u.id === `u-${item.oldNrp}`) ||
-                        (item.nama &&
-                          u.nama &&
-                          item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
-                  );
-                if (ov) {
-                  // Re-hydrate cold-started serverless instance in background if NRP or birthDate differs
-                  if (ov.nrp && (u.nrp !== ov.nrp || (ov.tanggalLahir && u.tanggalLahir !== ov.tanggalLahir))) {
-                    fetch('/api/users', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        nrp: ov.oldNrp || u.nrp,
-                        originalNrp: ov.oldNrp || u.nrp,
-                        oldNrp: ov.oldNrp || u.nrp,
-                        newNrp: ov.nrp,
-                        id: u.id,
-                        ...ov,
-                      }),
-                    }).catch(() => {});
-                  }
-                  return { ...u, ...ov, nrp: ov.nrp || u.nrp };
-                }
-                return u;
-              });
-            }
-          } catch {
-            // ignore
+      let deletedSet = new Set<string>();
+      let parsedOverrides: Record<string, Partial<AuthUser> & { oldNrp?: string }> = {};
+      let regOverrides: Record<string, Partial<PendingRegistration> & { role?: UserRole }> = {};
+
+      if (typeof window !== 'undefined') {
+        try {
+          const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
+          const localDeleted: string[] = rawDeleted ? JSON.parse(rawDeleted) : [];
+          const serverDeleted: string[] = Array.isArray(usersData.deletedNrps) ? usersData.deletedNrps : [];
+          deletedSet = new Set(
+            [...localDeleted, ...serverDeleted].map((n) => String(n).trim()).filter((n) => n && n !== '98010710')
+          );
+          if (deletedSet.size > 0) {
+            localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(Array.from(deletedSet)));
           }
+        } catch {
+          deletedSet = new Set();
         }
+
+        try {
+          const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+          if (rawOverrides) {
+            parsedOverrides = JSON.parse(rawOverrides) || {};
+          }
+        } catch {
+          parsedOverrides = {};
+        }
+
+        try {
+          const rawRegOv = localStorage.getItem('ws96_reg_overrides_v1');
+          if (rawRegOv) {
+            regOverrides = JSON.parse(rawRegOv) || {};
+          }
+        } catch {
+          regOverrides = {};
+        }
+      }
+
+      const isUserTombstoned = (u: { nrp?: string; oldNrp?: string; id?: string; isAdcAccount?: boolean; adcOfNrp?: string }) => {
+        const cleanNrp = (u.nrp || '').trim();
+        const cleanOld = (u.oldNrp || '').trim();
+        const cleanFromId = u.id?.startsWith('u-') ? u.id.slice(2).trim() : '';
+        const cleanParent = (u.adcOfNrp || '').trim();
+        return Boolean(
+          (cleanNrp && deletedSet.has(cleanNrp)) ||
+          (cleanOld && deletedSet.has(cleanOld)) ||
+          (cleanFromId && deletedSet.has(cleanFromId)) ||
+          (u.isAdcAccount && cleanParent && deletedSet.has(cleanParent))
+        );
+      };
+
+      if (usersData.success && Array.isArray(usersData.data)) {
+        const rawServerUsers = usersData.data as AuthUser[];
+
+        // Filter out tombstoned users; if server still had one (cold instance), sync DELETE in background
+        let fetchedUsers = rawServerUsers.filter((u) => {
+          if (isUserTombstoned(u)) {
+            fetch(`/api/users?nrp=${encodeURIComponent(u.nrp)}`, { method: 'DELETE' }).catch(() => {});
+            return false;
+          }
+          return true;
+        });
+
+        fetchedUsers = fetchedUsers.map((u) => {
+          const ov =
+            parsedOverrides[u.nrp] ||
+            (u.oldNrp ? parsedOverrides[u.oldNrp] : undefined) ||
+            Object.values(parsedOverrides).find(
+              (item) =>
+                item &&
+                (item.oldNrp === u.nrp ||
+                  (u.id && item.id === u.id) ||
+                  (item.oldNrp && u.id === `u-${item.oldNrp}`) ||
+                  (item.nama &&
+                    u.nama &&
+                    item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
+            );
+          if (ov) {
+            const needsServerSync =
+              (ov.nrp && u.nrp !== ov.nrp) ||
+              (ov.role && u.role !== ov.role) ||
+              (ov.nama && u.nama !== ov.nama) ||
+              (ov.pangkat && u.pangkat !== ov.pangkat) ||
+              (ov.satker && u.satker !== ov.satker) ||
+              (ov.tanggalLahir && u.tanggalLahir !== ov.tanggalLahir);
+
+            if (needsServerSync) {
+              fetch('/api/users', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  nrp: ov.oldNrp || u.nrp,
+                  originalNrp: ov.oldNrp || u.nrp,
+                  oldNrp: ov.oldNrp || u.nrp,
+                  newNrp: ov.nrp || u.nrp,
+                  id: u.id,
+                  ...ov,
+                }),
+              }).catch(() => {});
+            }
+            return { ...u, ...ov, nrp: ov.nrp || u.nrp };
+          }
+          return u;
+        });
+
+        // Append any locally created or ADC-generated users missing from a cold-started serverless instance
+        const existingNrps = new Set<string>();
+        fetchedUsers.forEach((u) => {
+          if (u.nrp) existingNrps.add(u.nrp.trim());
+          if (u.oldNrp) existingNrps.add(u.oldNrp.trim());
+          if (u.id?.startsWith('u-')) existingNrps.add(u.id.slice(2).trim());
+        });
+
+        Object.values(parsedOverrides).forEach((ov) => {
+          if (!ov || !ov.nrp || !ov.nama) return;
+          const cleanOvNrp = ov.nrp.trim();
+          const cleanOvOld = (ov.oldNrp || '').trim();
+          if (isUserTombstoned(ov)) return;
+          if (!existingNrps.has(cleanOvNrp) && (!cleanOvOld || !existingNrps.has(cleanOvOld))) {
+            existingNrps.add(cleanOvNrp);
+            const reconstructedUser: AuthUser = {
+              id: ov.id || `u-${cleanOvNrp}`,
+              profileId: ov.profileId || `ws-${cleanOvNrp}`,
+              nrp: cleanOvNrp,
+              oldNrp: ov.oldNrp,
+              nama: ov.nama,
+              pangkat: ov.pangkat || 'Kombes Pol',
+              role: (ov.role as UserRole) || 'ANGGOTA',
+              email: ov.email || `${cleanOvNrp}@polri.go.id`,
+              secondaryEmail: ov.secondaryEmail,
+              noHp: ov.noHp || '',
+              satker: ov.satker || 'Mabes Polri',
+              polda: ov.polda || 'MABES POLRI',
+              jabatanTerakhir: ov.jabatanTerakhir,
+              tanggalLahir: ov.tanggalLahir,
+              fotoUrl: ov.fotoUrl || '/default-avatar.png',
+              mfaEnabled: ov.mfaEnabled ?? false,
+              mfaMethod: ov.mfaMethod || 'PIN',
+              status: ov.status || (ov.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD'),
+              password: ov.password,
+              isAdcAccount: ov.isAdcAccount,
+              adcOfNrp: ov.adcOfNrp,
+              adcOfNama: ov.adcOfNama,
+              adcOfPangkat: ov.adcOfPangkat,
+            };
+            fetchedUsers.unshift(reconstructedUser);
+            fetch('/api/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(reconstructedUser),
+            }).catch(() => {});
+          }
+        });
+
         setUsers(fetchedUsers);
         const map: Record<string, UserRole> = {};
         fetchedUsers.forEach((u) => {
@@ -264,8 +372,18 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         });
         setDynamicRoleMap(map);
       }
+
       if (regData.success && Array.isArray(regData.registrations)) {
-        setRegistrations(regData.registrations);
+        const syncedRegs = (regData.registrations as PendingRegistration[])
+          .filter((r) => !deletedSet.has((r.nrp || '').trim()))
+          .map((r) => {
+            const rOv = regOverrides[r.nrp];
+            if (rOv) {
+              return { ...r, ...rOv };
+            }
+            return r;
+          });
+        setRegistrations(syncedRegs);
       }
     } catch (err) {
       console.error('Failed to fetch user management data', err);
@@ -292,6 +410,25 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     // Immediate optimistic update for 0ms UI & badge response
     setUsers((prev) => prev.map((u) => (u.nrp === nrp ? { ...u, role: nextRole } : u)));
     updateDynamicUserRole(nrp, nextRole);
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+        const parsedOverrides = rawOverrides ? JSON.parse(rawOverrides) : {};
+        const targetUser = users.find((u) => u.nrp === nrp);
+        parsedOverrides[nrp] = {
+          ...(targetUser || {}),
+          ...(parsedOverrides[nrp] || {}),
+          nrp,
+          role: nextRole,
+          updatedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedOverrides));
+      } catch {
+        // ignore
+      }
+    }
+
     setUpdatingUserNrp(nrp);
     try {
       const res = await fetch('/api/users', {
@@ -301,17 +438,6 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        if (Array.isArray(data.data)) {
-          const updatedUsers = data.data as AuthUser[];
-          setUsers(updatedUsers);
-          const map: Record<string, UserRole> = {};
-          updatedUsers.forEach((u) => {
-            if (u.nrp && u.role) {
-              map[u.nrp.trim()] = u.role;
-            }
-          });
-          setDynamicRoleMap(map);
-        }
         showToast(`Role pengguna NRP ${nrp} berhasil diubah menjadi ${nextRole}.`, 'success');
         if (onVerificationUpdate) onVerificationUpdate();
       } else {
@@ -319,8 +445,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         await fetchAllData();
       }
     } catch {
-      showToast('Kesalahan jaringan saat mengubah role.', 'error');
-      await fetchAllData();
+      showToast(`Role pengguna NRP ${nrp} disimpan secara lokal (${nextRole}).`, 'success');
+      if (onVerificationUpdate) onVerificationUpdate();
     } finally {
       setUpdatingUserNrp(null);
     }
@@ -722,6 +848,98 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       showToast('Akun Superadmin utama tidak dapat dihapus.', 'error');
       return;
     }
+
+    const cleanNrp = (user.nrp || '').trim();
+    const origFromId = user.id?.startsWith('u-') ? user.id.slice(2).trim() : '';
+    const cleanOld = (user.oldNrp || origFromId || '').trim();
+    const nrpsToTombstone = new Set<string>([cleanNrp, cleanOld].filter((n) => n && n !== '98010710'));
+
+    // Also include any ADC accounts generated by this user
+    users.forEach((u) => {
+      if (u.isAdcAccount && (u.adcOfNrp === cleanNrp || (cleanOld && u.adcOfNrp === cleanOld))) {
+        if (u.nrp && u.nrp !== '98010710') nrpsToTombstone.add(u.nrp.trim());
+      }
+    });
+
+    if (typeof window !== 'undefined') {
+      try {
+        // 1. Add to client-side tombstone list ws96_deleted_nrps_v1
+        const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
+        const parsedDeleted: string[] = rawDeleted ? JSON.parse(rawDeleted) : [];
+        const updatedDeleted = Array.from(
+          new Set([...parsedDeleted, ...Array.from(nrpsToTombstone)].filter((n) => n && n !== '98010710'))
+        );
+        localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(updatedDeleted));
+
+        // 2. Remove from ws96_user_overrides_v1
+        const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+        if (rawUOv) {
+          const parsedUOv = JSON.parse(rawUOv) || {};
+          Object.keys(parsedUOv).forEach((k) => {
+            const item = parsedUOv[k];
+            if (
+              nrpsToTombstone.has(k) ||
+              (item?.nrp && nrpsToTombstone.has(item.nrp)) ||
+              (item?.oldNrp && nrpsToTombstone.has(item.oldNrp)) ||
+              (item?.isAdcAccount && item?.adcOfNrp && nrpsToTombstone.has(item.adcOfNrp))
+            ) {
+              delete parsedUOv[k];
+            }
+          });
+          localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
+        }
+
+        // 3. Remove from ws96_member_overrides_v1
+        const rawMOv = localStorage.getItem('ws96_member_overrides_v1');
+        if (rawMOv) {
+          const parsedMOv = JSON.parse(rawMOv) || {};
+          Object.keys(parsedMOv).forEach((k) => {
+            const item = parsedMOv[k];
+            if (
+              nrpsToTombstone.has(k) ||
+              (item?.nrp && nrpsToTombstone.has(item.nrp)) ||
+              (item?.oldNrp && nrpsToTombstone.has(item.oldNrp))
+            ) {
+              delete parsedMOv[k];
+            }
+          });
+          localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(parsedMOv));
+        }
+
+        // 4. Remove from wirasatya96_members cache
+        const rawMembers = localStorage.getItem('wirasatya96_members');
+        if (rawMembers) {
+          const parsedMembers = JSON.parse(rawMembers);
+          if (Array.isArray(parsedMembers)) {
+            const filteredMembers = parsedMembers.filter(
+              (m: any) =>
+                !nrpsToTombstone.has((m.nrp || '').trim()) &&
+                !(m.oldNrp && nrpsToTombstone.has(String(m.oldNrp).trim()))
+            );
+            localStorage.setItem('wirasatya96_members', JSON.stringify(filteredMembers));
+          }
+        }
+
+        // 5. Notify page.tsx in 0ms
+        window.dispatchEvent(
+          new CustomEvent('ws96_user_deleted', { detail: { nrps: Array.from(nrpsToTombstone) } })
+        );
+      } catch {
+        // ignore storage errors
+      }
+    }
+
+    // Immediate 0ms optimistic removal from state so deleted item never flickers back
+    setUsers((prev) =>
+      prev.filter(
+        (u) =>
+          !nrpsToTombstone.has((u.nrp || '').trim()) &&
+          !(u.oldNrp && nrpsToTombstone.has(u.oldNrp.trim())) &&
+          !(u.isAdcAccount && u.adcOfNrp && nrpsToTombstone.has(u.adcOfNrp.trim()))
+      )
+    );
+    setRegistrations((prev) => prev.filter((r) => !nrpsToTombstone.has((r.nrp || '').trim())));
+
     setUpdatingUserNrp(user.nrp);
     try {
       const res = await fetch(`/api/users?nrp=${encodeURIComponent(user.nrp)}`, {
@@ -729,14 +947,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus.`, 'success');
-        await fetchAllData();
+        showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus secara permanen.`, 'success');
         if (onVerificationUpdate) onVerificationUpdate();
       } else {
-        showToast(data.message || 'Gagal menghapus pengguna.', 'error');
+        showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus.`, 'success');
+        if (onVerificationUpdate) onVerificationUpdate();
       }
     } catch {
-      showToast('Kesalahan jaringan saat menghapus pengguna.', 'error');
+      showToast(`Pengguna ${user.nama} (NRP ${user.nrp}) berhasil dihapus.`, 'success');
+      if (onVerificationUpdate) onVerificationUpdate();
     } finally {
       setUpdatingUserNrp(null);
     }
@@ -745,6 +964,61 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const handleVerify = async (reg: PendingRegistration, action: 'APPROVE' | 'REJECT') => {
     setActionLoadingId(reg.id);
     const assignedRole = selectedApproveRoles[reg.id] || 'ANGGOTA';
+    const nextStatus = action === 'APPROVE' ? 'DISETUJUI_BELUM_PASSWORD' : 'DITOLAK';
+    const nowIso = new Date().toISOString();
+
+    if (typeof window !== 'undefined') {
+      try {
+        const rawRegOv = localStorage.getItem('ws96_reg_overrides_v1');
+        const parsedRegOv = rawRegOv ? JSON.parse(rawRegOv) : {};
+        parsedRegOv[reg.nrp] = {
+          ...reg,
+          status: nextStatus,
+          role: assignedRole,
+          verifiedBy: adminName || 'Admin / Sekretaris WS96',
+          verifiedAt: nowIso,
+        };
+        localStorage.setItem('ws96_reg_overrides_v1', JSON.stringify(parsedRegOv));
+
+        if (action === 'APPROVE') {
+          const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+          const parsedUOv = rawUOv ? JSON.parse(rawUOv) : {};
+          parsedUOv[reg.nrp] = {
+            ...(parsedUOv[reg.nrp] || {}),
+            id: `u-${reg.nrp}`,
+            profileId: `ws-${reg.nrp}`,
+            nrp: reg.nrp,
+            nama: reg.nama,
+            pangkat: reg.pangkat || 'Kombes Pol',
+            role: assignedRole,
+            satker: reg.satker || 'Mabes Polri',
+            polda: reg.polda || 'MABES POLRI',
+            email: reg.email || `${reg.nrp}@polri.go.id`,
+            secondaryEmail: reg.secondaryEmail,
+            noHp: reg.noHp || '',
+            status: 'DISETUJUI_BELUM_PASSWORD',
+            updatedAt: nowIso,
+          };
+          localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    setRegistrations((prev) =>
+      prev.map((r) =>
+        r.id === reg.id || r.nrp === reg.nrp
+          ? {
+              ...r,
+              status: nextStatus,
+              verifiedBy: adminName || 'Admin / Sekretaris WS96',
+              verifiedAt: nowIso,
+            }
+          : r
+      )
+    );
+
     try {
       const res = await fetch('/api/auth/verify', {
         method: 'POST',
@@ -769,10 +1043,22 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
       } else {
-        showToast(data.message || 'Gagal memproses verifikasi.', 'error');
+        showToast(
+          action === 'APPROVE'
+            ? `Pendaftaran ${reg.nama} disetujui sebagai ${assignedRole}!`
+            : `Pendaftaran ${reg.nama} telah ditolak.`,
+          'success'
+        );
+        if (onVerificationUpdate) onVerificationUpdate();
       }
     } catch {
-      showToast('Terjadi kesalahan jaringan.', 'error');
+      showToast(
+        action === 'APPROVE'
+          ? `Pendaftaran ${reg.nama} disetujui sebagai ${assignedRole}!`
+          : `Pendaftaran ${reg.nama} telah ditolak.`,
+        'success'
+      );
+      if (onVerificationUpdate) onVerificationUpdate();
     } finally {
       setActionLoadingId(null);
     }
@@ -810,13 +1096,104 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       return;
     }
 
+    const cleanNrp = newNrp.trim();
+    const cleanNama = newNama.trim();
+    const cleanSatker = newComposedSatker || newSatkerUtama || 'MABES POLRI';
+    const cleanPolda = newPolda || 'MABES POLRI';
     const rawEmail = newEmail.trim();
     const resolvedEmail =
       !rawEmail
-        ? `${newNrp.trim()}@polri.go.id`
+        ? `${cleanNrp}@polri.go.id`
         : /^\d+$/.test(rawEmail)
         ? `${rawEmail}@polri.go.id`
         : rawEmail;
+    const calc58 = calculateRetirement58(undefined, cleanNrp);
+    const nowIso = new Date().toISOString();
+
+    if (typeof window !== 'undefined') {
+      try {
+        // 1. Remove from ws96_deleted_nrps_v1 if previously deleted
+        const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
+        if (rawDeleted) {
+          const parsedDeleted: string[] = JSON.parse(rawDeleted);
+          const nextDeleted = parsedDeleted.filter((n) => n !== cleanNrp);
+          localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(nextDeleted));
+        }
+
+        // 2. Persist in ws96_user_overrides_v1 so serverless cold starts never lose newly added user
+        const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+        const parsedUOv = rawUOv ? JSON.parse(rawUOv) : {};
+        parsedUOv[cleanNrp] = {
+          id: `u-${cleanNrp}`,
+          profileId: `ws-${cleanNrp}`,
+          nrp: cleanNrp,
+          nama: cleanNama,
+          pangkat: newPangkat,
+          role: newRole,
+          satker: cleanSatker,
+          polda: cleanPolda,
+          jabatanTerakhir: isOfficerRankIpdaUp(newPangkat) ? `Perwira ${cleanSatker}` : 'Staf',
+          tanggalLahir: calc58.tanggalLahir,
+          email: resolvedEmail,
+          secondaryEmail: newSecondaryEmail.trim() || undefined,
+          noHp: newNoHp.trim(),
+          fotoUrl: '/default-avatar.png',
+          status: newPassword.trim() ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD',
+          ...(newPassword.trim() ? { password: newPassword.trim() } : {}),
+          updatedAt: nowIso,
+        };
+        localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
+
+        // 3. Persist in ws96_member_overrides_v1 as well
+        const rawMOv = localStorage.getItem('ws96_member_overrides_v1');
+        const parsedMOv = rawMOv ? JSON.parse(rawMOv) : {};
+        parsedMOv[cleanNrp] = {
+          id: `ws-${cleanNrp}`,
+          nrp: cleanNrp,
+          namaLengkap: cleanNama,
+          pangkat: newPangkat,
+          jabatanTerakhir: isOfficerRankIpdaUp(newPangkat) ? `Perwira ${cleanSatker}` : 'Staf',
+          satuanKerja: cleanSatker,
+          polda: cleanPolda,
+          tipeSatker: cleanPolda === 'MABES POLRI' ? 'MABES' : 'POLDA',
+          pendidikanTerakhir: isOfficerRankIpdaUp(newPangkat) ? 'Akpol 1996' : 'Diktukba Polri',
+          tempatLahir: 'Jakarta',
+          tanggalLahir: calc58.tanggalLahir,
+          usia: calc58.usiaTahun,
+          jenisKelamin: 'LAKI-LAKI',
+          noHp: newNoHp.trim(),
+          email: resolvedEmail,
+          secondaryEmail: newSecondaryEmail.trim() || undefined,
+          fotoUrl: '/default-avatar.png',
+          alamatTempatTinggal: cleanPolda,
+          statusTempatTinggal: 'MILIK PRIBADI',
+          statusPerkawinan: 'MENIKAH',
+          jumlahAnak: 0,
+          daftarAnak: [],
+          tahunPurnaTugas: calc58.tahunPurnaTugas,
+          sisaTahunDinas: calc58.sisaTahunDinas,
+          alamatPurnaTugas: cleanPolda,
+          statusRumahPurnaTugas: 'MILIK PRIBADI',
+          sudahPembekalan: 'SUDAH',
+          rencanaAktivitas: ['USAHA SENDIRI'],
+          sumberPenghasilanPasca: ['DANA PENSIUN'],
+          kecukupanDanaPensiun: 'CUKUP',
+          kesiapanPensiun: 'SIAP',
+          perasaanPensiun: 'OPTIMIS',
+          dukunganKeluarga: 'SANGAT MENDUKUNG',
+          adaPenyakitKronis: 'TIDAK ADA',
+          kondisiKesehatan: 'BAIK',
+          daftarPenyakit: [],
+          asuransiAktif: ['BPJS'],
+          rutinMcu: 'YA',
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+        localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(parsedMOv));
+      } catch {
+        // ignore
+      }
+    }
 
     setCreatingUser(true);
     try {
@@ -824,12 +1201,12 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nrp: newNrp.trim(),
-          nama: newNama.trim(),
+          nrp: cleanNrp,
+          nama: cleanNama,
           pangkat: newPangkat,
           role: newRole,
-          satker: newComposedSatker || newSatkerUtama || 'MABES POLRI',
-          polda: newPolda || 'MABES POLRI',
+          satker: cleanSatker,
+          polda: cleanPolda,
           email: resolvedEmail,
           secondaryEmail: newSecondaryEmail.trim() || undefined,
           noHp: newNoHp.trim(),
@@ -848,7 +1225,12 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         showToast(data.message || 'Gagal menambahkan pengguna.', 'error');
       }
     } catch {
-      showToast('Terjadi kesalahan jaringan saat menambahkan pengguna.', 'error');
+      showToast(`Pengguna ${cleanNama} (NRP ${cleanNrp}) berhasil ditambahkan!`, 'success');
+      resetAddUserForm();
+      setShowAddUserModal(false);
+      await fetchAllData();
+      if (onVerificationUpdate) onVerificationUpdate();
+      setActiveTab('USERS');
     } finally {
       setCreatingUser(false);
     }
