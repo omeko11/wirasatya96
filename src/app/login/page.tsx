@@ -579,7 +579,7 @@ export default function LoginPage() {
 
         if (!isValidAdcPassword) {
           setErrorMessage(
-            `Kata sandi Ajudan (ADC) tidak cocok. Gunakan password default WS96@${detectedAdcInfo.adcNrp} atau password Pimpinan.`
+            'Kata sandi Ajudan (ADC) tidak cocok. Silakan periksa kembali kata sandi Anda.'
           );
           resetCaptcha();
           return;
@@ -688,7 +688,7 @@ export default function LoginPage() {
 
       if (!matchesCustomPassword && !matchesDefaultWs96Password && !matchesPresetLegacyPassword) {
         setErrorMessage(
-          `Kata sandi tidak cocok untuk NRP ${resolvedUserNrp}. Gunakan password default WS96@${resolvedUserNrp} atau klik "Lupa Password?" untuk mengajukan reset.`
+          `Kata sandi tidak cocok untuk NRP ${resolvedUserNrp}. Silakan periksa kembali kata sandi Anda atau klik "Lupa Password?" untuk mengajukan reset.`
         );
         resetCaptcha();
         return;
@@ -1410,19 +1410,6 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              {/* Info Box Kredensial Default Anggota & Ajudan (ADC) */}
-              <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 text-[11px] text-amber-950 leading-relaxed">
-                💡 <strong>Kredensial Default Anggota:</strong> Gunakan NRP masing-masing dengan password{' '}
-                <code className="font-mono font-bold bg-amber-100/80 px-1 py-0.5 rounded text-amber-900">
-                  WS96@NRP
-                </code>{' '}
-                (contoh:{' '}
-                <code className="font-mono font-bold bg-amber-100/80 px-1 py-0.5 rounded text-amber-900">
-                  WS96@75060702
-                </code>
-                ). Untuk Ajudan (ADC), gunakan NRP ADC yang telah didaftarkan oleh Pimpinan.
-              </div>
-
               <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                 {/* Input 1: NRP / Email */}
                 <div>
@@ -1473,7 +1460,7 @@ export default function LoginPage() {
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Default: WS96@NRP (contoh: WS96@75060702)"
+                      placeholder="Masukkan kata sandi Anda"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-red-800 transition-all pr-10"
                     />
                     <button
@@ -1544,8 +1531,7 @@ export default function LoginPage() {
                   Lupa Password / Ajukan Reset ke Sekretaris &amp; Superadmin
                 </h1>
                 <p className="text-xs text-slate-600 mt-1">
-                  Seluruh 304 anggota Batalyon Wira Satya 96 telah terdaftar. Ajukan permohonan reset kata sandi ke default{' '}
-                  <code className="font-mono font-bold text-red-800">WS96@NRP</code> melalui Sekretaris / Superadmin.
+                  Ajukan permohonan reset kata sandi akun Anda melalui Sekretaris atau Superadmin Batalyon Wira Satya 96.
                 </p>
               </div>
 
@@ -1558,10 +1544,7 @@ export default function LoginPage() {
                     Permintaan Reset Password Terkirim!
                   </h4>
                   <div className="bg-emerald-50/90 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950 text-left leading-relaxed">
-                    Permintaan reset password untuk NRP <strong>{resetSuccessNrp}</strong> telah dikirim ke Sekretaris &amp; Superadmin (tercatat di Riwayat Audit). Setelah di-reset oleh Admin/Sekretaris, kata sandi Anda akan kembali ke default:{' '}
-                    <code className="font-mono font-extrabold bg-emerald-100 px-1.5 py-0.5 rounded text-emerald-900">
-                      WS96@{resetSuccessNrp}
-                    </code>
+                    Permintaan reset password untuk NRP <strong>{resetSuccessNrp}</strong> telah dikirim ke Sekretaris &amp; Superadmin (tercatat di Riwayat Audit). Pengurus akan menindaklanjuti dan menginformasikan kata sandi melalui nomor WhatsApp Anda.
                   </div>
                   <button
                     type="button"

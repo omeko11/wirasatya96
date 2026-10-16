@@ -2528,9 +2528,7 @@ export const serverStore = {
       if (!isValid) {
         return {
           success: false,
-          message: user.isAdcAccount
-            ? `Kata sandi salah. Gunakan WS96@${user.nrp} atau kata sandi akun Alumni (${user.adcOfPangkat || ''} ${user.adcOfNama || user.adcOfNrp}).`
-            : 'Kata sandi yang Anda masukkan salah. Silakan coba kembali.',
+          message: 'Kata sandi yang Anda masukkan salah. Silakan coba kembali.',
         };
       }
     }
