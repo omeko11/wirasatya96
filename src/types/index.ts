@@ -379,6 +379,7 @@ export type FungsiPolri =
   | 'HARKAM'
   | 'BRIMOB'
   | 'SLOG'
+  | 'SAHLI'
   | 'LANTAS'
   | 'DENSUS'
   | 'HUMAS'
@@ -392,7 +393,9 @@ export type FungsiPolri =
   | 'DOKKES'
   | 'LITBANG'
   | 'SETUM'
-  | 'SPRIPIM';
+  | 'SPRIPIM'
+  | 'KEWILAYAHAN'
+  | 'LUAR_STRUKTUR';
 
 export interface RiwayatJabatanLeting {
   id: string;

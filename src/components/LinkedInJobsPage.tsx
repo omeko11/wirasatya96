@@ -71,6 +71,7 @@ const DAFTAR_FUNGSI_POLRI: {
   { key: 'HARKAM', label: 'Harkam', badgeBg: 'bg-teal-50 text-teal-800 border-teal-200' },
   { key: 'BRIMOB', label: 'Brimob', badgeBg: 'bg-zinc-100 text-zinc-800 border-zinc-300' },
   { key: 'SLOG', label: 'Slog', badgeBg: 'bg-orange-50 text-orange-800 border-orange-200' },
+  { key: 'SAHLI', label: 'Sahli', badgeBg: 'bg-neutral-100 text-neutral-800 border-neutral-300' },
   { key: 'LANTAS', label: 'Lantas', badgeBg: 'bg-blue-50 text-blue-800 border-blue-200' },
   { key: 'DENSUS', label: 'Densus', badgeBg: 'bg-rose-50 text-rose-900 border-rose-300' },
   { key: 'HUMAS', label: 'Humas', badgeBg: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
@@ -85,34 +86,66 @@ const DAFTAR_FUNGSI_POLRI: {
   { key: 'LITBANG', label: 'Litbang', badgeBg: 'bg-amber-50 text-amber-900 border-amber-200' },
   { key: 'SETUM', label: 'Setum', badgeBg: 'bg-stone-100 text-stone-800 border-stone-300' },
   { key: 'SPRIPIM', label: 'Spripim', badgeBg: 'bg-yellow-50 text-yellow-900 border-yellow-300' },
+  { key: 'KEWILAYAHAN', label: 'Kewilayahan', badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+  { key: 'LUAR_STRUKTUR', label: 'Luar Struktur', badgeBg: 'bg-indigo-50 text-indigo-800 border-indigo-200' },
 ];
 
 const VALID_FUNGSI_KEYS = new Set<string>(DAFTAR_FUNGSI_POLRI.map((f) => f.key));
 
 function inferFungsiPolri(jabatan: string, satker: string, polda: string): FungsiPolri {
   const t = `${jabatan} ${satker} ${polda}`.toUpperCase();
+  if (
+    t.includes('LUAR STRUKTUR') ||
+    t.includes('BNN') ||
+    t.includes('KPK') ||
+    t.includes('BNPT') ||
+    t.includes('BAKAMLA') ||
+    t.includes('BIN ') ||
+    t.includes('BADAN INTELIJEN NEGARA') ||
+    t.includes('KEMENTERIAN') ||
+    t.includes('KEMEN') ||
+    t.includes('KOMDIGI') ||
+    t.includes('IMIGRASI') ||
+    t.includes('IMIPAS') ||
+    t.includes('DPD RI') ||
+    t.includes('DPR RI') ||
+    t.includes('MPR RI') ||
+    t.includes('LEMHANNAS') ||
+    t.includes('WANTANNAS') ||
+    t.includes('BSSN') ||
+    t.includes('PPATK') ||
+    t.includes('OMBUDSMAN') ||
+    t.includes('SKK MIGAS') ||
+    t.includes('OTORITA IKN') ||
+    t.includes('BP2MI') ||
+    t.includes('SEKMIL') ||
+    t.includes('SETMILPRES')
+  ) return 'LUAR_STRUKTUR';
+  if (t.includes('SAHLI') || t.includes('STAF AHLI')) return 'SAHLI';
   if (t.includes('TASPIDKOR') || t.includes('KORTASTIPIDKOR') || t.includes('TIPIDKOR')) return 'TASPIDKOR';
-  if (t.includes('DENSUS') || t.includes('BNPT')) return 'DENSUS';
-  if (t.includes('ITWAS') || t.includes('WASUM') || t.includes('IRWAS') || t.includes('IRWIL') || t.includes('AUDITOR KEPOLISIAN') || t.includes('ITJEN') || t.includes('INSPEKTUR')) return 'WASUM';
+  if (t.includes('DENSUS')) return 'DENSUS';
+  if (t.includes('ITWAS') || t.includes('WASUM') || t.includes('IRWAS') || t.includes('IRWIL') || t.includes('AUDITOR KEPOLISIAN') || t.includes('INSPEKTUR')) return 'WASUM';
   if (t.includes('RENA') || t.includes('STAMARENA') || t.includes('SRENA')) return 'RENA';
   if (t.includes('LEMDIKLAT') || t.includes('SESPIM') || t.includes('AKPOL') || t.includes('STIK') || t.includes('SPN') || t.includes('PUSDIK') || t.includes('WIDYAISWARA') || t.includes('DOSEN')) return 'LEMDIKLAT';
   if (t.includes('PROPAM') || t.includes('WABPROF') || t.includes('PAMINAL') || t.includes('PROVOS')) return 'PROPAM';
   if (t.includes('HUMAS') || t.includes('PENMAS') || t.includes('PID')) return 'HUMAS';
-  if (t.includes('HUKUM') || t.includes('DIVKUM') || t.includes('BIDKUM') || t.includes('DPD RI')) return 'HUKUM';
-  if (t.includes('HUBINTER') || t.includes('INTERPOL') || t.includes('MHI') || t.includes('IMIGRASI') || t.includes('IMIPAS')) return 'HUBINTER';
-  if (t.includes('TIK') || t.includes('KOMDIGI')) return 'TIK';
+  if (t.includes('HUKUM') || t.includes('DIVKUM') || t.includes('BIDKUM')) return 'HUKUM';
+  if (t.includes('HUBINTER') || t.includes('INTERPOL') || t.includes('MHI')) return 'HUBINTER';
+  if (t.includes('TIK')) return 'TIK';
   if (t.includes('SDM') || t.includes('SSDM') || t.includes('BINKAR') || t.includes('DALPERS') || t.includes('WATPERS') || t.includes('ROPSI') || t.includes('PSI BIRO')) return 'SDM';
   if (t.includes('KEU') || t.includes('PUSKEU') || t.includes('BIDKEU')) return 'KEU';
   if (t.includes('DOKKES') || t.includes('PUSDOKKES') || t.includes('BIDDOKKES') || t.includes('RS BHAYANGKARA') || t.includes('KESEHATAN')) return 'DOKKES';
   if (t.includes('LITBANG') || t.includes('PUSLITBANG')) return 'LITBANG';
   if (t.includes('SETUM') || t.includes('PUSJARAH')) return 'SETUM';
-  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('YANMA') || t.includes('AJUDAN') || t.includes('SEKMIL')) return 'SPRIPIM';
+  if (t.includes('SPRIPIM') || t.includes('KOORSPRIPIM') || t.includes('YANMA') || t.includes('AJUDAN')) return 'SPRIPIM';
   if (t.includes('SLOG') || t.includes('ROLOG') || t.includes('SARPRAS') || t.includes('FASKON') || t.includes('BEKUM') || t.includes('ADA BARANG')) return 'SLOG';
-  if (t.includes('BRIMOB') || t.includes('GEGANA') || t.includes('PELOPOR')) return 'BRIMOB';
-  if (t.includes('LANTAS') || t.includes('KORLANTAS') || t.includes('PJR')) return 'LANTAS';
-  if (t.includes('INTEL') || t.includes('BAINTELKAM') || t.includes('BINDA') || t.includes('BIN ')) return 'INTELKAM';
-  if (t.includes('RESKRIM') || t.includes('BARESKRIM') || t.includes('NARKOBA') || t.includes('DITTIPID') || t.includes('SIBER') || t.includes('PUSIKNAS') || t.includes('BNN') || t.includes('KPK')) return 'RESERSE';
-  if (t.includes('BAHARKAM') || t.includes('HARKAM') || t.includes('SAMAPTA') || t.includes('SABHARA') || t.includes('PAMOBVIT') || t.includes('POLAIR') || t.includes('BINMAS') || t.includes('BAKAMLA')) return 'HARKAM';
+  if (t.includes('BRIMOB') || t.includes('GEGANA') || t.includes('PELOPOR') || t.includes('PASBRIMOB')) return 'BRIMOB';
+  if (t.includes('LANTAS') || t.includes('KORLANTAS') || t.includes('PJR') || t.includes('REGIDENT') || t.includes('GAKKUM') || t.includes('KAMSEL')) return 'LANTAS';
+  if (t.includes('INTEL') || t.includes('BAINTELKAM') || t.includes('SOSBUD') || t.includes('KAMNEG') || t.includes('POLITIK') || t.includes('KAMSUS') || t.includes('SANDI')) return 'INTELKAM';
+  if (t.includes('RESKRIM') || t.includes('BARESKRIM') || t.includes('NARKOBA') || t.includes('DITTIPID') || t.includes('SIBER') || t.includes('PUSIKNAS') || t.includes('LABFOR') || t.includes('PUSINAFIS') || t.includes('INAFIS') || t.includes('PPNS') || t.includes('TIPIDUM') || t.includes('TIPIDEKSUS') || t.includes('TIPIDTER') || t.includes('PPA DAN PPO') || t.includes('PENYIDIK') || t.includes('WASSIDIK')) return 'RESERSE';
+  if (t.includes('BAHARKAM') || t.includes('HARKAM') || t.includes('SAMAPTA') || t.includes('SABHARA') || t.includes('PAMOBVIT') || t.includes('POLAIR') || t.includes('POLUDARA') || t.includes('BINMAS') || t.includes('KAKORBINMAS') || t.includes('SATWA')) return 'HARKAM';
+  if (t.includes('SOPS') || t.includes('STAMAOPS') || t.includes('ROOPS') || t.includes('KARO OPS') || t.includes('KAROOPS') || t.includes('KABAGOPS') || t.includes('BAGOPS') || t.includes('KERMA') || t.includes('ROKERMA') || t.includes('BINOPSNAL') || t.includes('DALOPS') || t.includes('SIAGA')) return 'OPS';
+  if (t.includes('KAPOLDA') || t.includes('WAKAPOLDA') || t.includes('KAPOLRES') || t.includes('WAKAPOLRES') || t.includes('KAPOLSEK') || t.includes('POLDA') || t.includes('POLRES') || t.includes('SPKT')) return 'KEWILAYAHAN';
   return 'OPS';
 }
 
@@ -931,7 +964,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                           const val = e.target.value;
                           if (val === EXTERNAL_JABATAN_SENTINEL) {
                             setIsNewExternalJabatan(true);
-                            setNewJabatan({ ...newJabatan, jabatan: '', fungsiPolri: 'OPS' });
+                            setNewJabatan({ ...newJabatan, jabatan: '', fungsiPolri: 'LUAR_STRUKTUR' });
                           } else {
                             setIsNewExternalJabatan(false);
                             setNewJabatan({
