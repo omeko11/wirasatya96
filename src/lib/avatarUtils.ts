@@ -18,13 +18,20 @@ export function getAvatarUrl(url?: string | null): string {
 /**
  * Ensures any empty or legacy dummy Unsplash cover URL is replaced with the official Polri default cover.
  */
-export function getCoverUrl(url?: string | null): string {
-  if (!url || typeof url !== 'string') return DEFAULT_COVER_URL;
-  const trimmed = url.trim();
-  if (!trimmed || trimmed.includes('images.unsplash.com')) {
-    return DEFAULT_COVER_URL;
+export function getCoverUrl(primaryUrl?: string | null, secondaryUrl?: string | null): string {
+  const candidates = [primaryUrl, secondaryUrl];
+  for (const url of candidates) {
+    if (!url || typeof url !== 'string') continue;
+    const trimmed = url.trim();
+    if (
+      trimmed &&
+      trimmed !== DEFAULT_COVER_URL &&
+      !trimmed.includes('images.unsplash.com')
+    ) {
+      return trimmed;
+    }
   }
-  return trimmed;
+  return DEFAULT_COVER_URL;
 }
 
 export function isCustomAvatarUrl(url?: string | null): boolean {
@@ -56,7 +63,7 @@ const LEADING_RANK_PREFIX_REGEX =
  * Strips any leading Polri rank prefix (e.g. "Kombes Pol. ", "Brigjen Pol. ", "Irjen Pol. ")
  * so the Name field stores ONLY the person's Full Name & Academic Degrees.
  */
-export function stripRankFromName(nama?: string | null): string {
+export function stripRankFromName(nama?: string | null, _pangkat?: string | null): string {
   if (!nama || typeof nama !== 'string') return '';
   let cleaned = nama.trim();
   while (LEADING_RANK_PREFIX_REGEX.test(cleaned)) {
@@ -348,5 +355,240 @@ export function getOrBuildUserProfile(
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
+}
+
+const PANGKAT_ORDER_LIST = [
+  'jenderal polisi',
+  'komjen pol',
+  'irjen pol',
+  'brigjen pol',
+  'kombes pol',
+  'akbp',
+  'kompol',
+  'akp',
+  'iptu',
+  'ipda',
+  'aiptu',
+  'aipda',
+  'bripka',
+  'brigpol',
+  'briptu',
+  'bripda',
+  'abrip',
+  'abriptu',
+  'abripda',
+  'bharaka',
+  'bharatu',
+  'bharada',
+  'pembina / asn polri',
+  'penata / asn polri',
+  'pengatur / asn polri',
+  'asn / pns polri',
+];
+
+/**
+ * Returns numeric rank order (0 = Jenderal Polisi -> 21 = Bharada -> 25 = ASN).
+ */
+export function getPangkatRankOrder(pangkat?: string | null): number {
+  const norm = (pangkat || '')
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const idx = PANGKAT_ORDER_LIST.indexOf(norm);
+  if (idx >= 0) return idx;
+  for (let i = 0; i < PANGKAT_ORDER_LIST.length; i++) {
+    if (norm.startsWith(PANGKAT_ORDER_LIST[i])) return i;
+  }
+  return 99;
+}
+
+/**
+ * Returns numeric Satker level order:
+ * 1 = Mabes Polri
+ * 2 = Polda
+ * 3 = Polres / Polresta / Polrestabes / Polres Metro
+ * 4 = Polsek
+ * 5 = Luar Struktur / Kementerian / Lembaga
+ */
+export function getLevelSatkerOrder(
+  satker?: string | null,
+  polda?: string | null,
+  tipeSatker?: string | null
+): number {
+  const s = `${satker || ''} ${polda || ''} ${tipeSatker || ''}`.toUpperCase();
+  if (s.includes('POLSEK')) return 4;
+  if (
+    s.includes('POLRES') ||
+    s.includes('POLRESTA') ||
+    s.includes('POLRESTABES') ||
+    tipeSatker === 'POLRES/TA/BES'
+  ) {
+    return 3;
+  }
+  if (
+    tipeSatker === 'KEMEN/LEMBAGA' ||
+    s.includes('BNN') ||
+    s.includes('BNPT') ||
+    s.includes('KPK') ||
+    s.includes('BIN ') ||
+    s.includes('BADAN INTELIJEN NEGARA') ||
+    s.includes('KEMENTERIAN') ||
+    s.includes('KEMENKO') ||
+    s.includes('LEMHANNAS')
+  ) {
+    return 5;
+  }
+  if (
+    (polda || '').toUpperCase() === 'MABES POLRI' ||
+    (polda || '').toUpperCase() === 'MABES' ||
+    tipeSatker === 'MABES'
+  ) {
+    return 1;
+  }
+  return 2; // Polda
+}
+
+/**
+ * Returns numeric Role rank order:
+ * 1 = SUPERADMIN -> 2 = KETUA -> 3 = SEKRETARIAT -> 4 = BENDAHARA -> 5 = ANGGOTA
+ */
+export function getRoleRankOrder(role?: string | null): number {
+  switch ((role || '').toUpperCase()) {
+    case 'SUPERADMIN':
+      return 1;
+    case 'KETUA':
+      return 2;
+    case 'SEKRETARIAT':
+      return 3;
+    case 'BENDAHARA':
+      return 4;
+    case 'ANGGOTA':
+    default:
+      return 5;
+  }
+}
+
+/**
+ * Detects whether a member/officer is AKTIF, PURNA_TUGAS, or ALMARHUM from explicit status or jabatan text.
+ */
+export function detectStatusKedinasan(
+  explicitStatus?: 'AKTIF' | 'PURNA_TUGAS' | 'ALMARHUM' | string | null,
+  jabatan?: string | null,
+  jenisAnggota?: string | null
+): 'AKTIF' | 'PURNA_TUGAS' | 'ALMARHUM' {
+  if (explicitStatus === 'ALMARHUM' || explicitStatus === 'PURNA_TUGAS' || explicitStatus === 'AKTIF') {
+    return explicitStatus;
+  }
+  const j = (jabatan || '').toLowerCase();
+  if (j.includes('almarhum') || j.includes('wafat') || j.includes('gugur')) {
+    return 'ALMARHUM';
+  }
+  if (
+    j.includes('purna bhakti') ||
+    j.includes('purna tugas') ||
+    j.includes('pensiun') ||
+    jenisAnggota === 'PURNAWIRAWAN POLRI'
+  ) {
+    return 'PURNA_TUGAS';
+  }
+  return 'AKTIF';
+}
+
+/**
+ * Strips "Almarhum (Eks ...)" or "Purna Bhakti Polri (Eks ...)" wrappers so the pure Jabatan title is returned.
+ */
+export function extractCleanJabatanTitle(jabatan?: string | null): string {
+  if (!jabatan) return '';
+  let s = jabatan.trim();
+  const eksMatch = s.match(/^(?:almarhum|purna\s+bhakti(?:\s+polri)?|purna\s+tugas)\s*\((?:wafat[^/]*\/\s*)?(?:eks\s+)?([^)]+)\)/i);
+  if (eksMatch && eksMatch[1]) {
+    return eksMatch[1].trim();
+  }
+  s = s.replace(/^almarhum\s*[-–•:]\s*/i, '').trim();
+  return s;
+}
+
+/**
+ * Reads active ADC session metadata from localStorage (`ws96_adc_session`) if currently logged in as an ADC.
+ */
+export function getActiveAdcSessionFromStorage(): {
+  adcNrp: string;
+  adcNama: string;
+  adcPangkat: string;
+  adcNoHp?: string;
+  pimpinanNrp: string;
+  pimpinanNama: string;
+  pimpinanPangkat: string;
+  loginAt: string;
+} | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem('ws96_adc_session');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.adcNrp && parsed.pimpinanNrp) {
+      return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/**
+ * Appends an ADC login or data-modification entry to `ws96_audit_logs_v1` AND sends it to `/api/users`
+ * so every ADC login or data change is permanently recorded under the ADC's own NRP & Identity.
+ */
+export function recordAdcActivityToAuditLog(params: {
+  action: 'LOGIN_ADC' | 'AKTIVITAS_ADC';
+  details: string;
+  adcSession?: {
+    adcNrp: string;
+    adcNama: string;
+    adcPangkat: string;
+    pimpinanNrp: string;
+    pimpinanNama: string;
+    pimpinanPangkat: string;
+  } | null;
+}): void {
+  if (typeof window === 'undefined') return;
+  const session = params.adcSession || getActiveAdcSessionFromStorage();
+  if (!session) return;
+
+  const entry = {
+    id: `audit-adc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    timestamp: new Date().toISOString(),
+    action: params.action,
+    actorNrp: session.adcNrp,
+    actorName: `${session.adcPangkat} ${session.adcNama} (ADC)`,
+    actorNama: `${session.adcPangkat} ${session.adcNama} (ADC)`,
+    actorRole: 'ADC' as const,
+    targetNrp: session.pimpinanNrp,
+    targetNama: session.pimpinanNama,
+    targetName: session.pimpinanNama,
+    targetPangkat: session.pimpinanPangkat,
+    targetRole: 'ANGGOTA' as const,
+    reason: params.details,
+    details: `[ADC NRP ${session.adcNrp} • ${session.adcPangkat} ${session.adcNama}] ${params.details}`,
+  };
+
+  try {
+    const raw = localStorage.getItem('ws96_audit_logs_v1');
+    const existing = raw ? JSON.parse(raw) : [];
+    const next = [entry, ...(Array.isArray(existing) ? existing : [])].slice(0, 300);
+    localStorage.setItem('ws96_audit_logs_v1', JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+
+  fetch('/api/users', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'RECORD_AUDIT_LOG',
+      auditEntry: entry,
+    }),
+  }).catch(() => {});
 }
 

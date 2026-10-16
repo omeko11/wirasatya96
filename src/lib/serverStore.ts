@@ -15,12 +15,18 @@ import {
   PostComment,
   UserAuditLog,
   UserRole,
+  StatusKedinasan,
 } from '@/types';
 import { INITIAL_MEMBERS } from '@/data/mockData';
 import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
-import { AKPOL_1996_MEMBERS, AKPOL_1996_REGISTRATIONS, AKPOL_1996_USERS } from '@/data/akpol1996Alumni';
+import {
+  AKPOL_1996_IURAN,
+  AKPOL_1996_MEMBERS,
+  AKPOL_1996_REGISTRATIONS,
+  AKPOL_1996_USERS,
+} from '@/data/akpol1996Alumni';
 import { calculateRetirement58, stripRankFromName } from '@/lib/avatarUtils';
 
 export interface FinanceCategoryOption {
@@ -93,6 +99,7 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     email: '98010710@polri.go.id',
     secondaryEmail: 'agungkrisdianto98@gmail.com',
     alasanDaftar: 'Personel Bareskrim Polri (S1 Teknik Informatika) — Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.',
+    password: 'WS96@98010710',
     status: 'AKTIF',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
@@ -108,7 +115,8 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     noHp: '0812980107102',
     email: '980107102@polri.go.id',
     alasanDaftar: 'Akun Testing Role KETUA Batalyon Wira Satya 96.',
-    status: 'DISETUJUI_BELUM_PASSWORD',
+    password: 'WS96@980107102',
+    status: 'AKTIF',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Eko Agung (Superadmin)',
@@ -123,7 +131,8 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     noHp: '0812980107103',
     email: '980107103@polri.go.id',
     alasanDaftar: 'Akun Testing Role SEKRETARIAT Batalyon Wira Satya 96.',
-    status: 'DISETUJUI_BELUM_PASSWORD',
+    password: 'WS96@980107103',
+    status: 'AKTIF',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Eko Agung (Superadmin)',
@@ -138,7 +147,8 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     noHp: '0812980107104',
     email: '980107104@polri.go.id',
     alasanDaftar: 'Akun Testing Role BENDAHARA Batalyon Wira Satya 96.',
-    status: 'DISETUJUI_BELUM_PASSWORD',
+    password: 'WS96@980107104',
+    status: 'AKTIF',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Eko Agung (Superadmin)',
@@ -153,7 +163,8 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
     noHp: '0812980107105',
     email: '980107105@polri.go.id',
     alasanDaftar: 'Akun Testing Role ANGGOTA Batalyon Wira Satya 96.',
-    status: 'DISETUJUI_BELUM_PASSWORD',
+    password: 'WS96@980107105',
+    status: 'AKTIF',
     createdAt: new Date().toISOString(),
     verifiedAt: new Date().toISOString(),
     verifiedBy: 'Eko Agung (Superadmin)',
@@ -191,6 +202,23 @@ function cleanSatkerRoleSuffix(satker?: string, nrp?: string): string {
     return 'Itwasum Polri';
   }
   return cleaned || 'Mabes Polri';
+}
+
+function cleanStatusWrapperFromJabatan(jabatan?: string, fallbackJabatan?: string): string {
+  const raw = (jabatan || '').trim();
+  if (raw.startsWith('Almarhum (') || raw.startsWith('Purna Bhakti Polri (')) {
+    if (fallbackJabatan && !fallbackJabatan.startsWith('Almarhum (') && !fallbackJabatan.startsWith('Purna Bhakti Polri (')) {
+      return fallbackJabatan;
+    }
+    const inner = raw
+      .replace(/^Almarhum\s*\((?:[^/]*\/\s*)?(?:Eks\s+)?/i, '')
+      .replace(/^Purna Bhakti Polri\s*\((?:Eks\s+)?/i, '')
+      .replace(/\)$/, '')
+      .trim();
+    if (inner === 'Dirreskrimsus Polda Jabar') return 'Dirreskrimsus Polda Jawa Barat';
+    return inner || fallbackJabatan || raw;
+  }
+  return raw || fallbackJabatan || '';
 }
 
 function resolveBestFotoUrl(...candidates: (string | undefined)[]): string {
@@ -293,7 +321,7 @@ export function readDb(): GlobalStore {
           : defaultStore.registrations;
       const loadedRegs = rawRegsSource.filter((r) => !isDeletedItem(r.nrp));
 
-      // Build reference lookup for 164 AKPOL 1996 alumni (by nrp, oldNrp, id, and stripped base name)
+      // Build reference lookup for all 275 AKPOL 1996 alumni (by nrp, oldNrp, id, and stripped base name)
       const akpolRefMap = new Map<string, AuthUser>();
       AKPOL_1996_USERS.forEach((u) => {
         akpolRefMap.set(u.nrp, u);
@@ -324,7 +352,7 @@ export function readDb(): GlobalStore {
           (/^74090\d{3}$/.test(u.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
 
         if (ref) {
-          if (/^74090\d{3}$/.test(u.nrp) && ref.nrp !== u.nrp) {
+          if ((/^74090\d{3}$/.test(u.nrp) || u.id === 'u-74090217' || u.id === 'u-74090226' || u.id === 'u-74090237') && ref.nrp !== u.nrp) {
             u.oldNrp = u.oldNrp || u.nrp;
             u.nrp = ref.nrp;
           }
@@ -332,13 +360,30 @@ export function readDb(): GlobalStore {
           u.pangkat = ref.pangkat || u.pangkat;
           u.satker = ref.satker || u.satker;
           u.polda = ref.polda || u.polda;
-          if (ref.jabatanTerakhir) u.jabatanTerakhir = ref.jabatanTerakhir;
+          if (ref.jabatanTerakhir) {
+            u.jabatanTerakhir = cleanStatusWrapperFromJabatan(
+              u.id === 'u-74090217' || u.id === 'u-74090226' || u.id === 'u-74090237' ? ref.jabatanTerakhir : (u.jabatanTerakhir || ref.jabatanTerakhir),
+              ref.jabatanTerakhir
+            );
+          }
+          if (ref.statusKedinasan && ref.statusKedinasan !== 'AKTIF') {
+            u.statusKedinasan = ref.statusKedinasan;
+          } else {
+            u.statusKedinasan = u.statusKedinasan || ref.statusKedinasan || 'AKTIF';
+          }
           if (ref.tanggalLahir) u.tanggalLahir = ref.tanggalLahir;
           if (ref.tempatLahir) u.tempatLahir = ref.tempatLahir;
+        } else {
+          u.jabatanTerakhir = cleanStatusWrapperFromJabatan(u.jabatanTerakhir);
+          u.statusKedinasan = u.statusKedinasan || 'AKTIF';
         }
 
         u.email = migrateOfficialEmail(u.nrp, u.email);
         u.satker = cleanSatkerRoleSuffix(u.satker, u.nrp);
+        u.status = 'AKTIF';
+        if (!u.password || u.password === 'WiraSatya96!') {
+          u.password = `WS96@${u.nrp}`;
+        }
         if (u.nrp === '98010710') {
           if (!u.nama || u.nama === 'Eko Agung') u.nama = 'Eko Agung Krisdianto, S.Kom.';
           u.pangkat = u.pangkat || 'Briptu';
@@ -354,6 +399,37 @@ export function readDb(): GlobalStore {
         }
       });
 
+      // Ensure any officer in AKPOL_1996_USERS not yet in loadedUsers (and not deleted) is automatically added
+      const existingUserKeys = new Set<string>();
+      loadedUsers.forEach((u) => {
+        existingUserKeys.add(u.nrp);
+        if (u.oldNrp) existingUserKeys.add(u.oldNrp);
+        if (u.id) existingUserKeys.add(u.id);
+        const bn = stripRankFromName(u.nama).split(',')[0].trim().toLowerCase();
+        if (bn) existingUserKeys.add(`name:${bn}`);
+      });
+      AKPOL_1996_USERS.forEach((au) => {
+        if (isDeletedItem(au.nrp, au.oldNrp)) return;
+        const bn = stripRankFromName(au.nama).split(',')[0].trim().toLowerCase();
+        if (
+          !existingUserKeys.has(au.nrp) &&
+          !(au.oldNrp && existingUserKeys.has(au.oldNrp)) &&
+          !existingUserKeys.has(au.id) &&
+          !(bn && existingUserKeys.has(`name:${bn}`))
+        ) {
+          loadedUsers.push({
+            ...au,
+            password: au.password || `WS96@${au.nrp}`,
+            status: 'AKTIF',
+            statusKedinasan: au.statusKedinasan || 'AKTIF',
+          });
+          existingUserKeys.add(au.nrp);
+          if (au.oldNrp) existingUserKeys.add(au.oldNrp);
+          if (au.id) existingUserKeys.add(au.id);
+          if (bn) existingUserKeys.add(`name:${bn}`);
+        }
+      });
+
       const userByNrpMap = new Map(loadedUsers.map((u) => [u.nrp, u]));
 
       loadedMembers.forEach((m) => {
@@ -366,13 +442,25 @@ export function readDb(): GlobalStore {
           (/^74090\d{3}$/.test(m.nrp) ? akpolMemberRefMap.get(baseNameKey) : undefined);
 
         if (memberRef) {
-          if (/^74090\d{3}$/.test(m.nrp) && memberRef.nrp !== m.nrp) {
+          if ((/^74090\d{3}$/.test(m.nrp) || m.id === 'ws-74090217' || m.id === 'ws-74090226' || m.id === 'ws-74090237') && memberRef.nrp !== m.nrp) {
             m.oldNrp = m.oldNrp || m.nrp;
             m.nrp = memberRef.nrp;
           }
           m.namaLengkap = stripRankFromName(memberRef.namaLengkap) || m.namaLengkap;
           m.pangkat = memberRef.pangkat || m.pangkat;
-          m.jabatanTerakhir = memberRef.jabatanTerakhir || m.jabatanTerakhir;
+          m.jabatanTerakhir = cleanStatusWrapperFromJabatan(
+            memberRef.jabatanTerakhir || m.jabatanTerakhir,
+            memberRef.jabatanTerakhir
+          );
+          if (memberRef.statusKedinasan && memberRef.statusKedinasan !== 'AKTIF') {
+            m.statusKedinasan = memberRef.statusKedinasan;
+            m.statusDinas = memberRef.statusKedinasan;
+          } else {
+            const resolvedStatus: StatusKedinasan =
+              m.statusKedinasan || m.statusDinas || memberRef.statusKedinasan || 'AKTIF';
+            m.statusKedinasan = resolvedStatus;
+            m.statusDinas = resolvedStatus;
+          }
           m.satuanKerja = memberRef.satuanKerja || m.satuanKerja;
           m.polda = memberRef.polda || m.polda;
           if (memberRef.tipeSatker) m.tipeSatker = memberRef.tipeSatker;
@@ -386,6 +474,11 @@ export function readDb(): GlobalStore {
             m.tahunPurnaTugas = calc.tahunPurnaTugas;
             m.sisaTahunDinas = calc.sisaTahunDinas;
           }
+        } else {
+          m.jabatanTerakhir = cleanStatusWrapperFromJabatan(m.jabatanTerakhir);
+          const resolvedStatus: StatusKedinasan = m.statusKedinasan || m.statusDinas || 'AKTIF';
+          m.statusKedinasan = resolvedStatus;
+          m.statusDinas = resolvedStatus;
         }
 
         m.email = migrateOfficialEmail(m.nrp, m.email);
@@ -453,6 +546,38 @@ export function readDb(): GlobalStore {
             m.coverUrl = syncedCover;
             matchedUser.coverUrl = syncedCover;
           }
+          matchedUser.statusKedinasan = m.statusKedinasan || matchedUser.statusKedinasan || 'AKTIF';
+          matchedUser.jabatanTerakhir = m.jabatanTerakhir || matchedUser.jabatanTerakhir;
+        }
+      });
+
+      // Ensure any officer in AKPOL_1996_MEMBERS not yet in loadedMembers (and not deleted) is automatically added
+      const existingMemberKeys = new Set<string>();
+      loadedMembers.forEach((m) => {
+        existingMemberKeys.add(m.nrp);
+        if (m.oldNrp) existingMemberKeys.add(m.oldNrp);
+        if (m.id) existingMemberKeys.add(m.id);
+        const bn = stripRankFromName(m.namaLengkap).split(',')[0].trim().toLowerCase();
+        if (bn) existingMemberKeys.add(`name:${bn}`);
+      });
+      AKPOL_1996_MEMBERS.forEach((am) => {
+        if (isDeletedItem(am.nrp, am.oldNrp)) return;
+        const bn = stripRankFromName(am.namaLengkap).split(',')[0].trim().toLowerCase();
+        if (
+          !existingMemberKeys.has(am.nrp) &&
+          !(am.oldNrp && existingMemberKeys.has(am.oldNrp)) &&
+          !existingMemberKeys.has(am.id) &&
+          !(bn && existingMemberKeys.has(`name:${bn}`))
+        ) {
+          loadedMembers.push({
+            ...am,
+            statusKedinasan: am.statusKedinasan || 'AKTIF',
+            statusDinas: am.statusKedinasan || 'AKTIF',
+          });
+          existingMemberKeys.add(am.nrp);
+          if (am.oldNrp) existingMemberKeys.add(am.oldNrp);
+          if (am.id) existingMemberKeys.add(am.id);
+          if (bn) existingMemberKeys.add(`name:${bn}`);
         }
       });
 
@@ -473,12 +598,45 @@ export function readDb(): GlobalStore {
         }
         r.email = migrateOfficialEmail(r.nrp, r.email);
         r.satker = cleanSatkerRoleSuffix(r.satker, r.nrp);
+        if (r.status !== 'PENDING_VERIFIKASI' && r.status !== 'DITOLAK') {
+          r.status = 'AKTIF';
+          if (!r.password || r.password === 'WiraSatya96!') {
+            r.password = `WS96@${r.nrp}`;
+          }
+        }
         if (r.nrp === '98010710') {
           if (!r.nama || r.nama === 'Eko Agung') r.nama = 'Eko Agung Krisdianto, S.Kom.';
           if (!r.satker || r.satker.includes('Tim IT Developer')) r.satker = 'Bareskrim Polri';
           r.email = '98010710@polri.go.id';
           r.secondaryEmail = r.secondaryEmail || 'agungkrisdianto98@gmail.com';
           r.status = 'AKTIF';
+        }
+      });
+
+      // Ensure any officer in AKPOL_1996_REGISTRATIONS not yet in loadedRegs (and not deleted) is automatically added
+      const existingRegKeys = new Set<string>();
+      loadedRegs.forEach((r) => {
+        existingRegKeys.add(r.nrp);
+        if (r.id) existingRegKeys.add(r.id);
+        const bn = stripRankFromName(r.nama).split(',')[0].trim().toLowerCase();
+        if (bn) existingRegKeys.add(`name:${bn}`);
+      });
+      AKPOL_1996_REGISTRATIONS.forEach((ar) => {
+        if (isDeletedItem(ar.nrp)) return;
+        const bn = stripRankFromName(ar.nama).split(',')[0].trim().toLowerCase();
+        if (
+          !existingRegKeys.has(ar.nrp) &&
+          !existingRegKeys.has(ar.id) &&
+          !(bn && existingRegKeys.has(`name:${bn}`))
+        ) {
+          loadedRegs.push({
+            ...ar,
+            password: ar.password || `WS96@${ar.nrp}`,
+            status: 'AKTIF',
+          });
+          existingRegKeys.add(ar.nrp);
+          if (ar.id) existingRegKeys.add(ar.id);
+          if (bn) existingRegKeys.add(`name:${bn}`);
         }
       });
 
@@ -506,6 +664,33 @@ export function readDb(): GlobalStore {
           i.status = 'SEBAGIAN';
         } else {
           i.status = 'BELUM_BAYAR';
+        }
+      });
+
+      // Ensure any officer in AKPOL_1996_IURAN not yet in loadedIuran (and not deleted) is automatically added
+      const existingIuranKeys = new Set<string>();
+      loadedIuran.forEach((i) => {
+        existingIuranKeys.add(i.nrp);
+        if (i.id) existingIuranKeys.add(i.id);
+        const bn = stripRankFromName(i.namaLengkap).split(',')[0].trim().toLowerCase();
+        if (bn) existingIuranKeys.add(`name:${bn}`);
+      });
+      AKPOL_1996_IURAN.forEach((ai) => {
+        if (isDeletedItem(ai.nrp)) return;
+        const bn = stripRankFromName(ai.namaLengkap).split(',')[0].trim().toLowerCase();
+        if (
+          !existingIuranKeys.has(ai.nrp) &&
+          !existingIuranKeys.has(ai.id) &&
+          !(bn && existingIuranKeys.has(`name:${bn}`))
+        ) {
+          loadedIuran.push({
+            ...ai,
+            tahun: loadedFinanceConfig.tahunBuku || 2026,
+            totalTagihan: annualTagihan,
+          });
+          existingIuranKeys.add(ai.nrp);
+          if (ai.id) existingIuranKeys.add(ai.id);
+          if (bn) existingIuranKeys.add(`name:${bn}`);
         }
       });
 
@@ -587,6 +772,11 @@ function persistLocalStore(store: GlobalStore) {
 const globalStore: GlobalStore = loadInitialStore();
 persistLocalStore(globalStore);
 
+export type AuditLogInput = Partial<UserAuditLog> & {
+  action: UserAuditLog['action'];
+  targetNrp: string;
+};
+
 export const serverStore = {
   getDeletedNrps: (): string[] => globalStore.deletedNrps || [],
 
@@ -597,21 +787,24 @@ export const serverStore = {
     return globalStore.auditLogs;
   },
 
-  addAuditLog: (
-    entry: Omit<UserAuditLog, 'id' | 'timestamp'> & { id?: string; timestamp?: string }
-  ): UserAuditLog => {
+  addAuditLog: (entry: AuditLogInput): UserAuditLog => {
     if (!Array.isArray(globalStore.auditLogs)) {
       globalStore.auditLogs = [];
     }
+    const resolvedActorName = entry.actorName || entry.actorNama || 'Superadmin';
+    const rawTargetNama = entry.targetNama || entry.targetName || `Personel ${entry.targetNrp}`;
+    const resolvedTargetNama = stripRankFromName(rawTargetNama) || rawTargetNama;
     const newEntry: UserAuditLog = {
       id: entry.id || `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       timestamp: entry.timestamp || new Date().toISOString(),
       action: entry.action,
-      actorName: entry.actorName || 'Superadmin',
+      actorName: resolvedActorName,
+      actorNama: entry.actorNama || resolvedActorName,
       actorNrp: entry.actorNrp,
       actorRole: entry.actorRole || 'SUPERADMIN',
       targetNrp: entry.targetNrp,
-      targetNama: stripRankFromName(entry.targetNama) || entry.targetNama,
+      targetNama: resolvedTargetNama,
+      targetName: resolvedTargetNama,
       targetPangkat: entry.targetPangkat,
       targetRole: entry.targetRole,
       reason: entry.reason,
@@ -624,6 +817,10 @@ export const serverStore = {
     ].slice(0, 250);
     persistLocalStore(globalStore);
     return newEntry;
+  },
+
+  recordAuditLog: (entry: AuditLogInput): UserAuditLog => {
+    return serverStore.addAuditLog(entry);
   },
 
   getMembers: () => {
@@ -644,6 +841,12 @@ export const serverStore = {
         if (bestCover) {
           m.coverUrl = bestCover;
           u.coverUrl = bestCover;
+        }
+        if (m.statusKedinasan || m.statusDinas) {
+          u.statusKedinasan = m.statusKedinasan || m.statusDinas;
+        } else if (u.statusKedinasan) {
+          m.statusKedinasan = u.statusKedinasan;
+          m.statusDinas = u.statusKedinasan;
         }
       }
     });
@@ -700,11 +903,21 @@ export const serverStore = {
       const syncedFotoUrl = resolveBestFotoUrl(member.fotoUrl, prevMember.fotoUrl, existingUser?.fotoUrl);
       const syncedCoverUrl = member.coverUrl ?? prevMember.coverUrl ?? existingUser?.coverUrl;
 
+      const resolvedStatusKedinasan: StatusKedinasan =
+        member.statusKedinasan ||
+        member.statusDinas ||
+        prevMember.statusKedinasan ||
+        prevMember.statusDinas ||
+        existingUser?.statusKedinasan ||
+        'AKTIF';
+
       globalStore.members[idx] = {
         ...prevMember,
         ...member,
         nrp: newNrp,
         ...(preservedOldNrp ? { oldNrp: preservedOldNrp } : {}),
+        statusKedinasan: resolvedStatusKedinasan,
+        statusDinas: resolvedStatusKedinasan,
         tanggalLahir: calc58.tanggalLahir,
         usia: calc58.usiaTahun,
         tahunPurnaTugas: calc58.tahunPurnaTugas,
@@ -714,7 +927,7 @@ export const serverStore = {
         updatedAt: new Date().toISOString(),
       };
       const savedMember = globalStore.members[idx];
-      // Also sync nrp/name/pangkat/jabatan/tanggalLahir/fotoUrl/coverUrl/bio/email/secondaryEmail to user if exists
+      // Also sync nrp/name/pangkat/jabatan/statusKedinasan/tanggalLahir/fotoUrl/coverUrl/bio/email/secondaryEmail to user if exists
       if (uIdx >= 0) {
         globalStore.users[uIdx].nrp = newNrp;
         if (preservedOldNrp) globalStore.users[uIdx].oldNrp = preservedOldNrp;
@@ -723,6 +936,7 @@ export const serverStore = {
         globalStore.users[uIdx].satker = cleanSatkerRoleSuffix(savedMember.satuanKerja, savedMember.nrp);
         globalStore.users[uIdx].polda = savedMember.polda;
         globalStore.users[uIdx].jabatanTerakhir = savedMember.jabatanTerakhir;
+        globalStore.users[uIdx].statusKedinasan = resolvedStatusKedinasan;
         globalStore.users[uIdx].tanggalLahir = savedMember.tanggalLahir;
         globalStore.users[uIdx].tempatLahir = savedMember.tempatLahir;
         if (savedMember.noHp !== undefined) globalStore.users[uIdx].noHp = savedMember.noHp;
@@ -748,6 +962,7 @@ export const serverStore = {
         globalStore.activeSession.satker = cleanSatkerRoleSuffix(savedMember.satuanKerja, savedMember.nrp);
         globalStore.activeSession.polda = savedMember.polda;
         globalStore.activeSession.jabatanTerakhir = savedMember.jabatanTerakhir;
+        globalStore.activeSession.statusKedinasan = resolvedStatusKedinasan;
         globalStore.activeSession.tanggalLahir = savedMember.tanggalLahir;
         globalStore.activeSession.tempatLahir = savedMember.tempatLahir;
         if (savedMember.email) globalStore.activeSession.email = savedMember.email;
@@ -785,8 +1000,12 @@ export const serverStore = {
       const existingUser = uIdx >= 0 ? globalStore.users[uIdx] : undefined;
       const syncedFotoUrl = resolveBestFotoUrl(member.fotoUrl, existingUser?.fotoUrl);
       const syncedCoverUrl = member.coverUrl ?? existingUser?.coverUrl;
+      const resolvedStatusKedinasan: StatusKedinasan =
+        member.statusKedinasan || member.statusDinas || existingUser?.statusKedinasan || 'AKTIF';
       globalStore.members.unshift({
         ...member,
+        statusKedinasan: resolvedStatusKedinasan,
+        statusDinas: resolvedStatusKedinasan,
         tanggalLahir: calc58.tanggalLahir,
         usia: calc58.usiaTahun,
         tahunPurnaTugas: calc58.tahunPurnaTugas,
@@ -807,13 +1026,15 @@ export const serverStore = {
           secondaryEmail: member.secondaryEmail,
           noHp: member.noHp,
           jabatanTerakhir: member.jabatanTerakhir,
+          statusKedinasan: resolvedStatusKedinasan,
           tanggalLahir: calc58.tanggalLahir,
           tempatLahir: member.tempatLahir,
           role: 'ANGGOTA',
           profileId: member.id || 'ws-' + member.nrp,
           mfaEnabled: false,
           mfaMethod: 'PIN',
-          status: 'DISETUJUI_BELUM_PASSWORD',
+          password: `WS96@${member.nrp}`,
+          status: 'AKTIF',
           satker: cleanSatkerRoleSuffix(member.satuanKerja, member.nrp),
           polda: member.polda,
           fotoUrl: syncedFotoUrl,
@@ -822,6 +1043,7 @@ export const serverStore = {
       } else if (uIdx >= 0) {
         globalStore.users[uIdx].fotoUrl = syncedFotoUrl;
         globalStore.users[uIdx].jabatanTerakhir = member.jabatanTerakhir;
+        globalStore.users[uIdx].statusKedinasan = resolvedStatusKedinasan;
         globalStore.users[uIdx].tanggalLahir = calc58.tanggalLahir;
         globalStore.users[uIdx].tempatLahir = member.tempatLahir;
         if (syncedCoverUrl !== undefined) globalStore.users[uIdx].coverUrl = syncedCoverUrl;
@@ -839,7 +1061,8 @@ export const serverStore = {
           email: member.email || `${member.nrp}@polri.go.id`,
           secondaryEmail: member.secondaryEmail,
           alasanDaftar: 'Ditambahkan oleh Admin / Kesekretariatan melalui Pendataan',
-          status: 'DISETUJUI_BELUM_PASSWORD',
+          password: `WS96@${member.nrp}`,
+          status: 'AKTIF',
           createdAt: new Date().toISOString(),
           verifiedAt: new Date().toISOString(),
           verifiedBy: 'Admin / Kesekretariatan',
@@ -881,6 +1104,11 @@ export const serverStore = {
           ? calculateRetirement58(adc.tanggalLahir, cleanAdcNrp)
           : undefined;
         const existingAdcIdx = globalStore.users.findIndex((u) => u.nrp === cleanAdcNrp);
+        const resolvedAdcPassword =
+          adc.password ||
+          parentUser?.password ||
+          (existingAdcIdx >= 0 ? globalStore.users[existingAdcIdx].password : undefined) ||
+          `WS96@${cleanAdcNrp}`;
         const adcUserPayload: AuthUser = {
           id: existingAdcIdx >= 0 ? globalStore.users[existingAdcIdx].id : `u-adc-${cleanAdcNrp}`,
           nrp: cleanAdcNrp,
@@ -894,15 +1122,16 @@ export const serverStore = {
           mfaMethod: 'PIN',
           satker: cleanSatkerRoleSuffix(member.satuanKerja, cleanAdcNrp),
           polda: member.polda,
-          jabatanTerakhir: 'ADC',
+          jabatanTerakhir: adc.jabatan || 'ADC',
+          statusKedinasan: 'AKTIF',
           tanggalLahir: adcCalc?.tanggalLahir || adc.tanggalLahir,
           fotoUrl: existingAdcIdx >= 0 ? globalStore.users[existingAdcIdx].fotoUrl || '/default-avatar.png' : '/default-avatar.png',
           isAdcAccount: true,
           adcOfNrp: activeParentNrp,
           adcOfNama: member.namaLengkap,
           adcOfPangkat: member.pangkat,
-          password: parentUser?.password || (existingAdcIdx >= 0 ? globalStore.users[existingAdcIdx].password : undefined),
-          status: parentUser?.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD',
+          password: resolvedAdcPassword,
+          status: 'AKTIF',
           updatedAt: new Date().toISOString(),
         };
 
@@ -943,12 +1172,14 @@ export const serverStore = {
     const memberById = new Map(globalStore.members.map((m) => [m.id, m]));
     globalStore.users.forEach((u) => {
       u.satker = cleanSatkerRoleSuffix(u.satker, u.nrp);
+      if (!u.password) u.password = `WS96@${u.nrp}`;
+      if (!u.status || u.status === 'DISETUJUI_BELUM_PASSWORD') u.status = 'AKTIF';
       const m =
         memberByNrp.get(u.nrp) ||
         (u.oldNrp ? memberByNrp.get(u.oldNrp) : undefined) ||
         (u.profileId ? memberById.get(u.profileId) : undefined) ||
         memberById.get(u.id.replace(/^u-/, 'ws-'));
-      if (m) {
+      if (m && !u.isAdcAccount) {
         const bestFoto = resolveBestFotoUrl(u.fotoUrl, m.fotoUrl);
         u.fotoUrl = bestFoto;
         m.fotoUrl = bestFoto;
@@ -958,12 +1189,16 @@ export const serverStore = {
           m.coverUrl = bestCover;
         }
         if (!u.jabatanTerakhir && m.jabatanTerakhir) u.jabatanTerakhir = m.jabatanTerakhir;
+        if (!u.statusKedinasan && (m.statusKedinasan || m.statusDinas)) {
+          u.statusKedinasan = m.statusKedinasan || m.statusDinas;
+        }
         if (!u.tanggalLahir && m.tanggalLahir) u.tanggalLahir = m.tanggalLahir;
         if (!u.tempatLahir && m.tempatLahir) u.tempatLahir = m.tempatLahir;
         if (!u.noHp && m.noHp) u.noHp = m.noHp;
         if (!u.secondaryEmail && m.secondaryEmail) u.secondaryEmail = m.secondaryEmail;
         if (!u.bio && m.bio) u.bio = m.bio;
       }
+      if (!u.statusKedinasan) u.statusKedinasan = 'AKTIF';
     });
     return globalStore.users;
   },
@@ -979,6 +1214,39 @@ export const serverStore = {
     user.satker = cleanSatkerRoleSuffix(user.satker, user.nrp);
     const calc58 = calculateRetirement58(user.tanggalLahir, user.nrp);
     user.tanggalLahir = calc58.tanggalLahir;
+    user.password = user.password || `WS96@${cleanAddNrp}`;
+    user.status = 'AKTIF';
+    user.statusKedinasan = user.statusKedinasan || 'AKTIF';
+
+    if (user.isAdcAccount && user.adcOfNrp) {
+      const parentMember = globalStore.members.find(
+        (m) => m.nrp === user.adcOfNrp || (m.oldNrp && m.oldNrp === user.adcOfNrp)
+      );
+      if (parentMember) {
+        user.profileId = parentMember.id;
+        user.adcOfNama = user.adcOfNama || parentMember.namaLengkap;
+        user.adcOfPangkat = user.adcOfPangkat || parentMember.pangkat;
+        user.satker = cleanSatkerRoleSuffix(parentMember.satuanKerja, cleanAddNrp);
+        user.polda = parentMember.polda;
+        if (!Array.isArray(parentMember.daftarAdc)) {
+          parentMember.daftarAdc = [];
+        }
+        const existingAdcInMember = parentMember.daftarAdc.find((a) => a.nrp === cleanAddNrp);
+        if (!existingAdcInMember) {
+          parentMember.daftarAdc.push({
+            id: `adc-${cleanAddNrp}`,
+            nrp: cleanAddNrp,
+            nama: user.nama,
+            pangkat: user.pangkat || 'Briptu',
+            jabatan: user.jabatanTerakhir || 'ADC',
+            tanggalLahir: user.tanggalLahir,
+            noHp: user.noHp || '',
+            email: user.email,
+            password: user.password,
+          });
+        }
+      }
+    }
 
     const existingIdx = globalStore.users.findIndex((u) => u.nrp === user.nrp);
     if (existingIdx >= 0) {
@@ -1000,8 +1268,10 @@ export const serverStore = {
         noHp: user.noHp || '',
         email: user.email || `${user.nrp}@polri.go.id`,
         secondaryEmail: user.secondaryEmail,
-        alasanDaftar: `Ditambahkan oleh Admin / Kesekretariatan (${user.role})`,
-        status: user.status || (user.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD'),
+        alasanDaftar: user.isAdcAccount
+          ? `Akun ADC untuk ${user.adcOfPangkat || ''} ${user.adcOfNama || user.adcOfNrp || ''}`.trim()
+          : `Ditambahkan oleh Admin / Kesekretariatan (${user.role})`,
+        status: 'AKTIF',
         password: user.password,
         createdAt: new Date().toISOString(),
         verifiedAt: new Date().toISOString(),
@@ -1011,84 +1281,94 @@ export const serverStore = {
       if (user.noHp) existingReg.noHp = user.noHp;
       if (user.email) existingReg.email = user.email;
       if (user.secondaryEmail !== undefined) existingReg.secondaryEmail = user.secondaryEmail;
+      if (user.password) existingReg.password = user.password;
+      existingReg.status = 'AKTIF';
     }
 
-    // Ensure directory member exists
-    const existingMember = globalStore.members.find((m) => m.nrp === user.nrp);
-    if (!existingMember) {
-      const defaultJabatan =
-        user.jabatanTerakhir || (user.satker ? `Perwira ${user.satker}` : 'Perwira Polri');
+    // Ensure directory member and iuran entry exist for non-ADC personnel
+    if (!user.isAdcAccount) {
+      const existingMember = globalStore.members.find((m) => m.nrp === user.nrp);
+      if (!existingMember) {
+        const defaultJabatan =
+          user.jabatanTerakhir || (user.satker ? `Perwira ${user.satker}` : 'Perwira Polri');
 
-      globalStore.members.unshift({
-        id: 'ws-' + user.nrp,
-        nrp: user.nrp,
-        namaLengkap: user.nama,
-        pangkat: user.pangkat,
-        jabatanTerakhir: defaultJabatan,
-        satuanKerja: user.satker || 'Polri',
-        polda: user.polda || 'MABES POLRI',
-        tipeSatker: (user.polda || 'MABES POLRI') === 'MABES POLRI' ? 'MABES' : 'POLDA',
-        pendidikanTerakhir: 'Akpol 1996',
-        tempatLahir: user.tempatLahir || 'Jakarta',
-        tanggalLahir: calc58.tanggalLahir,
-        usia: calc58.usiaTahun,
-        jenisKelamin: 'LAKI-LAKI',
-        noHp: user.noHp || '',
-        email: user.email || `${user.nrp}@polri.go.id`,
-        secondaryEmail: user.secondaryEmail,
-        fotoUrl: user.fotoUrl || '/default-avatar.png',
-        alamatTempatTinggal: user.polda || 'Jakarta',
-        statusTempatTinggal: 'MILIK PRIBADI',
-        statusPerkawinan: 'MENIKAH',
-        jumlahAnak: 0,
-        daftarAnak: [],
-        tahunPurnaTugas: calc58.tahunPurnaTugas,
-        sisaTahunDinas: calc58.sisaTahunDinas,
-        alamatPurnaTugas: user.polda || 'Jakarta',
-        statusRumahPurnaTugas: 'MILIK PRIBADI',
-        sudahPembekalan: 'SUDAH',
-        rencanaAktivitas: ['USAHA SENDIRI'],
-        sumberPenghasilanPasca: ['DANA PENSIUN'],
-        kecukupanDanaPensiun: 'CUKUP',
-        kesiapanPensiun: 'SIAP',
-        perasaanPensiun: 'OPTIMIS',
-        dukunganKeluarga: 'SANGAT MENDUKUNG',
-        adaPenyakitKronis: 'TIDAK ADA',
-        kondisiKesehatan: 'BAIK',
-        daftarPenyakit: [],
-        asuransiAktif: ['BPJS'],
-        rutinMcu: 'YA',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-    } else {
-      if (user.noHp) existingMember.noHp = user.noHp;
-      if (user.email) existingMember.email = user.email;
-      if (user.secondaryEmail !== undefined) existingMember.secondaryEmail = user.secondaryEmail;
-      if (user.jabatanTerakhir) existingMember.jabatanTerakhir = user.jabatanTerakhir;
-      if (user.tanggalLahir) {
-        existingMember.tanggalLahir = calc58.tanggalLahir;
-        existingMember.usia = calc58.usiaTahun;
-        existingMember.tahunPurnaTugas = calc58.tahunPurnaTugas;
-        existingMember.sisaTahunDinas = calc58.sisaTahunDinas;
+        globalStore.members.unshift({
+          id: 'ws-' + user.nrp,
+          nrp: user.nrp,
+          namaLengkap: user.nama,
+          pangkat: user.pangkat,
+          jabatanTerakhir: defaultJabatan,
+          satuanKerja: user.satker || 'Polri',
+          statusKedinasan: user.statusKedinasan || 'AKTIF',
+          statusDinas: user.statusKedinasan || 'AKTIF',
+          polda: user.polda || 'MABES POLRI',
+          tipeSatker: (user.polda || 'MABES POLRI') === 'MABES POLRI' ? 'MABES' : 'POLDA',
+          pendidikanTerakhir: 'Akpol 1996',
+          tempatLahir: user.tempatLahir || 'Jakarta',
+          tanggalLahir: calc58.tanggalLahir,
+          usia: calc58.usiaTahun,
+          jenisKelamin: 'LAKI-LAKI',
+          noHp: user.noHp || '',
+          email: user.email || `${user.nrp}@polri.go.id`,
+          secondaryEmail: user.secondaryEmail,
+          fotoUrl: user.fotoUrl || '/default-avatar.png',
+          alamatTempatTinggal: user.polda || 'Jakarta',
+          statusTempatTinggal: 'MILIK PRIBADI',
+          statusPerkawinan: 'MENIKAH',
+          jumlahAnak: 0,
+          daftarAnak: [],
+          tahunPurnaTugas: calc58.tahunPurnaTugas,
+          sisaTahunDinas: calc58.sisaTahunDinas,
+          alamatPurnaTugas: user.polda || 'Jakarta',
+          statusRumahPurnaTugas: 'MILIK PRIBADI',
+          sudahPembekalan: 'SUDAH',
+          rencanaAktivitas: ['USAHA SENDIRI'],
+          sumberPenghasilanPasca: ['DANA PENSIUN'],
+          kecukupanDanaPensiun: 'CUKUP',
+          kesiapanPensiun: 'SIAP',
+          perasaanPensiun: 'OPTIMIS',
+          dukunganKeluarga: 'SANGAT MENDUKUNG',
+          adaPenyakitKronis: 'TIDAK ADA',
+          kondisiKesehatan: 'BAIK',
+          daftarPenyakit: [],
+          asuransiAktif: ['BPJS'],
+          rutinMcu: 'YA',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } else {
+        if (user.noHp) existingMember.noHp = user.noHp;
+        if (user.email) existingMember.email = user.email;
+        if (user.secondaryEmail !== undefined) existingMember.secondaryEmail = user.secondaryEmail;
+        if (user.jabatanTerakhir) existingMember.jabatanTerakhir = user.jabatanTerakhir;
+        if (user.statusKedinasan) {
+          existingMember.statusKedinasan = user.statusKedinasan;
+          existingMember.statusDinas = user.statusKedinasan;
+        }
+        if (user.tanggalLahir) {
+          existingMember.tanggalLahir = calc58.tanggalLahir;
+          existingMember.usia = calc58.usiaTahun;
+          existingMember.tahunPurnaTugas = calc58.tahunPurnaTugas;
+          existingMember.sisaTahunDinas = calc58.sisaTahunDinas;
+        }
       }
-    }
 
-    // Ensure iuran entry exists
-    const existingIuran = globalStore.iuranList.find((i) => i.nrp === user.nrp);
-    if (!existingIuran) {
-      globalStore.iuranList.push({
-        id: 'iur-' + user.nrp,
-        nrp: user.nrp,
-        namaLengkap: user.nama,
-        pangkat: user.pangkat,
-        polda: user.polda || 'MABES POLRI',
-        tahun: globalStore.financeConfig?.tahunBuku || 2026,
-        bulanTerbayar: [],
-        totalTagihan: annualTagihan,
-        totalTerbayar: 0,
-        status: 'BELUM_BAYAR',
-      });
+      // Ensure iuran entry exists
+      const existingIuran = globalStore.iuranList.find((i) => i.nrp === user.nrp);
+      if (!existingIuran) {
+        globalStore.iuranList.push({
+          id: 'iur-' + user.nrp,
+          nrp: user.nrp,
+          namaLengkap: user.nama,
+          pangkat: user.pangkat,
+          polda: user.polda || 'MABES POLRI',
+          tahun: globalStore.financeConfig?.tahunBuku || 2026,
+          bulanTerbayar: [],
+          totalTagihan: annualTagihan,
+          totalTerbayar: 0,
+          status: 'BELUM_BAYAR',
+        });
+      }
     }
 
     persistLocalStore(globalStore);
@@ -1103,6 +1383,7 @@ export const serverStore = {
       originalNrp?: string;
       oldNrp?: string;
       jabatanTerakhir?: string;
+      statusKedinasan?: StatusKedinasan;
       tanggalLahir?: string;
       tempatLahir?: string;
     }
@@ -1154,14 +1435,15 @@ export const serverStore = {
         secondaryEmail: updates.secondaryEmail,
         noHp: updates.noHp || '',
         jabatanTerakhir: updates.jabatanTerakhir,
+        statusKedinasan: updates.statusKedinasan || 'AKTIF',
         tanggalLahir: updates.tanggalLahir,
         tempatLahir: updates.tempatLahir,
         role: updates.role || 'ANGGOTA',
         profileId: updates.profileId || `ws-${cleanOrigNrp || cleanOldNrp}`,
         mfaEnabled: updates.mfaEnabled ?? false,
         mfaMethod: updates.mfaMethod || 'PIN',
-        status: updates.password ? 'AKTIF' : updates.status || 'DISETUJUI_BELUM_PASSWORD',
-        password: updates.password,
+        status: 'AKTIF',
+        password: updates.password || `WS96@${cleanNewNrp}`,
         satker: cleanSatkerRoleSuffix(updates.satker || 'Mabes Polri', cleanNewNrp),
         polda: updates.polda || 'MABES POLRI',
         fotoUrl: updates.fotoUrl || '/default-avatar.png',
@@ -1193,6 +1475,7 @@ export const serverStore = {
       originalNrp: _ignoredOriginalNrp,
       oldNrp: _ignoredOldNrp,
       jabatanTerakhir,
+      statusKedinasan,
       tanggalLahir,
       tempatLahir,
       ...userUpdates
@@ -1217,6 +1500,7 @@ export const serverStore = {
       ...(jabatanTerakhir !== undefined && jabatanTerakhir.trim()
         ? { jabatanTerakhir: jabatanTerakhir.trim() }
         : {}),
+      ...(statusKedinasan !== undefined ? { statusKedinasan } : {}),
       ...(calc58ForUser ? { tanggalLahir: calc58ForUser.tanggalLahir } : {}),
       ...(tempatLahir !== undefined && tempatLahir.trim()
         ? { tempatLahir: tempatLahir.trim() }
@@ -1241,17 +1525,19 @@ export const serverStore = {
     }
     const updatedUser = globalStore.users[idx];
 
-    // Sync member nrp/name/pangkat/satker/jabatan/tanggalLahir/noHp/emails if changed
-    let mIdx = globalStore.members.findIndex(
-      (m) =>
-        m.nrp === effectiveOldNrp ||
-        m.nrp === cleanOldNrp ||
-        m.nrp === cleanNewNrp ||
-        (preservedOldNrp && (m.nrp === preservedOldNrp || m.oldNrp === preservedOldNrp)) ||
-        (updatedUser.profileId && m.id === updatedUser.profileId) ||
-        m.id === `ws-${preservedOldNrp || cleanOldNrp}`
-    );
-    if (mIdx < 0 && updatedUser.nama) {
+    // Sync member nrp/name/pangkat/satker/jabatan/statusKedinasan/tanggalLahir/noHp/emails if changed (for non-ADC users)
+    let mIdx = updatedUser.isAdcAccount
+      ? -1
+      : globalStore.members.findIndex(
+          (m) =>
+            m.nrp === effectiveOldNrp ||
+            m.nrp === cleanOldNrp ||
+            m.nrp === cleanNewNrp ||
+            (preservedOldNrp && (m.nrp === preservedOldNrp || m.oldNrp === preservedOldNrp)) ||
+            (updatedUser.profileId && m.id === updatedUser.profileId) ||
+            m.id === `ws-${preservedOldNrp || cleanOldNrp}`
+        );
+    if (mIdx < 0 && !updatedUser.isAdcAccount && updatedUser.nama) {
       const targetNama = updatedUser.nama.trim().toLowerCase();
       mIdx = globalStore.members.findIndex((m) => m.namaLengkap.trim().toLowerCase() === targetNama);
     }
@@ -1261,6 +1547,10 @@ export const serverStore = {
       if (preservedOldNrp) globalStore.members[mIdx].oldNrp = preservedOldNrp;
       if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
       if (updates.pangkat) globalStore.members[mIdx].pangkat = updates.pangkat;
+      if (statusKedinasan !== undefined) {
+        globalStore.members[mIdx].statusKedinasan = statusKedinasan;
+        globalStore.members[mIdx].statusDinas = statusKedinasan;
+      }
       if (userUpdates.satker) {
         globalStore.members[mIdx].satuanKerja = userUpdates.satker;
         (globalStore.members[mIdx] as unknown as Record<string, unknown>).satker = userUpdates.satker;
@@ -1352,6 +1642,7 @@ export const serverStore = {
       if (userUpdates.password) {
         globalStore.registrations[rIdx].password = userUpdates.password;
         globalStore.registrations[rIdx].status = 'AKTIF';
+        globalStore.registrations[rIdx].isPasswordResetRequest = false;
       }
     }
 
@@ -1535,11 +1826,22 @@ export const serverStore = {
   },
 
   restoreDeletedUser: (
-    nrp: string,
-    snapshotUser?: Partial<AuthUser>,
-    meta?: { actorName?: string; actorNrp?: string; actorRole?: UserRole }
+    nrpOrSnapshot: string | Partial<AuthUser>,
+    snapshotOrMeta?: Partial<AuthUser> | { actorName?: string; actorNrp?: string; actorRole?: UserRole },
+    metaArg?: { actorName?: string; actorNrp?: string; actorRole?: UserRole }
   ) => {
-    const cleanNrp = (nrp || '').trim();
+    const isFirstArgString = typeof nrpOrSnapshot === 'string';
+    const snapshotUser: Partial<AuthUser> | undefined = isFirstArgString
+      ? (snapshotOrMeta as Partial<AuthUser> | undefined)
+      : nrpOrSnapshot;
+    const meta = isFirstArgString
+      ? metaArg
+      : (snapshotOrMeta as { actorName?: string; actorNrp?: string; actorRole?: UserRole } | undefined);
+
+    const cleanNrp = (isFirstArgString ? nrpOrSnapshot : snapshotUser?.nrp || '').trim();
+    if (!cleanNrp) {
+      return { success: false, message: 'NRP pengguna yang akan dipulihkan tidak valid.' };
+    }
     const cleanOld = (snapshotUser?.oldNrp || '').trim();
     const tombstones = new Set<string>(globalStore.deletedNrps || []);
     tombstones.delete(cleanNrp);
@@ -1565,13 +1867,14 @@ export const serverStore = {
       satker: snapshotUser?.satker || canonicalUser?.satker || 'Mabes Polri',
       polda: snapshotUser?.polda || canonicalUser?.polda || 'MABES POLRI',
       jabatanTerakhir: snapshotUser?.jabatanTerakhir || canonicalUser?.jabatanTerakhir,
+      statusKedinasan: snapshotUser?.statusKedinasan || canonicalUser?.statusKedinasan || 'AKTIF',
       tanggalLahir: snapshotUser?.tanggalLahir || canonicalUser?.tanggalLahir,
       tempatLahir: snapshotUser?.tempatLahir || canonicalUser?.tempatLahir,
       fotoUrl: snapshotUser?.fotoUrl || canonicalUser?.fotoUrl || '/default-avatar.png',
       mfaEnabled: snapshotUser?.mfaEnabled ?? false,
       mfaMethod: snapshotUser?.mfaMethod || 'PIN',
-      status: snapshotUser?.status || canonicalUser?.status || 'DISETUJUI_BELUM_PASSWORD',
-      password: snapshotUser?.password || canonicalUser?.password,
+      status: 'AKTIF',
+      password: snapshotUser?.password || canonicalUser?.password || `WS96@${cleanNrp}`,
       isAdcAccount: snapshotUser?.isAdcAccount,
       adcOfNrp: snapshotUser?.adcOfNrp,
       adcOfNama: snapshotUser?.adcOfNama,
@@ -1624,6 +1927,7 @@ export const serverStore = {
     polda: string;
     noHp: string;
     email: string;
+    secondaryEmail?: string;
     alasanDaftar?: string;
   }): { success: boolean; message: string; registration?: PendingRegistration } => {
     const cleanNrp = regData.nrp.trim();
@@ -1657,6 +1961,7 @@ export const serverStore = {
       polda: regData.polda,
       noHp: regData.noHp.trim(),
       email: regData.email.trim() || `${cleanNrp}@polri.go.id`,
+      secondaryEmail: regData.secondaryEmail?.trim() || undefined,
       alasanDaftar: regData.alasanDaftar || 'Pendaftaran alumni Wira Satya Akpol 1996',
       status: 'PENDING_VERIFIKASI',
       createdAt: new Date().toISOString(),
@@ -1682,7 +1987,8 @@ export const serverStore = {
 
     if (action === 'APPROVE') {
       const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
-      reg.status = 'DISETUJUI_BELUM_PASSWORD';
+      reg.status = 'AKTIF';
+      reg.password = reg.password || `WS96@${reg.nrp}`;
       reg.verifiedAt = new Date().toISOString();
       reg.verifiedBy = verifierName;
 
@@ -1702,12 +2008,15 @@ export const serverStore = {
           mfaMethod: 'PIN',
           satker: reg.satker,
           polda: reg.polda,
+          statusKedinasan: 'AKTIF',
           fotoUrl: '/default-avatar.png',
-          status: 'DISETUJUI_BELUM_PASSWORD',
+          password: reg.password,
+          status: 'AKTIF',
         };
         globalStore.users.push(user);
       } else {
-        user.status = 'DISETUJUI_BELUM_PASSWORD';
+        user.status = 'AKTIF';
+        user.password = user.password || reg.password || `WS96@${reg.nrp}`;
         user.role = assignedRole || user.role;
         if (!user.fotoUrl) user.fotoUrl = '/default-avatar.png';
       }
@@ -1722,6 +2031,8 @@ export const serverStore = {
           pangkat: reg.pangkat,
           jabatanTerakhir: 'Pamen ' + reg.satker,
           satuanKerja: reg.satker,
+          statusKedinasan: 'AKTIF',
+          statusDinas: 'AKTIF',
           polda: reg.polda,
           tipeSatker: reg.polda === 'MABES POLRI' ? 'MABES' : 'POLDA',
           pendidikanTerakhir: 'S1 Ilmu Kepolisian / Akpol 1996',
@@ -1778,7 +2089,7 @@ export const serverStore = {
       persistLocalStore(globalStore);
       return {
         success: true,
-        message: `Pendaftaran ${reg.nama} berhasil disetujui. Akun siap diaktivasi oleh personel bersangkutan.`,
+        message: `Pendaftaran ${reg.nama} berhasil disetujui dan diaktifkan dengan kata sandi standar WS96@${reg.nrp}.`,
         registration: reg,
       };
     } else {
@@ -1806,6 +2117,7 @@ export const serverStore = {
     if (reg) {
       reg.status = 'AKTIF';
       reg.password = newPassword;
+      reg.isPasswordResetRequest = false;
     }
 
     // Update in users
@@ -1824,6 +2136,7 @@ export const serverStore = {
         mfaMethod: mfaMethod,
         satker: reg.satker,
         polda: reg.polda,
+        statusKedinasan: 'AKTIF',
         fotoUrl: '/default-avatar.png',
         status: 'AKTIF',
         password: newPassword,
@@ -1869,6 +2182,7 @@ export const serverStore = {
       originalNrp?: string;
       newNrp?: string;
       jabatanTerakhir?: string;
+      statusKedinasan?: StatusKedinasan;
       tanggalLahir?: string;
       tempatLahir?: string;
     }
@@ -1961,15 +2275,16 @@ export const serverStore = {
               mfaMethod: 'PIN',
               satker: cleanSatkerRoleSuffix(m.satuanKerja, cleanAdcNrp),
               polda: m.polda,
-              jabatanTerakhir: 'ADC',
+              jabatanTerakhir: matchedAdc.jabatan || 'ADC',
+              statusKedinasan: 'AKTIF',
               tanggalLahir: matchedAdc.tanggalLahir,
               fotoUrl: '/default-avatar.png',
               isAdcAccount: true,
               adcOfNrp: m.nrp,
               adcOfNama: m.namaLengkap,
               adcOfPangkat: m.pangkat,
-              password: parentUser?.password,
-              status: parentUser?.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD',
+              password: matchedAdc.password || parentUser?.password || `WS96@${cleanAdcNrp}`,
+              status: 'AKTIF',
             };
             globalStore.users.push(user);
             break;
@@ -1978,79 +2293,10 @@ export const serverStore = {
       }
     }
 
-    // If user is an ADC account, always synchronize its password with the Alumni account that generated it!
-    if (user && user.isAdcAccount && user.adcOfNrp) {
-      const parentUser = globalStore.users.find(
-        (u) =>
-          !u.isAdcAccount &&
-          (u.nrp === user!.adcOfNrp || (u.oldNrp && u.oldNrp === user!.adcOfNrp))
-      );
-      if (parentUser?.password) {
-        user.password = parentUser.password;
-        user.status = 'AKTIF';
-      }
-    }
-
-    // If user is approved but hasn't set a password yet:
-    // - If passwordInput is empty -> prompt password setup modal
-    // - If passwordInput is provided -> save it as their password and log them in immediately
-    if (user && (user.status === 'DISETUJUI_BELUM_PASSWORD' || !user.password)) {
-      if (!passwordInput) {
-        return {
-          success: false,
-          requiresPasswordSetup: true,
-          status: 'DISETUJUI_BELUM_PASSWORD',
-          nrp: user.nrp,
-          nama: user.nama,
-          pangkat: user.pangkat,
-          message: user.isAdcAccount
-            ? `Akun ADC untuk ${user.adcOfPangkat || ''} ${user.adcOfNama || ''} belum memiliki kata sandi. Silakan masukkan kata sandi akun Alumni.`
-            : 'Akun Anda telah disetujui! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
-        };
-      } else {
-        user.password = passwordInput;
-        user.status = 'AKTIF';
-        if (user.isAdcAccount && user.adcOfNrp) {
-          const parentUser = globalStore.users.find(
-            (u) => !u.isAdcAccount && (u.nrp === user!.adcOfNrp || (u.oldNrp && u.oldNrp === user!.adcOfNrp))
-          );
-          if (parentUser && !parentUser.password) {
-            parentUser.password = passwordInput;
-            parentUser.status = 'AKTIF';
-          }
-        } else {
-          // Also propagate to any ADC accounts of this Alumni
-          globalStore.users.forEach((u) => {
-            if (u.isAdcAccount && u.adcOfNrp === user!.nrp) {
-              u.password = passwordInput;
-              u.status = 'AKTIF';
-            }
-          });
-        }
-        if (reg) {
-          reg.password = passwordInput;
-          reg.status = 'AKTIF';
-        }
-        globalStore.activeSession = user;
-        persistLocalStore(globalStore);
-        return {
-          success: true,
-          user,
-          message: `Login berhasil sebagai ${user.nama} (${user.role})`,
-        };
-      }
-    }
-
-    if (reg && reg.status === 'DISETUJUI_BELUM_PASSWORD' && !passwordInput) {
-      return {
-        success: false,
-        requiresPasswordSetup: true,
-        status: 'DISETUJUI_BELUM_PASSWORD',
-        nrp: reg.nrp,
-        nama: reg.nama,
-        pangkat: reg.pangkat,
-        message: 'Pendaftaran Anda telah disetujui Superadmin! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
-      };
+    // Ensure default password is set if missing
+    if (user && !user.password) {
+      user.password = `WS96@${user.nrp}`;
+      user.status = 'AKTIF';
     }
 
     // 3. Fallback: check directory members if not yet in users table
@@ -2058,14 +2304,16 @@ export const serverStore = {
       const member = globalStore.members.find(
         (m) =>
           m.nrp === cleanId ||
+          (m.oldNrp && m.oldNrp === cleanId) ||
           m.id === cleanId ||
           m.namaLengkap.toLowerCase().includes(cleanId.toLowerCase())
       );
 
       if (member) {
         user = {
-          id: member.id,
+          id: `u-${member.nrp}`,
           nrp: member.nrp,
+          oldNrp: member.oldNrp,
           nama: member.namaLengkap,
           pangkat: member.pangkat,
           role: 'ANGGOTA',
@@ -2073,21 +2321,15 @@ export const serverStore = {
           mfaEnabled: false,
           mfaMethod: 'PIN',
           satker: member.satuanKerja,
+          jabatanTerakhir: member.jabatanTerakhir,
+          statusKedinasan: member.statusKedinasan || member.statusDinas || 'AKTIF',
           polda: member.polda,
           email: `${member.nrp}@polri.go.id`,
           fotoUrl: member.fotoUrl,
-          status: 'DISETUJUI_BELUM_PASSWORD',
+          password: `WS96@${member.nrp}`,
+          status: 'AKTIF',
         };
         globalStore.users.push(user);
-        return {
-          success: false,
-          requiresPasswordSetup: true,
-          status: 'DISETUJUI_BELUM_PASSWORD',
-          nrp: member.nrp,
-          nama: member.namaLengkap,
-          pangkat: member.pangkat,
-          message: 'Data alumni Anda terverifikasi di Batalyon Wira Satya 96! Silakan buat kata sandi baru untuk mengaktifkan akun Anda.',
-        };
       }
     }
 
@@ -2098,14 +2340,33 @@ export const serverStore = {
       };
     }
 
-    // Password validation for active users
-    if (user.password && passwordInput && user.password !== passwordInput) {
-      return {
-        success: false,
-        message: user.isAdcAccount
-          ? `Kata sandi salah. Gunakan kata sandi akun Alumni (${user.adcOfPangkat || ''} ${user.adcOfNama || user.adcOfNrp}) yang mendaftarkan NRP ADC ini.`
-          : 'Kata sandi yang Anda masukkan salah. Silakan coba kembali.',
-      };
+    // Password validation for active users (supports custom password, WS96@<NRP>, WS96@<oldNrp>, or parent password for ADC)
+    if (passwordInput) {
+      const defaultPass = `WS96@${user.nrp}`;
+      const oldDefaultPass = user.oldNrp ? `WS96@${user.oldNrp}` : undefined;
+      const parentUser =
+        user.isAdcAccount && user.adcOfNrp
+          ? globalStore.users.find(
+              (u) => !u.isAdcAccount && (u.nrp === user!.adcOfNrp || (u.oldNrp && u.oldNrp === user!.adcOfNrp))
+            )
+          : undefined;
+      const parentDefaultPass = user.adcOfNrp ? `WS96@${user.adcOfNrp}` : undefined;
+
+      const isValid =
+        user.password === passwordInput ||
+        passwordInput === defaultPass ||
+        (oldDefaultPass && passwordInput === oldDefaultPass) ||
+        (parentUser?.password && passwordInput === parentUser.password) ||
+        (parentDefaultPass && passwordInput === parentDefaultPass);
+
+      if (!isValid) {
+        return {
+          success: false,
+          message: user.isAdcAccount
+            ? `Kata sandi salah. Gunakan WS96@${user.nrp} atau kata sandi akun Alumni (${user.adcOfPangkat || ''} ${user.adcOfNama || user.adcOfNrp}).`
+            : 'Kata sandi yang Anda masukkan salah. Silakan coba kembali.',
+        };
+      }
     }
 
     user.status = 'AKTIF';

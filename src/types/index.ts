@@ -6,7 +6,20 @@ export type UserAccountStatus =
   | 'AKTIF'
   | 'DITOLAK';
 
-export type MfaMethod = 'BIOMETRIC' | 'GOOGLE_AUTH' | 'EMAIL_OTP' | 'PIN';
+export type MfaMethod = 'BIOMETRIC' | 'GOOGLE_AUTH' | 'TOTP' | 'EMAIL_OTP' | 'PIN';
+
+export type StatusKedinasan = 'AKTIF' | 'PURNA_TUGAS' | 'ALMARHUM';
+
+export interface ActiveAdcSession {
+  adcNrp: string;
+  adcNama: string;
+  adcPangkat: string;
+  adcNoHp?: string;
+  pimpinanNrp: string;
+  pimpinanNama: string;
+  pimpinanPangkat: string;
+  loginAt: string;
+}
 
 export interface PendingRegistration {
   id: string;
@@ -21,6 +34,7 @@ export interface PendingRegistration {
   alasanDaftar?: string;
   status: UserAccountStatus;
   password?: string;
+  isPasswordResetRequest?: boolean;
   createdAt: string;
   verifiedAt?: string;
   verifiedBy?: string;
@@ -44,7 +58,9 @@ export interface AuthUser {
   bio?: string;
   satker?: string;
   polda?: string;
+  kodeSatker?: string;
   jabatanTerakhir?: string;
+  statusKedinasan?: StatusKedinasan;
   tanggalLahir?: string;
   tempatLahir?: string;
   status?: UserAccountStatus;
@@ -53,6 +69,7 @@ export interface AuthUser {
   adcOfNrp?: string;
   adcOfNama?: string;
   adcOfPangkat?: string;
+  activeAdcSession?: ActiveAdcSession;
   updatedAt?: string;
 }
 
@@ -74,6 +91,7 @@ export interface AdcPersonel {
   tanggalLahir?: string;
   noHp: string;
   email?: string;
+  password?: string;
 }
 
 export interface TanggunganLain {
@@ -92,13 +110,19 @@ export interface AnggotaWiraSatya {
   namaLengkap: string;
   pangkat: string;
   jabatanTerakhir: string;
+  jabatan?: string;
   satuanKerja: string;
+  satker?: string;
+  kodeSatker?: string;
+  statusKedinasan?: StatusKedinasan;
+  statusDinas?: StatusKedinasan;
+  keteranganStatus?: string;
   tipeSatker?: 'MABES' | 'POLDA' | 'POLRES/TA/BES' | 'KEMEN/LEMBAGA' | 'PURNA TUGAS' | 'POLSEK';
   satkerMabes?: string;
   subSatker?: string;
   namaPolres?: string;
   namaPolsek?: string;
-  jenisAnggota?: 'ANGGOTA POLRI';
+  jenisAnggota?: 'ANGGOTA POLRI' | 'ALUMNI AKPOL 1996' | 'ASN / PNS POLRI' | 'PURNAWIRAWAN POLRI';
   polda: string;
   pendidikanTerakhir: string;
   nomorKtp?: string;
@@ -110,11 +134,15 @@ export interface AnggotaWiraSatya {
   email?: string;
   secondaryEmail?: string;
   kontakAdc?: string;
+  noHpAdc?: string;
   namaAdc?: string;
+  nrpAdc?: string;
+  pangkatAdc?: string;
   daftarAdc?: AdcPersonel[];
   fotoUrl?: string;
   coverUrl?: string;
   bio?: string;
+  catatanMedis?: string;
   alamatTempatTinggal: string;
   statusTempatTinggal: 'MILIK PRIBADI' | 'RUMAH KELUARGA' | 'DINAS' | 'SEWA/KONTRAK';
 
@@ -231,6 +259,7 @@ export interface AssetPortfolioItem {
   nilaiPerolehanIdr: number;
   estimasiNilaiIdr: number;
   kustodianLokasi: string; // Bank / Sekuritas / Wallet / Brankas
+  lokasiPenyimpanan?: string;
   nomorSeriAtauWallet?: string;
   tanggalPerolehan: string;
   keterangan?: string;
@@ -295,6 +324,8 @@ export interface FeedPost {
   authorName: string;
   authorPangkat: string;
   authorJabatan: string;
+  authorSatker?: string;
+  authorPolda?: string;
   authorAvatar: string;
   authorNrp?: string;
   badgeLabel?: string;
@@ -348,6 +379,7 @@ export interface RiwayatJabatanLeting {
   tahunMulai: number;
   tahunSelesai?: number;
   isCurrent: boolean;
+  statusKedinasan?: StatusKedinasan;
   uraianTugas: string;
   prestasiOperasional?: string;
   dasarTR?: string;
@@ -381,20 +413,27 @@ export type UserAuditAction =
   | 'TAMBAH_USER'
   | 'EDIT_USER'
   | 'UBAH_ROLE'
-  | 'VERIFIKASI_PENDAFTAR';
+  | 'VERIFIKASI_PENDAFTAR'
+  | 'LOGIN_ADC'
+  | 'AKTIVITAS_ADC'
+  | 'RESET_PASSWORD'
+  | 'PERMINTAAN_RESET_PASSWORD';
 
 export interface UserAuditLog {
   id: string;
   timestamp: string;
   action: UserAuditAction;
   actorName: string;
+  actorNama?: string;
   actorNrp?: string;
-  actorRole: UserRole;
+  actorRole: UserRole | 'ADC';
   targetNrp: string;
   targetNama: string;
+  targetName?: string;
   targetPangkat?: string;
-  targetRole?: UserRole;
+  targetRole?: UserRole | 'ADC';
   reason?: string;
   details?: string;
   snapshotUser?: AuthUser;
 }
+

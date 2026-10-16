@@ -29,6 +29,8 @@ import {
   getOrBuildUserProfile,
   calculateRetirement58,
   stripRankFromName,
+  getActiveAdcSessionFromStorage,
+  recordAdcActivityToAuditLog,
 } from '@/lib/avatarUtils';
 
 const STORAGE_VERSION = 'ws96_akpol96_real_v11';
@@ -1011,6 +1013,13 @@ export default function Home() {
     setViewingMember(cleanMember);
     setActiveTab('direktori');
 
+    if (getActiveAdcSessionFromStorage()) {
+      recordAdcActivityToAuditLog({
+        action: 'AKTIVITAS_ADC',
+        details: `Menyimpan pembaruan profil & data kedinasan Pimpinan ${cleanMember.pangkat} ${cleanMember.namaLengkap}`,
+      });
+    }
+
     // Try sync with API
     try {
       await fetch('/api/members', {
@@ -1199,6 +1208,7 @@ export default function Home() {
     localStorage.removeItem('wirasatya96_current_user');
     localStorage.removeItem('ws96_impersonator_user');
     localStorage.removeItem('ws96_mfa_verified');
+    localStorage.removeItem('ws96_adc_session');
     router.push('/login');
   };
 
@@ -1376,6 +1386,12 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('wirasatya96_members', JSON.stringify(updatedList));
     }
+    if (getActiveAdcSessionFromStorage()) {
+      recordAdcActivityToAuditLog({
+        action: 'AKTIVITAS_ADC',
+        details: `Memperbarui jabatan Pimpinan menjadi ${jabatanBaru} pada ${satkerBaru} (${poldaBaru})`,
+      });
+    }
     try {
       await fetch('/api/members', {
         method: 'PUT',
@@ -1508,6 +1524,12 @@ export default function Home() {
             onSelectMember={(m) => setViewingMember(m)}
             onUpdateMemberDirect={(updated) => {
               persistMemberOverride(updated);
+              if (getActiveAdcSessionFromStorage()) {
+                recordAdcActivityToAuditLog({
+                  action: 'AKTIVITAS_ADC',
+                  details: `Memperbarui profil langsung Pimpinan ${updated.pangkat} ${updated.namaLengkap}`,
+                });
+              }
               setMembers((prev) => {
                 const nextList = prev.map((m) => (m.nrp === updated.nrp || m.id === updated.id ? updated : m));
                 if (typeof window !== 'undefined') {

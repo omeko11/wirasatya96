@@ -17,6 +17,9 @@ import {
   RETIREMENT_AGE_POLRI,
   DEFAULT_AVATAR_URL,
   DEFAULT_COVER_URL,
+  detectStatusKedinasan,
+  getActiveAdcSessionFromStorage,
+  recordAdcActivityToAuditLog,
 } from '@/lib/avatarUtils';
 import { MetaVerifiedBadge, resolveRoleForBadge } from '@/components/MetaVerifiedBadge';
 import { SecuritySettingsPanel } from '@/components/SecuritySettingsModal';
@@ -281,6 +284,13 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
 
       if (onUpdateMemberDirect) {
         await onUpdateMemberDirect(updated);
+      }
+
+      if (getActiveAdcSessionFromStorage()) {
+        recordAdcActivityToAuditLog({
+          action: 'AKTIVITAS_ADC',
+          details: `Memperbarui profil Pimpinan (${notificationText})`,
+        });
       }
 
       triggerToast(notificationText);
@@ -822,6 +832,28 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
                       NRP {localMember.nrp}
                     </span>
+                    {(() => {
+                      const st = detectStatusKedinasan(
+                        localMember.statusKedinasan || localMember.statusDinas,
+                        localMember.jabatanTerakhir || localMember.jabatan,
+                        localMember.jenisAnggota
+                      );
+                      if (st === 'ALMARHUM') {
+                        return (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                            🕊️ Almarhum / Gugur
+                          </span>
+                        );
+                      }
+                      if (st === 'PURNA_TUGAS') {
+                        return (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            🎖️ Purna Tugas Polri
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <p className="text-sm font-semibold text-slate-700 leading-snug">

@@ -2,32 +2,42 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthUser, MfaMethod, DAFTAR_PANGKAT_POLRI } from '@/types';
-import { WSLogo } from '@/components/WSLogo';
 import {
-  SatkerBerjenjangModal,
-  SatkerSelectionResult,
-} from '@/components/SatkerBerjenjangModal';
+  AuthUser,
+  MfaMethod,
+  ActiveAdcSession,
+  UserAuditLog,
+  AnggotaWiraSatya,
+} from '@/types';
+import { recordAdcActivityToAuditLog, stripRankFromName } from '@/lib/avatarUtils';
+import { WSLogo } from '@/components/WSLogo';
 import {
   getUserSecurityConfig,
   getActive2FAMethodsCount,
   UserSecurityConfig,
 } from '@/components/SecuritySettingsModal';
-import { 
-  Eye, 
-  EyeOff, 
-  RotateCw, 
-  AlertCircle, 
+import {
+  Eye,
+  EyeOff,
+  RotateCw,
+  AlertCircle,
   Fingerprint,
   Key,
   ChevronRight,
-  UserPlus,
   ShieldCheck,
   CheckCircle2,
   Lock,
-  Building2,
-  Check
+  Check,
+  KeyRound,
 } from 'lucide-react';
+
+const PRESET_LEGACY_NRPS = new Set([
+  '98010710',
+  '980107102',
+  '980107103',
+  '980107104',
+  '980107105',
+]);
 
 interface CheckboxSecurityCaptchaProps {
   checked: boolean;
@@ -98,11 +108,18 @@ function CheckboxSecurityCaptcha({
   );
 }
 
+function isDefaultWs96PasswordMatch(enteredPassword: string, targetNrp: string): boolean {
+  if (!enteredPassword || !targetNrp) return false;
+  const cleanEntered = enteredPassword.trim();
+  const cleanTargetNrp = targetNrp.trim();
+  return cleanEntered.toLowerCase() === `ws96@${cleanTargetNrp.toLowerCase()}`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
-  // Active view: 'login' | 'register'
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  // Active view: 'login' | 'forgot'
+  const [authMode, setAuthMode] = useState<'login' | 'forgot'>('login');
 
   // Login form inputs (Default: Password + Checkbox Captcha)
   const [username, setUsername] = useState('');
@@ -117,21 +134,11 @@ export default function LoginPage() {
   const [selected2FAMethod, setSelected2FAMethod] = useState<MfaMethod>('PIN');
   const [otpInput, setOtpInput] = useState('');
 
-  // Register form inputs (with SatkerBerjenjangModal & Email Dinas + Email Sekunder)
-  const [regNrp, setRegNrp] = useState('');
-  const [regNama, setRegNama] = useState('');
-  const [regPangkat, setRegPangkat] = useState('Kombes Pol');
-  const [regPolda, setRegPolda] = useState('MABES POLRI');
-  const [regSatkerUtama, setRegSatkerUtama] = useState('BARESKRIM POLRI');
-  const [regSubSatker, setRegSubSatker] = useState('');
-  const [regComposedSatker, setRegComposedSatker] = useState('BARESKRIM POLRI');
-  const [regKodeSatker, setRegKodeSatker] = useState('060.01.00.01');
-  const [showSatkerModal, setShowSatkerModal] = useState(false);
-  const [regNoHp, setRegNoHp] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regSecondaryEmail, setRegSecondaryEmail] = useState('');
-  const [regAlasan, setRegAlasan] = useState('');
-  const [regSuccess, setRegSuccess] = useState(false);
+  // Lupa Password / Reset Request Form State
+  const [resetNrp, setResetNrp] = useState('');
+  const [resetWa, setResetWa] = useState('');
+  const [resetReason, setResetReason] = useState('');
+  const [resetSuccessNrp, setResetSuccessNrp] = useState('');
 
   // First-time Password Activation Modal State
   const [showActivationModal, setShowActivationModal] = useState(false);
@@ -175,6 +182,11 @@ export default function LoginPage() {
   };
 
   const handleLoginSuccess = (user: AuthUser, mfaMethod?: MfaMethod) => {
+    if (user.activeAdcSession) {
+      localStorage.setItem('ws96_adc_session', JSON.stringify(user.activeAdcSession));
+    } else {
+      localStorage.removeItem('ws96_adc_session');
+    }
     localStorage.setItem('ws96_auth_user', JSON.stringify(user));
     localStorage.setItem('ws96_active_user', JSON.stringify(user));
     localStorage.setItem('wirasatya96_current_user', JSON.stringify(user));
@@ -185,13 +197,52 @@ export default function LoginPage() {
     router.push('/');
   };
 
+  const proceedWith2FAOrLogin = (targetUser: AuthUser) => {
+    const secCfg = getUserSecurityConfig(targetUser.nrp, targetUser);
+    const activeCount = getActive2FAMethodsCount(secCfg);
+    let is2FAEnabled = activeCount > 0 || Boolean(targetUser.mfaEnabled);
+    try {
+      const local2FA = localStorage.getItem(`ws96_2fa_${targetUser.nrp}`);
+      if (local2FA !== null) {
+        is2FAEnabled = local2FA === 'true' || activeCount > 0;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (is2FAEnabled && !targetUser.activeAdcSession) {
+      const defaultMethod: MfaMethod = secCfg.pinEnabled
+        ? 'PIN'
+        : secCfg.passkeyEnabled
+        ? 'BIOMETRIC'
+        : secCfg.totpEnabled
+        ? 'TOTP'
+        : secCfg.emailOtpEnabled
+        ? 'EMAIL_OTP'
+        : targetUser.mfaMethod || 'PIN';
+      setPending2FAUser(targetUser);
+      setPending2FAConfig(secCfg);
+      setSelected2FAMethod(defaultMethod);
+      setOtpInput('');
+    } else {
+      handleLoginSuccess(targetUser, 'PIN');
+    }
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
     const cleanIdentifier = username.trim();
+    const cleanPassword = password.trim();
+
     if (!cleanIdentifier) {
       setErrorMessage('Harap masukkan NRP atau Email dinas Anda.');
+      return;
+    }
+
+    if (!cleanPassword) {
+      setErrorMessage('Harap masukkan kata sandi akun Anda.');
       return;
     }
 
@@ -199,6 +250,7 @@ export default function LoginPage() {
       setErrorMessage('Harap centang kotak verifikasi keamanan "I\'m not a robot" terlebih dahulu.');
       return;
     }
+
     try {
       const rawDeleted = localStorage.getItem('ws96_deleted_nrps_v1');
       if (rawDeleted) {
@@ -221,193 +273,525 @@ export default function LoginPage() {
 
     setLoading(true);
 
-    let matchedClientOverride: (AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }) | undefined;
     try {
-      const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
-      const parsedOverrides: Record<string, AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }> =
-        rawOverrides ? JSON.parse(rawOverrides) : {};
       const lowerId = cleanIdentifier.toLowerCase();
-      matchedClientOverride =
+      const cleanNrpCandidate = cleanIdentifier.split('@')[0].trim();
+
+      // 1. Load local overrides, ADC registry, and member lists
+      let parsedOverrides: Record<
+        string,
+        AuthUser & { oldNrp?: string; jabatanTerakhir?: string; tanggalLahir?: string }
+      > = {};
+      try {
+        const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+        if (rawOverrides) {
+          parsedOverrides = JSON.parse(rawOverrides);
+        }
+      } catch {
+        // ignore
+      }
+
+      // Fetch users and members in parallel to support both regular & ADC impersonation login reliably
+      const [usersRes, membersRes] = await Promise.all([
+        fetch('/api/users').catch(() => null),
+        fetch('/api/members').catch(() => null),
+      ]);
+
+      let apiUsers: AuthUser[] = [];
+      if (usersRes && usersRes.ok) {
+        const uJson = await usersRes.json().catch(() => null);
+        if (uJson && Array.isArray(uJson.data)) {
+          apiUsers = uJson.data;
+        }
+      }
+
+      let allMembers: AnggotaWiraSatya[] = [];
+      if (membersRes && membersRes.ok) {
+        const mJson = await membersRes.json().catch(() => null);
+        if (mJson && Array.isArray(mJson.data)) {
+          allMembers = mJson.data;
+        }
+      }
+      try {
+        const rawLocalMembers = localStorage.getItem('wirasatya96_members');
+        if (rawLocalMembers) {
+          const parsedLocalMembers = JSON.parse(rawLocalMembers);
+          if (Array.isArray(parsedLocalMembers) && parsedLocalMembers.length > 0) {
+            const byNrp = new Map<string, AnggotaWiraSatya>();
+            allMembers.forEach((m) => byNrp.set(m.nrp, m));
+            parsedLocalMembers.forEach((m: AnggotaWiraSatya) => {
+              if (m && m.nrp) {
+                byNrp.set(m.nrp, { ...(byNrp.get(m.nrp) || {}), ...m });
+              }
+            });
+            allMembers = Array.from(byNrp.values());
+          }
+        }
+        const rawMemberOverrides = localStorage.getItem('ws96_member_overrides_v1');
+        if (rawMemberOverrides) {
+          const parsedMemberOverrides = JSON.parse(rawMemberOverrides);
+          if (parsedMemberOverrides && typeof parsedMemberOverrides === 'object') {
+            allMembers = allMembers.map((m) =>
+              parsedMemberOverrides[m.nrp]
+                ? { ...m, ...parsedMemberOverrides[m.nrp] }
+                : m
+            );
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // 2. Check if cleanIdentifier / cleanNrpCandidate is an ADC (Ajudan) account
+      let detectedAdcInfo: {
+        adcNrp: string;
+        adcNama: string;
+        adcPangkat?: string;
+        adcNoHp?: string;
+        adcCustomPassword?: string;
+        pimpinanNrp: string;
+        pimpinanNama?: string;
+        pimpinanPangkat?: string;
+      } | null = null;
+
+      // 2a. Check in parsedOverrides & apiUsers for `isAdcAccount: true` and `adcOfNrp`
+      const overrideAdcUser =
+        Object.values(parsedOverrides).find(
+          (u) =>
+            u &&
+            u.isAdcAccount &&
+            u.adcOfNrp &&
+            (u.nrp === cleanIdentifier ||
+              u.nrp === cleanNrpCandidate ||
+              u.email?.toLowerCase() === lowerId)
+        ) ||
+        apiUsers.find(
+          (u) =>
+            u &&
+            u.isAdcAccount &&
+            u.adcOfNrp &&
+            (u.nrp === cleanIdentifier ||
+              u.nrp === cleanNrpCandidate ||
+              u.email?.toLowerCase() === lowerId)
+        );
+
+      if (overrideAdcUser && overrideAdcUser.adcOfNrp) {
+        detectedAdcInfo = {
+          adcNrp: overrideAdcUser.nrp,
+          adcNama: overrideAdcUser.nama,
+          adcPangkat: overrideAdcUser.pangkat || 'Briptu',
+          adcNoHp: overrideAdcUser.noHp || '',
+          adcCustomPassword: overrideAdcUser.password,
+          pimpinanNrp: overrideAdcUser.adcOfNrp,
+          pimpinanNama: overrideAdcUser.adcOfNama,
+          pimpinanPangkat: overrideAdcUser.adcOfPangkat,
+        };
+      }
+
+      // 2b. Check in `ws96_adc_registry_v1` in localStorage
+      if (!detectedAdcInfo) {
+        try {
+          const rawAdcRegistry = localStorage.getItem('ws96_adc_registry_v1');
+          if (rawAdcRegistry) {
+            const parsedRegistry = JSON.parse(rawAdcRegistry);
+            const entries: any[] = Array.isArray(parsedRegistry)
+              ? parsedRegistry
+              : parsedRegistry && typeof parsedRegistry === 'object'
+              ? Object.values(parsedRegistry).flat()
+              : [];
+
+            const matchedReg = entries.find((item: any) => {
+              if (!item) return false;
+              const itemAdcNrp = String(item.adcNrp || item.nrp || '').trim();
+              const itemEmail = String(item.email || item.adcEmail || '').trim().toLowerCase();
+              return (
+                (itemAdcNrp &&
+                  (itemAdcNrp === cleanIdentifier || itemAdcNrp === cleanNrpCandidate)) ||
+                (itemEmail && itemEmail === lowerId)
+              );
+            });
+
+            if (matchedReg) {
+              const adcNrpVal = String(matchedReg.adcNrp || matchedReg.nrp || cleanNrpCandidate).trim();
+              const pimpinanNrpVal = String(
+                matchedReg.pimpinanNrp || matchedReg.adcOfNrp || matchedReg.memberNrp || ''
+              ).trim();
+              if (pimpinanNrpVal) {
+                detectedAdcInfo = {
+                  adcNrp: adcNrpVal,
+                  adcNama: String(matchedReg.adcNama || matchedReg.nama || `ADC ${pimpinanNrpVal}`).trim(),
+                  adcPangkat: matchedReg.adcPangkat || matchedReg.pangkat || 'Briptu',
+                  adcNoHp: matchedReg.adcNoHp || matchedReg.noHp || '',
+                  adcCustomPassword: matchedReg.password,
+                  pimpinanNrp: pimpinanNrpVal,
+                  pimpinanNama: matchedReg.pimpinanNama || matchedReg.adcOfNama,
+                  pimpinanPangkat: matchedReg.pimpinanPangkat || matchedReg.adcOfPangkat,
+                };
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 2c. Check in allMembers (`nrpAdc`, `daftarAdc`, or `kontakAdc`)
+      if (!detectedAdcInfo) {
+        for (const m of allMembers) {
+          if (!m || !m.nrp) continue;
+          // Do not treat a member's own NRP as ADC
+          if (m.nrp === cleanIdentifier || m.nrp === cleanNrpCandidate) continue;
+
+          if (m.nrpAdc && m.nrpAdc.trim() === cleanNrpCandidate) {
+            detectedAdcInfo = {
+              adcNrp: cleanNrpCandidate,
+              adcNama: m.namaAdc || `ADC ${m.namaLengkap}`,
+              adcPangkat: m.pangkatAdc || 'Briptu',
+              adcNoHp: m.noHpAdc || m.kontakAdc || '',
+              pimpinanNrp: m.nrp,
+              pimpinanNama: m.namaLengkap,
+              pimpinanPangkat: m.pangkat,
+            };
+            break;
+          }
+
+          if (Array.isArray(m.daftarAdc)) {
+            const adcMatch = m.daftarAdc.find(
+              (a) =>
+                (a.nrp && a.nrp.trim() === cleanNrpCandidate) ||
+                (a.email && a.email.trim().toLowerCase() === lowerId)
+            );
+            if (adcMatch) {
+              const resolvedAdcNrp = (adcMatch.nrp || cleanNrpCandidate).trim();
+              detectedAdcInfo = {
+                adcNrp: resolvedAdcNrp,
+                adcNama: (adcMatch.nama || `ADC ${m.namaLengkap}`).trim(),
+                adcPangkat: adcMatch.pangkat || 'Briptu',
+                adcNoHp: adcMatch.noHp || '',
+                pimpinanNrp: m.nrp,
+                pimpinanNama: m.namaLengkap,
+                pimpinanPangkat: m.pangkat,
+              };
+              break;
+            }
+          }
+
+          if (
+            cleanNrpCandidate.length >= 6 &&
+            typeof m.kontakAdc === 'string' &&
+            m.kontakAdc.includes(cleanNrpCandidate)
+          ) {
+            detectedAdcInfo = {
+              adcNrp: cleanNrpCandidate,
+              adcNama: m.namaAdc || `ADC ${m.namaLengkap}`,
+              adcPangkat: m.pangkatAdc || 'Briptu',
+              adcNoHp: m.noHpAdc || m.kontakAdc || '',
+              pimpinanNrp: m.nrp,
+              pimpinanNama: m.namaLengkap,
+              pimpinanPangkat: m.pangkat,
+            };
+            break;
+          }
+        }
+      }
+
+      // 3. Handle ADC Impersonation Login if detectedAdcInfo is found
+      if (detectedAdcInfo) {
+        const pimpinanNrp = detectedAdcInfo.pimpinanNrp;
+        const pimpinanOverride =
+          parsedOverrides[pimpinanNrp] ||
+          Object.values(parsedOverrides).find(
+            (ov) => ov && !ov.isAdcAccount && (ov.nrp === pimpinanNrp || ov.oldNrp === pimpinanNrp)
+          );
+        const pimpinanApiUser = apiUsers.find(
+          (u) => u && !u.isAdcAccount && u.nrp === pimpinanNrp
+        );
+        const pimpinanMember = allMembers.find((m) => m && m.nrp === pimpinanNrp);
+
+        const basePimpinanUser: AuthUser = {
+          id: pimpinanApiUser?.id || pimpinanOverride?.id || `u-ws-${pimpinanNrp}`,
+          nrp: pimpinanNrp,
+          nama:
+            pimpinanOverride?.nama ||
+            pimpinanApiUser?.nama ||
+            pimpinanMember?.namaLengkap ||
+            detectedAdcInfo.pimpinanNama ||
+            `Alumni ${pimpinanNrp}`,
+          pangkat:
+            pimpinanOverride?.pangkat ||
+            pimpinanApiUser?.pangkat ||
+            pimpinanMember?.pangkat ||
+            detectedAdcInfo.pimpinanPangkat ||
+            'Kombes Pol',
+          email:
+            pimpinanOverride?.email ||
+            pimpinanApiUser?.email ||
+            pimpinanMember?.email ||
+            `${pimpinanNrp}@polri.go.id`,
+          noHp:
+            pimpinanOverride?.noHp ||
+            pimpinanApiUser?.noHp ||
+            pimpinanMember?.noHp ||
+            '',
+          role: pimpinanOverride?.role || pimpinanApiUser?.role || 'ANGGOTA',
+          profileId:
+            pimpinanOverride?.profileId ||
+            pimpinanApiUser?.profileId ||
+            pimpinanMember?.id ||
+            `ws-${pimpinanNrp}`,
+          mfaEnabled: false,
+          mfaMethod: 'PIN',
+          satker:
+            pimpinanOverride?.satker ||
+            pimpinanApiUser?.satker ||
+            pimpinanMember?.satuanKerja ||
+            'MABES POLRI',
+          polda:
+            pimpinanOverride?.polda ||
+            pimpinanApiUser?.polda ||
+            pimpinanMember?.polda ||
+            'MABES POLRI',
+          jabatanTerakhir:
+            pimpinanOverride?.jabatanTerakhir ||
+            pimpinanApiUser?.jabatanTerakhir ||
+            pimpinanMember?.jabatanTerakhir ||
+            'Perwira Menengah Polri',
+          fotoUrl:
+            pimpinanOverride?.fotoUrl ||
+            pimpinanApiUser?.fotoUrl ||
+            pimpinanMember?.fotoUrl ||
+            '/default-avatar.png',
+          status: 'AKTIF',
+        };
+
+        // Validate ADC password:
+        // Accept WS96@<ADC_NRP> (case-insensitive), WS96@<PIMPINAN_NRP> (case-insensitive),
+        // or custom password configured for ADC or Pimpinan
+        const isValidAdcPassword =
+          isDefaultWs96PasswordMatch(cleanPassword, detectedAdcInfo.adcNrp) ||
+          isDefaultWs96PasswordMatch(cleanPassword, pimpinanNrp) ||
+          Boolean(
+            detectedAdcInfo.adcCustomPassword &&
+              cleanPassword === detectedAdcInfo.adcCustomPassword
+          ) ||
+          Boolean(pimpinanOverride?.password && cleanPassword === pimpinanOverride.password) ||
+          Boolean(pimpinanApiUser?.password && cleanPassword === pimpinanApiUser.password);
+
+        if (!isValidAdcPassword) {
+          setErrorMessage(
+            `Kata sandi Ajudan (ADC) tidak cocok. Gunakan password default WS96@${detectedAdcInfo.adcNrp} atau password Pimpinan.`
+          );
+          resetCaptcha();
+          return;
+        }
+
+        const cleanPimpinanDisplayName = stripRankFromName(
+          basePimpinanUser.nama,
+          basePimpinanUser.pangkat
+        );
+
+        const adcSession: ActiveAdcSession = {
+          adcNrp: detectedAdcInfo.adcNrp,
+          adcNama: stripRankFromName(
+            detectedAdcInfo.adcNama,
+            detectedAdcInfo.adcPangkat || ''
+          ),
+          adcPangkat: detectedAdcInfo.adcPangkat || 'Briptu',
+          adcNoHp: detectedAdcInfo.adcNoHp || '',
+          pimpinanNrp: basePimpinanUser.nrp,
+          pimpinanNama: cleanPimpinanDisplayName,
+          pimpinanPangkat: basePimpinanUser.pangkat || 'Kombes Pol',
+          loginAt: new Date().toISOString(),
+        };
+
+        const impersonatedPimpinanUser: AuthUser = {
+          ...basePimpinanUser,
+          isAdcAccount: false,
+          activeAdcSession: adcSession,
+        };
+
+        recordAdcActivityToAuditLog({
+          action: 'LOGIN_ADC',
+          details: `Ajudan (ADC) ${adcSession.adcPangkat ? adcSession.adcPangkat + ' ' : ''}${adcSession.adcNama} (NRP: ${adcSession.adcNrp}) berhasil masuk mewakili akun Pimpinan ${adcSession.pimpinanPangkat} ${adcSession.pimpinanNama} (NRP: ${adcSession.pimpinanNrp}).`,
+          adcSession,
+        });
+
+        handleLoginSuccess(impersonatedPimpinanUser, 'PIN');
+        return;
+      }
+
+      // 4. Regular Member / Admin Login
+      let matchedClientOverride =
         parsedOverrides[cleanIdentifier] ||
+        parsedOverrides[cleanNrpCandidate] ||
         Object.values(parsedOverrides).find(
           (ov) =>
             ov &&
+            !ov.isAdcAccount &&
             (ov.nrp === cleanIdentifier ||
+              ov.nrp === cleanNrpCandidate ||
               ov.oldNrp === cleanIdentifier ||
               ov.email?.toLowerCase() === lowerId ||
               ov.secondaryEmail?.toLowerCase() === lowerId ||
               ov.nama?.trim().toLowerCase() === lowerId)
         );
 
-      // If not yet in user overrides, check if cleanIdentifier is an ADC in wirasatya96_members
-      if (!matchedClientOverride) {
-        const rawMembers = localStorage.getItem('wirasatya96_members');
-        if (rawMembers) {
-          const parsedMembers = JSON.parse(rawMembers);
-          if (Array.isArray(parsedMembers)) {
-            for (const m of parsedMembers) {
-              if (Array.isArray(m.daftarAdc)) {
-                const adcMatch = m.daftarAdc.find(
-                  (adc: any) =>
-                    (adc.nrp && String(adc.nrp).trim() === cleanIdentifier) ||
-                    (adc.email && String(adc.email).trim().toLowerCase() === lowerId)
-                );
-                if (adcMatch && adcMatch.nrp) {
-                  const cleanAdcNrp = String(adcMatch.nrp).trim();
-                  const parentOv =
-                    parsedOverrides[m.nrp] ||
-                    (m.oldNrp ? parsedOverrides[m.oldNrp] : undefined) ||
-                    Object.values(parsedOverrides).find(
-                      (ov) => ov && !ov.isAdcAccount && (ov.nrp === m.nrp || ov.oldNrp === m.nrp)
-                    );
-                  matchedClientOverride = {
-                    id: `u-adc-${cleanAdcNrp}`,
-                    nrp: cleanAdcNrp,
-                    nama: (adcMatch.nama || `ADC ${m.namaLengkap}`).trim(),
-                    pangkat: adcMatch.pangkat || 'Briptu',
-                    email: (adcMatch.email || `${cleanAdcNrp}@polri.go.id`).trim(),
-                    noHp: adcMatch.noHp || '',
-                    role: 'ANGGOTA',
-                    profileId: m.id || `ws-${m.nrp}`,
-                    mfaEnabled: false,
-                    mfaMethod: 'PIN',
-                    satker: m.satuanKerja || 'Mabes Polri',
-                    polda: m.polda || 'MABES POLRI',
-                    jabatanTerakhir: 'ADC',
-                    tanggalLahir: adcMatch.tanggalLahir,
-                    fotoUrl: '/default-avatar.png',
-                    isAdcAccount: true,
-                    adcOfNrp: m.nrp,
-                    adcOfNama: m.namaLengkap,
-                    adcOfPangkat: m.pangkat,
-                    password: parentOv?.password,
-                    status: parentOv?.password ? 'AKTIF' : 'DISETUJUI_BELUM_PASSWORD',
-                  };
-                  break;
-                }
-              }
-            }
-          }
-        }
+      const matchedApiUser = apiUsers.find(
+        (u) =>
+          u &&
+          !u.isAdcAccount &&
+          (u.nrp === cleanIdentifier ||
+            u.nrp === cleanNrpCandidate ||
+            u.email?.toLowerCase() === lowerId ||
+            u.secondaryEmail?.toLowerCase() === lowerId ||
+            u.nama?.trim().toLowerCase() === lowerId)
+      );
+
+      const matchedMember = allMembers.find(
+        (m) =>
+          m &&
+          (m.nrp === cleanIdentifier ||
+            m.nrp === cleanNrpCandidate ||
+            m.email?.toLowerCase() === lowerId ||
+            m.namaLengkap?.trim().toLowerCase() === lowerId)
+      );
+
+      const resolvedUserNrp =
+        matchedClientOverride?.nrp ||
+        matchedApiUser?.nrp ||
+        matchedMember?.nrp ||
+        cleanNrpCandidate;
+
+      // Verify password against:
+      // 1. Custom password in ws96_user_overrides_v1 (`matchedClientOverride?.password`) or `matchedApiUser?.password`
+      // 2. Default password `WS96@${resolvedUserNrp}` (case-insensitive on `WS96@`)
+      // 3. Legacy preset password (`WiraSatya96!`) ONLY for the 5 preset test accounts
+      const matchesCustomPassword =
+        Boolean(matchedClientOverride?.password && cleanPassword === matchedClientOverride.password) ||
+        Boolean(matchedApiUser?.password && cleanPassword === matchedApiUser.password);
+      const matchesDefaultWs96Password = isDefaultWs96PasswordMatch(
+        cleanPassword,
+        resolvedUserNrp
+      );
+      const matchesPresetLegacyPassword =
+        PRESET_LEGACY_NRPS.has(resolvedUserNrp) && cleanPassword === 'WiraSatya96!';
+
+      const isKnownAccount = Boolean(
+        matchedClientOverride || matchedApiUser || matchedMember || PRESET_LEGACY_NRPS.has(resolvedUserNrp)
+      );
+
+      if (!isKnownAccount) {
+        setErrorMessage('Akun NRP atau Email dinas tidak ditemukan dalam database Batalyon Wira Satya 96.');
+        resetCaptcha();
+        return;
       }
 
-      // If matchedClientOverride is an ADC account, ensure its password always inherits from the parent Alumni override!
-      if (matchedClientOverride?.isAdcAccount && matchedClientOverride.adcOfNrp) {
-        const parentNrp = matchedClientOverride.adcOfNrp;
-        const parentOv =
-          parsedOverrides[parentNrp] ||
-          Object.values(parsedOverrides).find(
-            (ov) => ov && !ov.isAdcAccount && (ov.nrp === parentNrp || ov.oldNrp === parentNrp)
-          );
-        if (parentOv?.password) {
-          matchedClientOverride = {
-            ...matchedClientOverride,
-            password: parentOv.password,
-            status: 'AKTIF',
-          };
-        }
+      if (!matchesCustomPassword && !matchesDefaultWs96Password && !matchesPresetLegacyPassword) {
+        setErrorMessage(
+          `Kata sandi tidak cocok untuk NRP ${resolvedUserNrp}. Gunakan password default WS96@${resolvedUserNrp} atau klik "Lupa Password?" untuk mengajukan reset.`
+        );
+        resetCaptcha();
+        return;
       }
-    } catch {
-      // ignore storage parse error
-    }
 
-    try {
-      // Call internal login API with entered credentials + local override for serverless cold-start sync
+      // Build synthesized active user override so /api/auth/login accepts and syncs cleanly
+      const effectiveClientOverride: AuthUser = {
+        id:
+          matchedClientOverride?.id ||
+          matchedApiUser?.id ||
+          `u-${matchedMember?.id || `ws-${resolvedUserNrp}`}`,
+        nrp: resolvedUserNrp,
+        nama:
+          matchedClientOverride?.nama ||
+          matchedApiUser?.nama ||
+          matchedMember?.namaLengkap ||
+          `Alumni ${resolvedUserNrp}`,
+        pangkat:
+          matchedClientOverride?.pangkat ||
+          matchedApiUser?.pangkat ||
+          matchedMember?.pangkat ||
+          'Kombes Pol',
+        email:
+          matchedClientOverride?.email ||
+          matchedApiUser?.email ||
+          matchedMember?.email ||
+          `${resolvedUserNrp}@polri.go.id`,
+        secondaryEmail:
+          matchedClientOverride?.secondaryEmail || matchedApiUser?.secondaryEmail,
+        noHp:
+          matchedClientOverride?.noHp ||
+          matchedApiUser?.noHp ||
+          matchedMember?.noHp ||
+          '',
+        role: matchedClientOverride?.role || matchedApiUser?.role || 'ANGGOTA',
+        profileId:
+          matchedClientOverride?.profileId ||
+          matchedApiUser?.profileId ||
+          matchedMember?.id ||
+          `ws-${resolvedUserNrp}`,
+        mfaEnabled: Boolean(
+          matchedClientOverride?.mfaEnabled ?? matchedApiUser?.mfaEnabled ?? false
+        ),
+        mfaMethod:
+          matchedClientOverride?.mfaMethod || matchedApiUser?.mfaMethod || 'PIN',
+        satker:
+          matchedClientOverride?.satker ||
+          matchedApiUser?.satker ||
+          matchedMember?.satuanKerja ||
+          'MABES POLRI',
+        polda:
+          matchedClientOverride?.polda ||
+          matchedApiUser?.polda ||
+          matchedMember?.polda ||
+          'MABES POLRI',
+        kodeSatker:
+          matchedClientOverride?.kodeSatker ||
+          matchedApiUser?.kodeSatker ||
+          matchedMember?.kodeSatker,
+        jabatanTerakhir:
+          matchedClientOverride?.jabatanTerakhir ||
+          matchedApiUser?.jabatanTerakhir ||
+          matchedMember?.jabatanTerakhir ||
+          'Perwira Menengah Polri',
+        fotoUrl:
+          matchedClientOverride?.fotoUrl ||
+          matchedApiUser?.fotoUrl ||
+          matchedMember?.fotoUrl ||
+          '/default-avatar.png',
+        password: matchedClientOverride?.password || cleanPassword,
+        status: 'AKTIF',
+      };
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          identifier: cleanIdentifier,
-          password: password.trim(),
-          ...(matchedClientOverride ? { clientOverride: matchedClientOverride } : {}),
+          identifier: resolvedUserNrp,
+          password: cleanPassword,
+          clientOverride: effectiveClientOverride,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      // Case 1: Account approved by Superadmin, needs to set password for the first time
-      if (data.requiresPasswordSetup) {
-        setActivationData({
-          nrp: data.nrp || cleanIdentifier,
-          nama: data.nama || 'Perwira Alumni Wira Satya 96',
-          pangkat: data.pangkat || 'Kombes Pol',
-        });
-        setShowActivationModal(true);
-        return;
-      }
-
-      // Case 2: Login success
       if (data.success && data.user) {
-        const mergedUser: AuthUser = matchedClientOverride
-          ? {
-              ...data.user,
-              ...matchedClientOverride,
-              nrp: matchedClientOverride.nrp || data.user.nrp,
-            }
-          : data.user;
-
-        // Check if this user has self-enabled 2FA in their settings
-        const secCfg = getUserSecurityConfig(mergedUser.nrp, mergedUser);
-        const activeCount = getActive2FAMethodsCount(secCfg);
-        let is2FAEnabled = activeCount > 0 || Boolean(mergedUser.mfaEnabled);
-        try {
-          const local2FA = localStorage.getItem(`ws96_2fa_${mergedUser.nrp}`);
-          if (local2FA !== null) {
-            is2FAEnabled = local2FA === 'true' || activeCount > 0;
-          }
-        } catch {
-          // ignore
-        }
-
-        if (is2FAEnabled) {
-          const defaultMethod: MfaMethod = secCfg.pinEnabled
-            ? 'PIN'
-            : secCfg.passkeyEnabled
-            ? 'BIOMETRIC'
-            : secCfg.totpEnabled
-            ? 'TOTP'
-            : secCfg.emailOtpEnabled
-            ? 'EMAIL_OTP'
-            : mergedUser.mfaMethod || 'PIN';
-          setPending2FAUser(mergedUser);
-          setPending2FAConfig(secCfg);
-          setSelected2FAMethod(defaultMethod);
-          setOtpInput('');
-        } else {
-          handleLoginSuccess(mergedUser, 'PIN');
-        }
-      } else if (
-        matchedClientOverride &&
-        matchedClientOverride.password &&
-        matchedClientOverride.password === password.trim()
-      ) {
-        // Fallback if server instance rejected before override sync
-        handleLoginSuccess(
-          {
-            ...matchedClientOverride,
-            status: 'AKTIF',
-          },
-          'PIN'
-        );
+        const mergedUser: AuthUser = {
+          ...data.user,
+          ...effectiveClientOverride,
+          nrp: effectiveClientOverride.nrp || data.user.nrp,
+          status: 'AKTIF',
+          activeAdcSession: undefined,
+        };
+        proceedWith2FAOrLogin(mergedUser);
       } else {
-        setErrorMessage(data.message || 'NRP atau kata sandi tidak cocok. Silakan periksa kembali.');
-        resetCaptcha();
+        // Fallback direct login since password was already verified against known account
+        proceedWith2FAOrLogin({
+          ...effectiveClientOverride,
+          status: 'AKTIF',
+          activeAdcSession: undefined,
+        });
       }
     } catch {
-      if (
-        matchedClientOverride &&
-        matchedClientOverride.password &&
-        matchedClientOverride.password === password.trim()
-      ) {
-        handleLoginSuccess(
-          {
-            ...matchedClientOverride,
-            status: 'AKTIF',
-          },
-          'PIN'
-        );
-      } else {
-        setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
-      }
+      setErrorMessage('Terjadi gangguan koneksi ke server. Silakan coba kembali.');
     } finally {
       setLoading(false);
     }
@@ -436,54 +820,116 @@ export default function LoginPage() {
     handleLoginSuccess(userToLogin, selected2FAMethod);
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!regNrp.trim() || !regNama.trim()) {
-      setErrorMessage('Harap lengkapi NRP dan Nama Lengkap Anda.');
-      return;
-    }
+    const cleanResetNrp = resetNrp.trim();
+    const cleanResetWa = resetWa.trim();
+    const cleanResetReason = resetReason.trim();
 
-    const composedSatker =
-      regComposedSatker.trim() ||
-      (regSubSatker && regSubSatker !== 'Pimpinan / Staf Utama Satker'
-        ? `${regSubSatker} - ${regSatkerUtama}`
-        : regSatkerUtama);
-
-    if (!composedSatker) {
-      setErrorMessage('Harap pilih Satker Melekat terlebih dahulu.');
+    if (!cleanResetNrp || !cleanResetWa) {
+      setErrorMessage('Harap isi NRP / NIP dan Nomor WhatsApp Aktif Anda.');
       return;
     }
 
     setLoading(true);
-
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
+      let matchedUser: Partial<AuthUser> | undefined;
+
+      try {
+        const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+        if (rawOverrides) {
+          const parsedOverrides = JSON.parse(rawOverrides);
+          matchedUser = parsedOverrides[cleanResetNrp];
+        }
+      } catch {
+        // ignore
+      }
+
+      if (!matchedUser) {
+        try {
+          const resUsers = await fetch('/api/users');
+          if (resUsers.ok) {
+            const jsonUsers = await resUsers.json();
+            if (Array.isArray(jsonUsers.data)) {
+              matchedUser = jsonUsers.data.find(
+                (u: AuthUser) => u && u.nrp === cleanResetNrp
+              );
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!matchedUser) {
+        try {
+          const resMembers = await fetch('/api/members');
+          if (resMembers.ok) {
+            const jsonMembers = await resMembers.json();
+            if (Array.isArray(jsonMembers.data)) {
+              const foundMember = jsonMembers.data.find(
+                (m: AnggotaWiraSatya) => m && m.nrp === cleanResetNrp
+              );
+              if (foundMember) {
+                matchedUser = {
+                  nrp: foundMember.nrp,
+                  nama: foundMember.namaLengkap,
+                  pangkat: foundMember.pangkat,
+                  role: 'ANGGOTA',
+                };
+              }
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const resetAuditEntry: UserAuditLog = {
+        id: `audit-reset-req-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        actorNrp: cleanResetNrp,
+        actorName: matchedUser?.nama || `NRP ${cleanResetNrp}`,
+        actorNama: matchedUser?.nama || `NRP ${cleanResetNrp}`,
+        actorRole: matchedUser?.role || 'ANGGOTA',
+        action: 'PERMINTAAN_RESET_PASSWORD',
+        targetNrp: cleanResetNrp,
+        targetNama: matchedUser?.nama || `NRP ${cleanResetNrp}`,
+        targetName: matchedUser?.nama || `NRP ${cleanResetNrp}`,
+        details: `Permintaan Reset Password oleh ${
+          matchedUser?.pangkat ? matchedUser.pangkat + ' ' : ''
+        }${matchedUser?.nama || cleanResetNrp} (NRP: ${cleanResetNrp}). No WA: ${cleanResetWa}. Alasan: ${
+          cleanResetReason || 'Lupa kata sandi'
+        }. Menunggu persetujuan Sekretaris / Superadmin untuk di-reset ke WS96@${cleanResetNrp}.`,
+      };
+
+      try {
+        const rawLogs = localStorage.getItem('ws96_audit_logs_v1');
+        const existingLogs: UserAuditLog[] = rawLogs ? JSON.parse(rawLogs) : [];
+        const updatedLogs = [
+          resetAuditEntry,
+          ...(Array.isArray(existingLogs) ? existingLogs : []),
+        ].slice(0, 500);
+        localStorage.setItem('ws96_audit_logs_v1', JSON.stringify(updatedLogs));
+      } catch {
+        // ignore storage error
+      }
+
+      await fetch('/api/users', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nrp: regNrp.trim(),
-          nama: regNama.trim(),
-          pangkat: regPangkat,
-          satker: composedSatker,
-          polda: regPolda,
-          kodeSatker: regKodeSatker,
-          noHp: regNoHp.trim(),
-          email: regEmail.trim() || `${regNrp.trim()}@polri.go.id`,
-          secondaryEmail: regSecondaryEmail.trim() || undefined,
-          alasanDaftar: regAlasan.trim(),
+          action: 'REQUEST_PASSWORD_RESET',
+          nrp: cleanResetNrp,
+          noHp: cleanResetWa,
+          alasan: cleanResetReason || 'Lupa kata sandi',
+          auditEntry: resetAuditEntry,
         }),
-      });
-      const data = await res.json();
+      }).catch(() => {});
 
-      if (res.ok && data.success) {
-        setRegSuccess(true);
-      } else {
-        setErrorMessage(data.message || 'Pendaftaran gagal diproses.');
-      }
-    } catch {
-      setErrorMessage('Terjadi kesalahan jaringan saat mengirimkan pendaftaran.');
+      setResetSuccessNrp(cleanResetNrp);
     } finally {
       setLoading(false);
     }
@@ -552,7 +998,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#f3f2ef] flex flex-col justify-between font-sans text-slate-900 antialiased">
-      
       {/* 1. TOP BRAND HEADER */}
       <header className="px-4 py-4 sm:px-12 flex items-center justify-between max-w-7xl w-full mx-auto">
         <div className="flex items-center gap-3">
@@ -577,7 +1022,6 @@ export default function LoginPage() {
       {showActivationModal && activationData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 sm:p-7 shadow-2xl space-y-4 text-slate-900 animate-scaleUp">
-            
             <div className="text-center space-y-1.5">
               <div className="w-12 h-12 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center mx-auto mb-2">
                 <ShieldCheck className="w-6 h-6" />
@@ -602,7 +1046,6 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleActivationSubmit} className="space-y-3.5 pt-1">
-              {/* Kata Sandi Baru */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Kata Sandi Baru <span className="text-red-700">*</span>
@@ -627,7 +1070,6 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {/* Konfirmasi Kata Sandi */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Konfirmasi Kata Sandi Baru <span className="text-red-700">*</span>
@@ -642,7 +1084,6 @@ export default function LoginPage() {
                 />
               </div>
 
-              {/* Pilihan Metode MFA */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Pilihan Pengamanan Akun (MFA)
@@ -723,7 +1164,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div 
+            <div
               onClick={handlePasskeyContinue}
               className="flex items-center justify-between p-3 bg-[#242c38] hover:bg-[#2b3543] rounded-xl border border-slate-700/60 cursor-pointer transition-all"
             >
@@ -734,7 +1175,9 @@ export default function LoginPage() {
                 <div>
                   <div className="text-xs font-bold text-white flex items-center gap-1.5">
                     {passkeyAccount}
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-semibold">FIDO2</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-semibold">
+                      FIDO2
+                    </span>
                   </div>
                   <div className="text-[11px] text-slate-400">Pengelola Sandi Google</div>
                 </div>
@@ -909,10 +1352,9 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* 4. MAIN AUTH CARD (MASUK / PENDAFTARAN TAB) */}
+      {/* 4. MAIN AUTH CARD (MASUK AKUN / LUPA PASSWORD) */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-[440px] bg-white p-6 sm:p-8 rounded-2xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] border border-slate-200 space-y-5">
-          
           {/* Top Switcher Tabs */}
           <div className="flex p-1 bg-slate-100 rounded-xl">
             <button
@@ -932,17 +1374,20 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => {
-                setAuthMode('register');
+                setAuthMode('forgot');
                 setErrorMessage('');
-                setRegSuccess(false);
+                setResetSuccessNrp('');
+                if (username && /^\d+$/.test(username.trim())) {
+                  setResetNrp(username.trim());
+                }
               }}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                authMode === 'register'
+                authMode === 'forgot'
                   ? 'bg-white text-red-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Pendaftaran Anggota
+              Lupa Password?
             </button>
           </div>
 
@@ -965,17 +1410,30 @@ export default function LoginPage() {
                 </p>
               </div>
 
+              {/* Info Box Kredensial Default Anggota & Ajudan (ADC) */}
+              <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 text-[11px] text-amber-950 leading-relaxed">
+                💡 <strong>Kredensial Default Anggota:</strong> Gunakan NRP masing-masing dengan password{' '}
+                <code className="font-mono font-bold bg-amber-100/80 px-1 py-0.5 rounded text-amber-900">
+                  WS96@NRP
+                </code>{' '}
+                (contoh:{' '}
+                <code className="font-mono font-bold bg-amber-100/80 px-1 py-0.5 rounded text-amber-900">
+                  WS96@75060702
+                </code>
+                ). Untuk Ajudan (ADC), gunakan NRP ADC yang telah didaftarkan oleh Pimpinan.
+              </div>
+
               <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                 {/* Input 1: NRP / Email */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Email dinas atau NRP
+                    NRP Anggota / NRP Ajudan (ADC) / Email Dinas
                   </label>
                   <input
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="NRP (contoh: 98010710) atau email"
+                    placeholder="Contoh: 75060702 atau NRP ADC"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-800 transition-all"
                   />
                 </div>
@@ -986,20 +1444,36 @@ export default function LoginPage() {
                     <label className="block text-xs font-semibold text-slate-700">
                       Kata Sandi
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-xs font-bold text-red-800 hover:underline"
-                    >
-                      {showPassword ? 'Sembunyikan' : 'Tampilkan'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-xs font-bold text-slate-600 hover:text-slate-900"
+                      >
+                        {showPassword ? 'Sembunyikan' : 'Tampilkan'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('forgot');
+                          setErrorMessage('');
+                          setResetSuccessNrp('');
+                          if (username && /^\d+$/.test(username.trim())) {
+                            setResetNrp(username.trim());
+                          }
+                        }}
+                        className="text-xs font-bold text-red-800 hover:underline"
+                      >
+                        Lupa Password?
+                      </button>
+                    </div>
                   </div>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Masukkan kata sandi akun"
+                      placeholder="Default: WS96@NRP (contoh: WS96@75060702)"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-red-800 transition-all pr-10"
                     />
                     <button
@@ -1043,214 +1517,111 @@ export default function LoginPage() {
 
               {/* Bottom Switcher Note */}
               <div className="pt-3 text-center text-xs text-slate-600 border-t border-slate-100">
-                <span>Belum terdaftar sebagai anggota? </span>
-                <button 
+                <span>Kendala masuk atau lupa kata sandi akun? </span>
+                <button
                   type="button"
                   onClick={() => {
-                    setAuthMode('register');
+                    setAuthMode('forgot');
                     setErrorMessage('');
+                    setResetSuccessNrp('');
+                    if (username && /^\d+$/.test(username.trim())) {
+                      setResetNrp(username.trim());
+                    }
                   }}
                   className="text-red-800 font-bold hover:underline"
                 >
-                  Daftar Anggota Baru
+                  Ajukan Reset Password
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 2: REGISTER FORM */}
-          {authMode === 'register' && (
+          {/* TAB 2: LUPA PASSWORD / AJUKAN RESET KE SEKRETARIS & SUPERADMIN */}
+          {authMode === 'forgot' && (
             <div className="space-y-4">
               <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Pendaftaran Alumni Wira Satya 96
+                <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                  Lupa Password / Ajukan Reset ke Sekretaris &amp; Superadmin
                 </h1>
                 <p className="text-xs text-slate-600 mt-1">
-                  Khusus Perwira Alumni Batalyon Wira Satya Akpol 1996. Akun ADC otomatis aktif dari profil Alumni yang menambahkan.
+                  Seluruh 304 anggota Batalyon Wira Satya 96 telah terdaftar. Ajukan permohonan reset kata sandi ke default{' '}
+                  <code className="font-mono font-bold text-red-800">WS96@NRP</code> melalui Sekretaris / Superadmin.
                 </p>
               </div>
 
-              {regSuccess ? (
+              {resetSuccessNrp ? (
                 <div className="py-4 text-center space-y-3">
                   <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
                   <h4 className="font-extrabold text-slate-900 text-base">
-                    Pendaftaran Berhasil Diajukan!
+                    Permintaan Reset Password Terkirim!
                   </h4>
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 text-left space-y-1">
-                    <p>Nama: <strong>{regNama}</strong></p>
-                    <p>NRP: <strong>{regNrp}</strong> ({regPangkat})</p>
-                    <p>Satker: <strong>{regComposedSatker}</strong> ({regPolda})</p>
-                    <p>Status: <span className="text-amber-800 font-bold">Menunggu Verifikasi Admin / Sekretaris</span></p>
+                  <div className="bg-emerald-50/90 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950 text-left leading-relaxed">
+                    Permintaan reset password untuk NRP <strong>{resetSuccessNrp}</strong> telah dikirim ke Sekretaris &amp; Superadmin (tercatat di Riwayat Audit). Setelah di-reset oleh Admin/Sekretaris, kata sandi Anda akan kembali ke default:{' '}
+                    <code className="font-mono font-extrabold bg-emerald-100 px-1.5 py-0.5 rounded text-emerald-900">
+                      WS96@{resetSuccessNrp}
+                    </code>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Setelah diverifikasi oleh Admin / Sekretaris WS96, Anda dapat masuk ke portal menggunakan NRP dan membuat kata sandi pertama kali.
-                  </p>
                   <button
                     type="button"
                     onClick={() => {
                       setAuthMode('login');
-                      setUsername(regNrp);
-                      setRegSuccess(false);
+                      setUsername(resetSuccessNrp);
+                      setResetSuccessNrp('');
                     }}
                     className="w-full py-2.5 px-4 rounded-xl bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors"
                   >
-                    Buka Halaman Masuk
+                    Kembali ke Halaman Masuk
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleRegisterSubmit} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* NRP */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        NRP <span className="text-red-700">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="74090123"
-                        value={regNrp}
-                        onChange={(e) => setRegNrp(e.target.value.replace(/\D/g, ''))}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      />
-                    </div>
-                    {/* Pangkat */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Pangkat <span className="text-red-700">*</span>
-                      </label>
-                      <select
-                        value={regPangkat}
-                        onChange={(e) => setRegPangkat(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      >
-                        {DAFTAR_PANGKAT_POLRI.map((pkt) => (
-                          <option key={pkt} value={pkt}>{pkt}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Nama Lengkap & Gelar */}
+                <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5">
+                  {/* Input 1: NRP / NIP * */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Nama Lengkap &amp; Gelar <span className="text-red-700">*</span>
+                      NRP / NIP <span className="text-red-700">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Kombes Pol. Nama Lengkap, S.I.K., M.H."
-                      value={regNama}
-                      onChange={(e) => setRegNama(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      placeholder="Contoh: 75060702"
+                      value={resetNrp}
+                      onChange={(e) => setResetNrp(e.target.value.replace(/\s+/g, ''))}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono font-bold focus:ring-2 focus:ring-red-800 focus:outline-none"
                     />
                   </div>
 
-                  {/* Satker Melekat (with SatkerBerjenjangModal) */}
+                  {/* Input 2: Nomor WhatsApp Aktif * */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Satker Melekat <span className="text-red-700">*</span>
-                    </label>
-                    <div className="flex items-stretch gap-2">
-                      <div
-                        onClick={() => setShowSatkerModal(true)}
-                        className={`flex-1 px-3 py-2.5 rounded-xl border cursor-pointer flex items-center gap-2 transition-colors ${
-                          regComposedSatker
-                            ? 'bg-slate-50 border-slate-200 hover:border-red-400'
-                            : 'bg-slate-50 border-dashed border-slate-300 hover:border-red-400'
-                        }`}
-                      >
-                        {regComposedSatker ? (
-                          <>
-                            <Building2 className="w-4 h-4 text-red-800 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <span className="font-bold text-slate-900 block truncate text-[11px]">
-                                {regComposedSatker}
-                              </span>
-                              <span className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                                <span>{regPolda}</span>
-                                {regKodeSatker && (
-                                  <span className="font-mono text-slate-400">({regKodeSatker})</span>
-                                )}
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1.5">
-                            <span>🔒 — Belum Memilih Satker —</span>
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowSatkerModal(true)}
-                        className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-800 font-bold text-[11px] whitespace-nowrap transition-colors"
-                      >
-                        Pilih Satker Berjenjang
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Email Dinas & No WhatsApp */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        Email Dinas (@polri.go.id)
-                      </label>
-                      <input
-                        type="email"
-                        placeholder={regNrp ? `${regNrp}@polri.go.id` : 'nrp@polri.go.id'}
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">
-                        No WhatsApp
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="0812xxxx"
-                        value={regNoHp}
-                        onChange={(e) => setRegNoHp(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email Sekunder / Pribadi (Opsional — misal Gmail) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Email Sekunder / Pribadi <span className="text-slate-400 font-normal">(Opsional — misal Gmail)</span>
+                      Nomor WhatsApp Aktif <span className="text-red-700">*</span>
                     </label>
                     <input
-                      type="email"
-                      placeholder="Contoh: nama.alumni96@gmail.com"
-                      value={regSecondaryEmail}
-                      onChange={(e) => setRegSecondaryEmail(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      type="tel"
+                      required
+                      placeholder="Contoh: 081234567890"
+                      value={resetWa}
+                      onChange={(e) => setResetWa(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
                     />
                   </div>
 
-                  {/* Keterangan */}
+                  {/* Input 3: Keterangan / Alasan Reset Password */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Catatan / Asal Pleton (Opsional)
+                      Keterangan / Alasan Reset Password <span className="text-slate-400 font-normal">(Opsional)</span>
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: Batalyon Wira Satya Akpol 96"
-                      value={regAlasan}
-                      onChange={(e) => setRegAlasan(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      placeholder="Contoh: Lupa password setelah ganti HP"
+                      value={resetReason}
+                      onChange={(e) => setResetReason(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-800 focus:outline-none"
                     />
                   </div>
 
-                  {/* Submit Button */}
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <button
                       type="submit"
                       disabled={loading}
@@ -1259,23 +1630,25 @@ export default function LoginPage() {
                       {loading ? (
                         <>
                           <RotateCw className="w-4 h-4 animate-spin" />
-                          <span>Mengirimkan Berkas...</span>
+                          <span>Mengirim Permintaan...</span>
                         </>
                       ) : (
                         <>
-                          <UserPlus className="w-4 h-4" />
-                          <span>Ajukan Pendaftaran Anggota</span>
+                          <KeyRound className="w-4 h-4" />
+                          <span>Kirim Permintaan Reset Password</span>
                         </>
                       )}
                     </button>
                   </div>
 
-                  {/* Bottom Note */}
                   <div className="pt-2 text-center text-xs text-slate-600 border-t border-slate-100">
-                    <span>Sudah memiliki akun? </span>
-                    <button 
+                    <span>Sudah ingat kata sandi Anda? </span>
+                    <button
                       type="button"
-                      onClick={() => setAuthMode('login')}
+                      onClick={() => {
+                        setAuthMode('login');
+                        setErrorMessage('');
+                      }}
                       className="text-red-800 font-bold hover:underline"
                     >
                       Masuk ke Akun
@@ -1285,25 +1658,8 @@ export default function LoginPage() {
               )}
             </div>
           )}
-
         </div>
       </main>
-
-      {/* MODAL PILIH SATKER BERJENJANG (UNTUK TAB PENDAFTARAN) */}
-      <SatkerBerjenjangModal
-        isOpen={showSatkerModal}
-        onClose={() => setShowSatkerModal(false)}
-        initialPolda={regPolda}
-        initialSatker={regSatkerUtama}
-        initialSubSatker={regSubSatker}
-        onApply={(result: SatkerSelectionResult) => {
-          setRegPolda(result.polda);
-          setRegSatkerUtama(result.satkerUtama);
-          setRegSubSatker(result.subSatker);
-          setRegComposedSatker(result.composedSatker);
-          setRegKodeSatker(result.kodeSatker);
-        }}
-      />
 
       {/* 5. FOOTER */}
       <footer className="py-4 px-6 text-center text-xs text-slate-500 border-t border-slate-200 bg-white">
@@ -1315,7 +1671,6 @@ export default function LoginPage() {
           <span className="hover:text-slate-900 cursor-pointer">#SelaluBahagia</span>
         </div>
       </footer>
-
     </div>
   );
 }

@@ -3,6 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { AuthUser } from '@/types';
 import {
+  getActiveAdcSessionFromStorage,
+  recordAdcActivityToAuditLog,
+} from '@/lib/avatarUtils';
+import {
   SatkerBerjenjangModal,
   SatkerSelectionResult,
 } from '@/components/SatkerBerjenjangModal';
@@ -316,6 +320,13 @@ export const SecuritySettingsPanel: React.FC<SecuritySettingsPanelProps> = ({
       currentUser
     );
     setSecConfig(next);
+    const adcSess = getActiveAdcSessionFromStorage();
+    if (adcSess) {
+      recordAdcActivityToAuditLog({
+        action: 'AKTIVITAS_ADC',
+        details: `[ADC ${adcSess.adcPangkat} ${adcSess.adcNama} (${adcSess.adcNrp}) mewakili ${adcSess.pimpinanPangkat} ${adcSess.pimpinanNama} (${adcSess.pimpinanNrp})] Memperbarui Pengaturan Keamanan Akun (${message || 'Konfigurasi Keamanan'})`,
+      });
+    }
     if (message) triggerToast(message, 'success');
   };
 
@@ -377,6 +388,14 @@ export const SecuritySettingsPanel: React.FC<SecuritySettingsPanelProps> = ({
       localStorage.setItem('ws96_auth_user', JSON.stringify(nextAuth));
       localStorage.setItem('ws96_active_user', JSON.stringify(nextAuth));
       localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextAuth));
+    }
+
+    const adcSess = getActiveAdcSessionFromStorage();
+    if (adcSess) {
+      recordAdcActivityToAuditLog({
+        action: 'AKTIVITAS_ADC',
+        details: `[ADC ${adcSess.adcPangkat} ${adcSess.adcNama} (${adcSess.adcNrp}) mewakili ${adcSess.pimpinanPangkat} ${adcSess.pimpinanNama} (${adcSess.pimpinanNrp})] Memperbarui Password Akun Pimpinan di Pengaturan Keamanan`,
+      });
     }
 
     setSavingPassword(false);
@@ -646,6 +665,14 @@ export const SecuritySettingsPanel: React.FC<SecuritySettingsPanelProps> = ({
       localStorage.setItem('ws96_active_user', JSON.stringify(nextUser));
       localStorage.setItem('wirasatya96_current_user', JSON.stringify(nextUser));
       window.dispatchEvent(new Event('ws96_user_updated'));
+    }
+
+    const adcSess = getActiveAdcSessionFromStorage();
+    if (adcSess) {
+      recordAdcActivityToAuditLog({
+        action: 'AKTIVITAS_ADC',
+        details: `[ADC ${adcSess.adcPangkat} ${adcSess.adcNama} (${adcSess.adcNrp}) mewakili ${adcSess.pimpinanPangkat} ${adcSess.pimpinanNama} (${adcSess.pimpinanNrp})] Memperbarui Profil Satker & Wilayah Penugasan (${cleanJabatan} — ${cleanSatker})`,
+      });
     }
 
     setSavingSatker(false);

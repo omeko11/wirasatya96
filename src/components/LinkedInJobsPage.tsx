@@ -12,6 +12,11 @@ import {
   getOrBuildUserProfile,
   resolveAvatarUrl,
   formatJabatanWithSatker,
+  detectStatusKedinasan,
+  extractCleanJabatanTitle,
+  stripRankFromName,
+  getActiveAdcSessionFromStorage,
+  recordAdcActivityToAuditLog,
 } from '@/lib/avatarUtils';
 import {
   getJabatanGroupsForPangkat,
@@ -113,22 +118,34 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       : customJabatanList.filter((j) => j.perwiraNrp !== '98010710');
 
     const memberEntries: RiwayatJabatanLeting[] = visibleMembers.map((m) => {
-      const jab = m.jabatanTerakhir || m.jabatan || 'Perwira Menengah Polri';
+      const statusKedinasan = detectStatusKedinasan(
+        m.statusKedinasan || m.statusDinas,
+        m.jabatanTerakhir || m.jabatan,
+        m.jenisAnggota
+      );
+      const cleanJab = extractCleanJabatanTitle(m.jabatanTerakhir || m.jabatan) || 'Perwira Menengah Polri';
       const stk = m.satuanKerja || m.satker || 'Mabes Polri';
       const pld = m.polda || 'MABES POLRI';
+      const uraianTugas =
+        statusKedinasan === 'ALMARHUM'
+          ? `Almarhum • Jabatan terakhir pada ${stk} (${pld}).`
+          : statusKedinasan === 'PURNA_TUGAS'
+          ? `Purna Tugas Polri • Jabatan terakhir pada ${stk} (${pld}).`
+          : `Penugasan aktif pada ${stk} (${pld}).`;
       return {
         id: `jab-member-${m.nrp}`,
         perwiraNrp: m.nrp,
         namaPerwira: m.namaLengkap,
         pangkat: m.pangkat,
         avatarUrl: getAvatarUrl(m.fotoUrl),
-        jabatan: jab,
+        jabatan: cleanJab,
         satker: stk,
         polda: pld,
-        fungsiPolri: inferFungsiPolri(jab, stk, pld),
+        fungsiPolri: inferFungsiPolri(cleanJab, stk, pld),
         tahunMulai: 2024,
-        isCurrent: m.statusDinas !== 'PURNA_TUGAS',
-        uraianTugas: `Penugasan aktif pada ${stk} (${pld}).`,
+        isCurrent: statusKedinasan === 'AKTIF',
+        statusKedinasan,
+        uraianTugas,
         dasarTR: 'Data Direktori & UKP',
       };
     });
@@ -220,6 +237,13 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
     setCustomJabatanList(updated);
     if (typeof window !== 'undefined') {
       localStorage.setItem('wirasatya96_riwayat_jabatan_v4', JSON.stringify(updated));
+    }
+
+    if (getActiveAdcSessionFromStorage()) {
+      recordAdcActivityToAuditLog({
+        action: 'AKTIVITAS_ADC',
+        details: 'Menambahkan/memperbarui riwayat jabatan: ' + effectiveJabatan + ' pada ' + composedSatker,
+      });
     }
 
     // Sync active jabatan/satker/polda to members & users database
@@ -536,11 +560,18 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                         </div>
 
                         <div className="min-w-0">
-                          {/* Jabatan Organisasi Polri + Jabatan dalam Angkatan */}
+                          {/* Perwira Name (Bold Black) + Verified Badge + Pangkat + Jabatan Angkatan */}
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h2 className="text-sm sm:text-base font-bold text-slate-900 hover:text-red-800 transition-colors">
-                              {item.jabatan}
+                            <h2
+                              onClick={() => matchedMember && onSelectMember && onSelectMember(matchedMember)}
+                              className="text-sm sm:text-base font-bold text-slate-900 hover:text-red-800 cursor-pointer transition-colors"
+                            >
+                              {stripRankFromName(item.namaPerwira) || item.namaPerwira}
                             </h2>
+                            <MetaVerifiedBadge nrp={item.perwiraNrp} size="xs" />
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200">
+                              {item.pangkat}
+                            </span>
                             {jabatanAngkatanBadge && (
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${jabatanAngkatanBadge.cls}`}
@@ -550,13 +581,13 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                             )}
                           </div>
 
-                          {/* Perwira Name & Rank */}
-                          <div 
-                            onClick={() => matchedMember && onSelectMember && onSelectMember(matchedMember)}
-                            className="text-xs font-semibold text-red-900 hover:underline cursor-pointer flex items-center gap-1.5 mt-0.5 flex-wrap"
-                          >
-                            <span>{item.namaPerwira}</span>
-                            <MetaVerifiedBadge nrp={item.perwiraNrp} size="xs" />
+                          {/* Jabatan Organisasi Polri (Red) & NRP */}
+                          <div className="text-xs flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="font-semibold text-red-900">
+                              {item.statusKedinasan === 'ALMARHUM' || item.statusKedinasan === 'PURNA_TUGAS'
+                                ? `Eks ${extractCleanJabatanTitle(item.jabatan)}`
+                                : extractCleanJabatanTitle(item.jabatan)}
+                            </span>
                             <span className="text-slate-400 font-normal">&bull;</span>
                             <span className="text-slate-600 font-normal">NRP {item.perwiraNrp}</span>
                           </div>
@@ -578,7 +609,15 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
                       {/* Status Badge */}
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        {item.isCurrent ? (
+                        {item.statusKedinasan === 'ALMARHUM' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                            🕊️ Almarhum / Gugur
+                          </span>
+                        ) : item.statusKedinasan === 'PURNA_TUGAS' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            🎖️ Purna Tugas / Pensiun
+                          </span>
+                        ) : item.isCurrent ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
                             Menjabat Sekarang
@@ -628,7 +667,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )}
-                        {matchedMember && onOpenChat && (
+                        {matchedMember && onOpenChat && item.statusKedinasan !== 'ALMARHUM' && (
                           <button
                             onClick={() => onOpenChat(matchedMember)}
                             className="px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
@@ -637,7 +676,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                             <span>Obrolan Cepat</span>
                           </button>
                         )}
-                        {matchedMember?.noHp && (
+                        {matchedMember?.noHp && item.statusKedinasan !== 'ALMARHUM' && (
                           <a
                             href={`https://wa.me/${matchedMember.noHp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20Komandan%20${encodeURIComponent(item.namaPerwira)}%2C%20salam%20Wira%20Satya%2096`}
                             target="_blank"

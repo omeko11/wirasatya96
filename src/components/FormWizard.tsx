@@ -12,6 +12,10 @@ import {
   RETIREMENT_AGE_POLRI,
   DEFAULT_AVATAR_URL,
   DEFAULT_COVER_URL,
+  detectStatusKedinasan,
+  extractCleanJabatanTitle,
+  getActiveAdcSessionFromStorage,
+  recordAdcActivityToAuditLog,
 } from '@/lib/avatarUtils';
 import { SatkerBerjenjangModal } from '@/components/SatkerBerjenjangModal';
 import {
@@ -143,6 +147,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
   // Form State initialized from existing member or defaults
   const [formData, setFormData] = useState<FormWizardData>({
     jenisAnggota: 'ANGGOTA POLRI',
+    statusKedinasan: 'AKTIF',
     tipeSatker: 'MABES',
     satkerMabes: 'BARESKRIM POLRI',
     subSatker: '',
@@ -157,6 +162,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     statusPerkawinan: 'MENIKAH',
     jumlahAnak: 0,
     daftarAnak: [],
+    namaAdc: '',
+    pangkatAdc: 'Briptu',
+    nrpAdc: '',
+    kontakAdc: '',
     daftarAdc: [],
     tahunPurnaTugas: 2032,
     sisaTahunDinas: 6,
@@ -190,15 +199,15 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       let initialDaftarAdc: AdcPersonel[] = [];
       if (Array.isArray(existingMember.daftarAdc) && existingMember.daftarAdc.length > 0) {
         initialDaftarAdc = existingMember.daftarAdc;
-      } else if (existingMember.kontakAdc?.trim() || existingMember.namaAdc?.trim()) {
+      } else if (existingMember.kontakAdc?.trim() || existingMember.namaAdc?.trim() || existingMember.nrpAdc?.trim()) {
         const raw = (existingMember.kontakAdc || '').trim();
         const parts = raw.split(/\s*-\s*|\s*•\s*/);
         initialDaftarAdc = [
           {
             id: 'adc-init-1',
             nama: existingMember.namaAdc?.trim() || parts[0] || '',
-            nrp: '',
-            pangkat: 'Briptu',
+            nrp: existingMember.nrpAdc?.trim() || '',
+            pangkat: existingMember.pangkatAdc || 'Briptu',
             jabatan: 'ADC / Ajudan',
             tanggalLahir: '',
             noHp: parts.length > 1 ? parts.slice(1).join(' ') : raw,
@@ -207,12 +216,22 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         ];
       }
 
-      const cleanedJabatan = cleanJabatanOnly(existingMember.jabatanTerakhir) || existingMember.jabatanTerakhir || '';
+      const detectedStatus = detectStatusKedinasan(
+        existingMember.statusKedinasan || existingMember.statusDinas,
+        existingMember.jabatanTerakhir || existingMember.jabatan,
+        existingMember.jenisAnggota
+      );
+      const rawCleanedJab =
+        cleanJabatanOnly(existingMember.jabatanTerakhir) || existingMember.jabatanTerakhir || '';
+      const cleanedJabatan = extractCleanJabatanTitle(rawCleanedJab) || rawCleanedJab;
       const isExt = existingMember.tipeSatker === 'KEMEN/LEMBAGA';
       setIsExternalJabatan(isExt);
 
+      const firstAdc = initialDaftarAdc[0];
+
       setFormData({
         ...existingMember,
+        statusKedinasan: detectedStatus,
         tempatLahir: existingMember.tempatLahir || 'Jakarta',
         tanggalLahir: calc58.tanggalLahir,
         usia: calc58.usiaTahun,
@@ -220,6 +239,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         sisaTahunDinas: calc58.sisaTahunDinas,
         jabatanTerakhir: cleanedJabatan,
         jenisAnggota: resolvedKind,
+        namaAdc: existingMember.namaAdc || firstAdc?.nama || '',
+        pangkatAdc: existingMember.pangkatAdc || firstAdc?.pangkat || 'Briptu',
+        nrpAdc: existingMember.nrpAdc || firstAdc?.nrp || '',
+        kontakAdc: existingMember.kontakAdc || firstAdc?.noHp || '',
         daftarAdc: initialDaftarAdc,
         tipeSatker:
           existingMember.tipeSatker ||
@@ -454,28 +477,70 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       ? DEFAULT_AVATAR_URL
       : resolveAvatarUrl(formData.fotoUrl, existingMember?.fotoUrl);
 
-    const validAdcList = (formData.daftarAdc || []).filter(
-      (a) => a.nama.trim().length > 0 || a.noHp.trim().length > 0
+    const rawAdcList = [...(formData.daftarAdc || [])];
+    const primaryAdcNrp = (formData.nrpAdc || '').trim();
+    const primaryAdcNama = (formData.namaAdc || '').trim();
+    const primaryAdcPangkat = formData.pangkatAdc || 'Briptu';
+    const primaryAdcKontak = (formData.kontakAdc || '').trim();
+
+    if (primaryAdcNama || primaryAdcNrp || primaryAdcKontak) {
+      if (rawAdcList.length === 0) {
+        rawAdcList.push({
+          id: 'adc-primary-' + Date.now(),
+          nama: primaryAdcNama,
+          nrp: primaryAdcNrp,
+          pangkat: primaryAdcPangkat,
+          jabatan: 'ADC / Ajudan',
+          noHp: primaryAdcKontak,
+          email: primaryAdcNrp ? `${primaryAdcNrp}@polri.go.id` : '',
+        });
+      } else {
+        rawAdcList[0] = {
+          ...rawAdcList[0],
+          nama: primaryAdcNama || rawAdcList[0].nama,
+          nrp: primaryAdcNrp || rawAdcList[0].nrp,
+          pangkat: primaryAdcPangkat || rawAdcList[0].pangkat,
+          noHp: primaryAdcKontak || rawAdcList[0].noHp,
+        };
+      }
+    }
+
+    const validAdcList = rawAdcList.filter(
+      (a) => a.nama.trim().length > 0 || a.noHp.trim().length > 0 || (a.nrp && a.nrp.trim().length > 0)
     );
     const syncedKontakAdc =
-      validAdcList.length > 0
+      primaryAdcKontak ||
+      (validAdcList.length > 0
         ? validAdcList
             .map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}${a.noHp ? ' - ' + a.noHp : ''}`.trim())
             .join(' • ')
-        : '';
+        : '');
     const syncedNamaAdc =
-      validAdcList.length > 0
+      primaryAdcNama ||
+      (validAdcList.length > 0
         ? validAdcList.map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}`.trim()).join(', ')
-        : '';
+        : '');
 
     const finalCalc58 = calculateRetirement58(formData.tanggalLahir, formData.nrp);
+    const resolvedStatusKedinasan = detectStatusKedinasan(
+      formData.statusKedinasan,
+      formData.jabatanTerakhir,
+      formData.jenisAnggota
+    );
+    const cleanJabTitle =
+      extractCleanJabatanTitle(cleanJabatanOnly(formData.jabatanTerakhir) || formData.jabatanTerakhir) ||
+      cleanJabatanOnly(formData.jabatanTerakhir) ||
+      formData.jabatanTerakhir ||
+      '';
 
     const memberToSave: AnggotaWiraSatya = {
       id: existingMember?.id || 'ws-' + (formData.nrp || Date.now()),
       nrp: formData.nrp || '',
       namaLengkap: formData.namaLengkap || '',
       pangkat: formData.pangkat || 'Kombes Pol',
-      jabatanTerakhir: cleanJabatanOnly(formData.jabatanTerakhir) || formData.jabatanTerakhir || '',
+      jabatanTerakhir: cleanJabTitle,
+      statusKedinasan: resolvedStatusKedinasan,
+      statusDinas: resolvedStatusKedinasan,
       satuanKerja: derivedSatker,
       tipeSatker:
         formData.tipeSatker || (derivedPolda === 'MABES POLRI' ? 'MABES' : 'POLDA'),
@@ -496,6 +561,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       secondaryEmail: formData.secondaryEmail || '',
       kontakAdc: syncedKontakAdc,
       namaAdc: syncedNamaAdc,
+      pangkatAdc: primaryAdcPangkat || validAdcList[0]?.pangkat || 'Briptu',
+      nrpAdc: primaryAdcNrp || validAdcList[0]?.nrp || '',
       daftarAdc: validAdcList,
       fotoUrl: finalFotoUrl,
       coverUrl: formData.coverUrl,
@@ -549,6 +616,86 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       updatedAt: new Date().toISOString(),
     };
 
+    // Save ADC mapping in ws96_adc_registry_v1 and ws96_user_overrides_v1 if nrpAdc is provided
+    if (typeof window !== 'undefined') {
+      const adcsToRegister = validAdcList.filter((a) => a.nrp && a.nrp.trim().length > 0);
+      if (memberToSave.nrpAdc?.trim() && !adcsToRegister.some((a) => a.nrp?.trim() === memberToSave.nrpAdc?.trim())) {
+        adcsToRegister.unshift({
+          id: 'adc-reg-primary',
+          nama: memberToSave.namaAdc || `ADC ${memberToSave.namaLengkap}`,
+          nrp: memberToSave.nrpAdc.trim(),
+          pangkat: memberToSave.pangkatAdc || 'Briptu',
+          noHp: memberToSave.kontakAdc || '',
+        });
+      }
+
+      if (adcsToRegister.length > 0) {
+        try {
+          const rawReg = localStorage.getItem('ws96_adc_registry_v1');
+          const regMap: Record<string, any> = rawReg ? JSON.parse(rawReg) : {};
+          const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
+          const uOvMap: Record<string, any> = rawUOv ? JSON.parse(rawUOv) : {};
+
+          adcsToRegister.forEach((adcItem) => {
+            const cleanAdcNrp = (adcItem.nrp || '').replace(/\s+/g, '').trim();
+            if (!cleanAdcNrp || cleanAdcNrp === memberToSave.nrp) return;
+            const adcNamaClean = (adcItem.nama || memberToSave.namaAdc || `ADC ${memberToSave.namaLengkap}`).trim();
+            const adcPangkatClean = adcItem.pangkat || memberToSave.pangkatAdc || 'Briptu';
+            const adcNoHpClean = adcItem.noHp || memberToSave.kontakAdc || '';
+
+            regMap[cleanAdcNrp] = {
+              adcNrp: cleanAdcNrp,
+              adcNama: adcNamaClean,
+              adcPangkat: adcPangkatClean,
+              adcNoHp: adcNoHpClean,
+              pimpinanNrp: memberToSave.nrp,
+              pimpinanNama: memberToSave.namaLengkap,
+              pimpinanPangkat: memberToSave.pangkat,
+            };
+
+            const existingAdcOv = uOvMap[cleanAdcNrp] || {};
+            uOvMap[cleanAdcNrp] = {
+              ...existingAdcOv,
+              id: existingAdcOv.id || `u-adc-${cleanAdcNrp}`,
+              profileId: memberToSave.id,
+              nrp: cleanAdcNrp,
+              nama: adcNamaClean,
+              pangkat: adcPangkatClean,
+              role: 'ANGGOTA',
+              jabatanTerakhir: 'ADC',
+              satker: memberToSave.satuanKerja,
+              polda: memberToSave.polda,
+              email: `${cleanAdcNrp}@polri.go.id`,
+              noHp: adcNoHpClean,
+              isAdcAccount: true,
+              adcOfNrp: memberToSave.nrp,
+              adcOfNama: memberToSave.namaLengkap,
+              adcOfPangkat: memberToSave.pangkat,
+              password: existingAdcOv.password || `WS96@${cleanAdcNrp}`,
+              status: 'AKTIF',
+              updatedAt: new Date().toISOString(),
+            };
+          });
+
+          localStorage.setItem('ws96_adc_registry_v1', JSON.stringify(regMap));
+          localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(uOvMap));
+        } catch {
+          // ignore storage errors
+        }
+      }
+
+      if (getActiveAdcSessionFromStorage()) {
+        recordAdcActivityToAuditLog({
+          action: 'AKTIVITAS_ADC',
+          details:
+            'Memperbarui formulir data diri & kedinasan Pimpinan ' +
+            memberToSave.pangkat +
+            ' ' +
+            memberToSave.namaLengkap,
+        });
+      }
+    }
+
     // Sync to ws96_auth_user if editing own profile
     if (memberToSave.nrp === currentUser.nrp && typeof window !== 'undefined') {
       try {
@@ -565,6 +712,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
           secondaryEmail: memberToSave.secondaryEmail,
           satker: memberToSave.satuanKerja,
           polda: memberToSave.polda,
+          statusKedinasan: memberToSave.statusKedinasan,
         };
         localStorage.setItem('ws96_auth_user', JSON.stringify(updatedAuth));
         localStorage.setItem('ws96_active_user', JSON.stringify(updatedAuth));
@@ -683,8 +831,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 </span>
               </div>
 
-              {/* Korps Personel, Pangkat & Pendidikan Terakhir */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {/* Korps Personel, Status Kedinasan, Pangkat & Pendidikan Terakhir */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Korps / Kategori Personel <span className="text-red-500">*</span>
@@ -698,6 +846,21 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     <option value="ALUMNI AKPOL 1996">Perwira Polri (Alumni Akpol 1996)</option>
                     <option value="ASN / PNS POLRI">ASN / PNS Polri</option>
                     <option value="PURNAWIRAWAN POLRI">Purnawirawan / Purna Tugas</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Status Kedinasan Personel <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.statusKedinasan || 'AKTIF'}
+                    onChange={(e) => handleInputChange('statusKedinasan', e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  >
+                    <option value="AKTIF">Aktif Menjabat</option>
+                    <option value="PURNA_TUGAS">Purna Tugas / Pensiun</option>
+                    <option value="ALMARHUM">Almarhum / Gugur</option>
                   </select>
                 </div>
 
@@ -777,7 +940,10 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-700">
-                      Jabatan Organisasi Polri Saat Ini <span className="text-red-500">*</span>
+                      {formData.statusKedinasan === 'ALMARHUM' || formData.statusKedinasan === 'PURNA_TUGAS'
+                        ? 'Jabatan Terakhir Sebelum Purna Tugas / Wafat'
+                        : 'Jabatan Organisasi Polri Saat Ini'}{' '}
+                      <span className="text-red-500">*</span>
                     </label>
                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700">
                       {isOfficerRankIpdaUp(formData.pangkat)
@@ -1200,15 +1366,107 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 </div>
               </div>
 
-              {/* Rincian Data ADC / Ajudan / Spri (Dynamic Repeatable Identity Cards like Tambah Anak) */}
+              {/* Rincian Data Ajudan / ADC Resmi & Pendamping Pimpinan */}
               <div className="pt-4 border-t border-slate-200/80 space-y-3.5">
-                <div className="flex items-center justify-between gap-2">
+                <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-extrabold text-polri-navy flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5 text-polri-gold" />
+                        <span>Ajudan / ADC Resmi (Akses Login Mewakili Pimpinan)</span>
+                      </span>
+                      <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                        Jika NRP ADC diisi, Ajudan (ADC) dapat login menggunakan NRP ADC tersebut (password default: <strong>WS96@NRP_ADC</strong> atau password Pimpinan) untuk membantu memperbarui data Pimpinan. Seluruh aktivitas login &amp; perubahan data oleh ADC tercatat di Log Audit atas identitas NRP ADC.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Nama Lengkap ADC
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Aryo Pratama, S.H."
+                        value={formData.namaAdc || ''}
+                        onChange={(e) => handleInputChange('namaAdc', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Pangkat ADC
+                      </label>
+                      <select
+                        value={formData.pangkatAdc || 'Briptu'}
+                        onChange={(e) => handleInputChange('pangkatAdc', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                      >
+                        {[
+                          'Briptu',
+                          'Bripda',
+                          'Brigpol',
+                          'Bripka',
+                          'Aipda',
+                          'Aiptu',
+                          'Ipda',
+                          'Iptu',
+                          'AKP',
+                          'Bharada',
+                          'Bharatu',
+                          'Bharaka',
+                          'Abripda',
+                          'Abriptu',
+                          'Abrip',
+                          'Pengatur / ASN Polri',
+                          'Penata / ASN Polri',
+                          'Pembina / ASN Polri',
+                          'ASN / PNS Polri',
+                        ].map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        NRP ADC (Akses Login Mewakili Pimpinan)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: 99040123"
+                        value={formData.nrpAdc || ''}
+                        onChange={(e) => handleInputChange('nrpAdc', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        No. WhatsApp ADC
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="0812-xxxx-xxxx"
+                        value={formData.kontakAdc || ''}
+                        onChange={(e) => handleInputChange('kontakAdc', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-1">
                   <div>
                     <label className="block text-xs font-extrabold text-slate-800">
-                      Data ADC / Ajudan / Spri (Opsional — Auto-Generate Login ADC)
+                      Daftar ADC / Ajudan / Spri Tambahan (Opsional)
                     </label>
                     <span className="text-[11px] text-slate-500">
-                      NRP ADC yang ditambahkan otomatis dapat login menggunakan <strong>Kata Sandi yang sama dengan akun Alumni ini</strong>
+                      Jika memiliki lebih dari 1 ADC/Spri, klik &ldquo;Tambah ADC&rdquo; di samping.
                     </span>
                   </div>
                   <button
@@ -1222,8 +1480,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 </div>
 
                 {(!formData.daftarAdc || formData.daftarAdc.length === 0) && (
-                  <div className="p-4 rounded-xl border border-dashed border-slate-300 bg-white/70 text-center text-xs text-slate-400">
-                    Belum ada data ADC / Ajudan. Klik &ldquo;Tambah ADC&rdquo; untuk mengaktifkan akses login NRP ADC (kata sandi mengikuti akun Alumni).
+                  <div className="p-3 rounded-xl border border-dashed border-slate-300 bg-white/70 text-center text-xs text-slate-400">
+                    Belum ada ADC tambahan. Anda cukup mengisi kolom Ajudan / ADC Resmi di atas atau klik &ldquo;Tambah ADC&rdquo;.
                   </div>
                 )}
 

@@ -21,7 +21,12 @@ import {
   Phone
 } from 'lucide-react';
 import { AuthUser, UserRole, AnggotaWiraSatya } from '@/types';
-import { getAvatarUrl, resolveAvatarUrl, formatJabatanWithSatker } from '@/lib/avatarUtils';
+import {
+  getAvatarUrl,
+  resolveAvatarUrl,
+  formatJabatanWithSatker,
+  getActiveAdcSessionFromStorage,
+} from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 
@@ -82,6 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const appsMenuRef = useRef<HTMLDivElement>(null);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const isLeadership = currentUser.role !== 'ANGGOTA';
+  const adcSession = currentUser.activeAdcSession || getActiveAdcSessionFromStorage();
 
   // Sanitize name for compact single-line display while preserving degrees
   const myMember = React.useMemo(
@@ -160,6 +166,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Kembali ke Akun {impersonatorUser.nama} (Superadmin)
               </button>
             )}
+          </div>
+        )}
+
+        {/* Active Ajudan / ADC Session Banner */}
+        {adcSession && (
+          <div className="bg-gradient-to-r from-indigo-950 via-blue-900 to-slate-900 text-amber-300 px-4 py-1.5 text-xs font-bold flex items-center justify-between gap-2 flex-wrap border-b border-amber-400/30">
+            <span>
+              🎖️ Mode Ajudan / ADC: Masuk sebagai {adcSession.adcPangkat} {adcSession.adcNama} (NRP {adcSession.adcNrp}) mewakili Pimpinan {adcSession.pimpinanPangkat} {adcSession.pimpinanNama} &bull; Aktivitas tercatat di Log Audit atas NRP ADC
+            </span>
           </div>
         )}
 
@@ -569,6 +584,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
+                            if (typeof window !== 'undefined') {
+                              localStorage.removeItem('ws96_adc_session');
+                            }
                             onLogout();
                           }}
                           className="w-full px-3 py-2 text-left hover:bg-red-50 text-red-700 rounded-lg flex items-center gap-2 font-semibold transition-colors"

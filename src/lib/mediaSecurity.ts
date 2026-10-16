@@ -13,6 +13,7 @@ export type MediaAssetKind = 'AVATAR' | 'COVER' | 'POST' | 'DOCUMENT' | 'EXPORT'
 export interface ProcessedSecureMedia {
   dataUrl: string;
   fileName: string;
+  encryptedFileName: string;
   trackingCode: string;
   hashEnkripsi: string;
   dateStamp: string;
@@ -89,17 +90,36 @@ export function computeEncryptedTrackingHash(
  * `WS-<hash_enkripsi>-<date>.<ext>` (or without extension if ext is omitted).
  */
 export function generateLeakageTrackedFileName(
-  actorNrp: string = 'ANON',
+  actorNrpOrOpts:
+    | string
+    | {
+        actorNrp?: string;
+        ownerNrp?: string;
+        preset?: string;
+        extension?: string;
+        extraEntropy?: string;
+      } = 'ANON',
   ext: string = 'webp',
   kind: MediaAssetKind = 'AVATAR',
   action: 'UPLOAD' | 'DOWNLOAD' = 'UPLOAD',
   payloadSample: string = '',
   sizeBytes?: number
-): { fileName: string; trackingCode: string; hashEnkripsi: string; dateStamp: string } {
+): { fileName: string; trackingCode: string; hashEnkripsi: string; dateStamp: string } & string {
+  const actorNrp =
+    typeof actorNrpOrOpts === 'string'
+      ? actorNrpOrOpts
+      : actorNrpOrOpts.actorNrp || actorNrpOrOpts.ownerNrp || 'ANON';
+  const effectiveExt =
+    typeof actorNrpOrOpts === 'string' ? ext : actorNrpOrOpts.extension || ext;
+  const effectiveSample =
+    typeof actorNrpOrOpts === 'string'
+      ? payloadSample
+      : actorNrpOrOpts.extraEntropy || payloadSample;
+
   const dateStamp = formatMediaDateStamp();
-  const hashEnkripsi = computeEncryptedTrackingHash(actorNrp, dateStamp, payloadSample);
+  const hashEnkripsi = computeEncryptedTrackingHash(actorNrp, dateStamp, effectiveSample);
   const trackingCode = `WS-${hashEnkripsi}-${dateStamp}`;
-  const cleanExt = ext.replace(/^\./, '').toLowerCase();
+  const cleanExt = effectiveExt.replace(/^\./, '').toLowerCase();
   const fileName = cleanExt ? `${trackingCode}.${cleanExt}` : trackingCode;
 
   recordMediaAuditEntry({
@@ -113,7 +133,18 @@ export function generateLeakageTrackedFileName(
     sizeBytes,
   });
 
-  return { fileName, trackingCode, hashEnkripsi, dateStamp };
+  const result = Object.assign(new String(fileName), {
+    fileName,
+    trackingCode,
+    hashEnkripsi,
+    dateStamp,
+  });
+  return result as unknown as {
+    fileName: string;
+    trackingCode: string;
+    hashEnkripsi: string;
+    dateStamp: string;
+  } & string;
 }
 
 /**
@@ -230,9 +261,24 @@ function detectActiveContentBox(
  */
 export function processSecureImageUpload(
   file: File,
-  kind: MediaAssetKind = 'AVATAR',
-  actorNrp: string = 'ANON'
+  kindOrOpts:
+    | MediaAssetKind
+    | {
+        preset?: string;
+        actorNrp?: string;
+        ownerNrp?: string;
+      } = 'AVATAR',
+  actorNrpParam: string = 'ANON'
 ): Promise<ProcessedSecureMedia> {
+  const kind: MediaAssetKind =
+    typeof kindOrOpts === 'string'
+      ? kindOrOpts
+      : (kindOrOpts.preset as MediaAssetKind) || 'AVATAR';
+  const actorNrp: string =
+    typeof kindOrOpts === 'string'
+      ? actorNrpParam
+      : kindOrOpts.actorNrp || kindOrOpts.ownerNrp || actorNrpParam || 'ANON';
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Gagal membaca file gambar'));
@@ -349,6 +395,7 @@ export function processSecureImageUpload(
         resolve({
           dataUrl: trackedDataUrl,
           fileName,
+          encryptedFileName: fileName,
           trackingCode,
           hashEnkripsi,
           dateStamp,
@@ -368,20 +415,44 @@ export function processSecureImageUpload(
  * Triggers a browser file download with automatic `WS-<hash_enkripsi>-<date>.<ext>` naming
  * so exported CSVs, reports, or downloaded media can be traced if leaked.
  */
-export function triggerTrackedDownload(params: {
-  content: Blob | string;
-  ext: string;
-  actorNrp?: string;
-  kind?: MediaAssetKind;
-  mimeType?: string;
-}): { fileName: string; trackingCode: string } {
-  const {
-    content,
-    ext,
-    actorNrp = 'ANON',
-    kind = 'EXPORT',
-    mimeType = 'text/csv;charset=utf-8;',
-  } = params;
+export function triggerTrackedDownload(
+  paramsOrContent:
+    | {
+        content: Blob | string;
+        ext: string;
+        actorNrp?: string;
+        kind?: MediaAssetKind;
+        mimeType?: string;
+      }
+    | Blob
+    | string,
+  extraOpts?: {
+    actorNrp?: string;
+    ownerNrp?: string;
+    preset?: string;
+    extension?: string;
+    mimeType?: string;
+  }
+): { fileName: string; trackingCode: string } & string {
+  const isParamsObj =
+    typeof paramsOrContent === 'object' &&
+    paramsOrContent !== null &&
+    !(paramsOrContent instanceof Blob) &&
+    'content' in paramsOrContent;
+
+  const content: Blob | string = isParamsObj ? paramsOrContent.content : paramsOrContent;
+  const ext: string = isParamsObj
+    ? paramsOrContent.ext
+    : extraOpts?.extension || 'jpg';
+  const actorNrp: string = isParamsObj
+    ? paramsOrContent.actorNrp || 'ANON'
+    : extraOpts?.actorNrp || extraOpts?.ownerNrp || 'ANON';
+  const kind: MediaAssetKind = isParamsObj
+    ? paramsOrContent.kind || 'EXPORT'
+    : (extraOpts?.preset as MediaAssetKind) || 'EXPORT';
+  const mimeType: string = isParamsObj
+    ? paramsOrContent.mimeType || 'text/csv;charset=utf-8;'
+    : extraOpts?.mimeType || 'text/csv;charset=utf-8;';
 
   const sample = typeof content === 'string' ? content.slice(0, 128) : `blob-${content.size}`;
   const sizeBytes = typeof content === 'string' ? content.length : content.size;
@@ -398,7 +469,10 @@ export function triggerTrackedDownload(params: {
   if (typeof window !== 'undefined') {
     let url = '';
     let shouldRevoke = false;
-    if (typeof content === 'string' && content.startsWith('data:')) {
+    if (
+      typeof content === 'string' &&
+      (content.startsWith('data:') || content.startsWith('/') || content.startsWith('http'))
+    ) {
       url = content;
     } else if (typeof content === 'string') {
       const blob = new Blob([content], { type: mimeType });
@@ -420,5 +494,9 @@ export function triggerTrackedDownload(params: {
     }
   }
 
-  return { fileName, trackingCode };
+  return Object.assign(new String(fileName), {
+    fileName,
+    trackingCode,
+  }) as unknown as { fileName: string; trackingCode: string } & string;
 }
+
