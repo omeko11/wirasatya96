@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthUser, AnggotaWiraSatya, ChatMessage } from '@/types';
-import { getAvatarUrl } from '@/lib/avatarUtils';
+import { getAvatarUrl, isSuperadminAccount } from '@/lib/avatarUtils';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 import { 
   Search, 
@@ -238,9 +238,9 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
       }
     });
 
-    // 2. Ensure ALL registered members in directory are accessible when searching or picking
+    // 2. Ensure ALL registered alumni members in directory are accessible when searching or picking (exclude Superadmin)
     members.forEach((m) => {
-      if (m.nrp === '98010710' && !isSuperAdminViewer) return;
+      if (isSuperadminAccount(m.nrp, (m as { role?: string }).role)) return;
       if (m.nrp !== currentUser.nrp && !partnerMap.has(m.nrp)) {
         partnerMap.set(m.nrp, {
           member: m,
@@ -422,7 +422,7 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
   // Filter for new chat modal
   const searchableMembers = members.filter((m) => {
     if (m.nrp === currentUser.nrp) return false;
-    if (m.nrp === '98010710' && currentUser.nrp !== '98010710' && currentUser.role !== 'SUPERADMIN') return false;
+    if (isSuperadminAccount(m.nrp, (m as { role?: string }).role)) return false;
     const q = newChatSearch.toLowerCase().trim();
     if (!q) return true;
     return (

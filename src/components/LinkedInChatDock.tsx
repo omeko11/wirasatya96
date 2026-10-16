@@ -16,7 +16,7 @@ import {
   Maximize2,
 } from 'lucide-react';
 import { AnggotaWiraSatya, ChatMessage } from '@/types';
-import { getAvatarUrl, formatMemberDisplayName } from '@/lib/avatarUtils';
+import { getAvatarUrl, formatMemberDisplayName, isSuperadminAccount } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
 
@@ -105,7 +105,12 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
   }, [fetchMessages]);
 
   const otherMembers = React.useMemo(
-    () => members.filter((m) => m.nrp !== currentUserNrp),
+    () =>
+      members.filter(
+        (m) =>
+          m.nrp !== currentUserNrp &&
+          !isSuperadminAccount(m.nrp, (m as { role?: string }).role)
+      ),
     [members, currentUserNrp]
   );
 

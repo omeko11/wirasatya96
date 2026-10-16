@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { AuthUser, AnggotaWiraSatya } from '@/types';
+import { isSuperadminAccount } from '@/lib/avatarUtils';
 import { 
   Users, 
   Shield, 
@@ -39,7 +40,11 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
   // Check role permission: SUPERADMIN, KETUA, and SEKRETARIAT have full editing rights
   const isLeadership = ['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role);
 
-  const filteredMembers = members.filter((m) => {
+  const alumniMembers = members.filter(
+    (m) => !isSuperadminAccount(m.nrp, (m as { role?: string }).role)
+  );
+
+  const filteredMembers = alumniMembers.filter((m) => {
     const matchPolda = 
       searchPolda === 'SEMUA' || 
       m.polda.toUpperCase() === searchPolda.toUpperCase() ||
@@ -90,7 +95,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   <Users className="w-4 h-4 text-red-800" />
                   <span>Seluruh Koneksi Leting</span>
                 </div>
-                <span className="font-bold text-slate-900">{members.length}</span>
+                <span className="font-bold text-slate-900">{alumniMembers.length}</span>
               </button>
 
               <button 
@@ -104,7 +109,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   <span>Polda Metro Jaya</span>
                 </div>
                 <span className="font-bold text-slate-900">
-                  {members.filter(m => m.polda.includes('METRO')).length || 18}
+                  {alumniMembers.filter(m => m.polda.includes('METRO')).length || 18}
                 </span>
               </button>
 
@@ -119,7 +124,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   <span>Mabes Polri</span>
                 </div>
                 <span className="font-bold text-slate-900">
-                  {members.filter(m => m.polda.includes('MABES')).length || 32}
+                  {alumniMembers.filter(m => m.polda.includes('MABES')).length || 32}
                 </span>
               </button>
 

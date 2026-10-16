@@ -325,7 +325,11 @@ export function readDb(): GlobalStore {
         ? parsed.iuran
         : [];
       const loadedIuran = (rawIuranSource.length >= 10 ? rawIuranSource : defaultStore.iuranList).filter(
-        (i) => !isDeletedItem(i.nrp) && !isPurgedNon1996(i.namaLengkap)
+        (i) =>
+          !isDeletedItem(i.nrp) &&
+          !isPurgedNon1996(i.namaLengkap) &&
+          i.nrp !== '98010710' &&
+          !['980107102', '980107103', '980107104', '980107105'].includes(i.nrp)
       );
       const rawRegsSource =
         Array.isArray(parsed.registrations) && parsed.registrations.length >= 10
@@ -2632,7 +2636,17 @@ export const serverStore = {
     );
     const iuranWajibPerBulan = globalStore.financeConfig?.iuranWajibPerBulan || 250000;
 
-    const iuranList = globalStore.iuranList || [];
+    const superadminNrps = new Set(
+      (globalStore.users || [])
+        .filter((u) => u.role === 'SUPERADMIN' || u.nrp === '98010710')
+        .map((u) => u.nrp)
+    );
+    superadminNrps.add('98010710');
+
+    globalStore.iuranList = (globalStore.iuranList || []).filter(
+      (i) => !superadminNrps.has(i.nrp)
+    );
+    const iuranList = globalStore.iuranList;
     const totalTargetIuran = iuranList.reduce((s, i) => s + (Number(i.totalTagihan) || 0), 0);
     const totalRealisasiIuran = iuranList.reduce((s, i) => s + (Number(i.totalTerbayar) || 0), 0);
     const persentaseIuranTerkumpul =

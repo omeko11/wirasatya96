@@ -21,6 +21,7 @@ import {
   getLevelSatkerOrder,
   getRoleRankOrder,
   getStatusKedinasanOrder,
+  isSuperadminAccount,
 } from '@/lib/avatarUtils';
 import {
   getJabatanGroupsForPangkat,
@@ -94,7 +95,6 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   const [sortDesc, setSortDesc] = useState<boolean>(true);
   const myProfile = useMemo(() => getOrBuildUserProfile(currentUser, members), [currentUser, members]);
   const myAvatarUrl = resolveAvatarUrl(myProfile.fotoUrl, currentUser.fotoUrl);
-  const canSeeSuperadmin = currentUser.nrp === '98010710' || currentUser.role === 'SUPERADMIN';
 
   const [customJabatanList, setCustomJabatanList] = useState<RiwayatJabatanLeting[]>(() => {
     if (typeof window !== 'undefined') {
@@ -117,12 +117,12 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   });
 
   const jabatanList = useMemo(() => {
-    const visibleMembers = canSeeSuperadmin
-      ? members
-      : members.filter((m) => m.nrp !== '98010710');
-    const visibleCustom = canSeeSuperadmin
-      ? customJabatanList
-      : customJabatanList.filter((j) => j.perwiraNrp !== '98010710');
+    const visibleMembers = members.filter(
+      (m) => !isSuperadminAccount(m.nrp, (m as { role?: string }).role)
+    );
+    const visibleCustom = customJabatanList.filter(
+      (j) => !isSuperadminAccount(j.perwiraNrp)
+    );
 
     const memberEntries: RiwayatJabatanLeting[] = visibleMembers.map((m) => {
       const statusKedinasan = detectStatusKedinasan(
@@ -159,7 +159,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       };
     });
     return [...visibleCustom, ...memberEntries];
-  }, [customJabatanList, members, canSeeSuperadmin]);
+  }, [customJabatanList, members]);
 
   const [selectedKategoriJabatan, setSelectedKategoriJabatan] = useState<string>('SEMUA');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

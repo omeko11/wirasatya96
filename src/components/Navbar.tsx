@@ -26,6 +26,7 @@ import {
   resolveAvatarUrl,
   formatJabatanWithSatker,
   getActiveAdcSessionFromStorage,
+  isSuperadminAccount,
 } from '@/lib/avatarUtils';
 import { WSLogo } from './WSLogo';
 import { MetaVerifiedBadge } from './MetaVerifiedBadge';
@@ -121,11 +122,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     return members
       .filter(
         (m) =>
-          m.namaLengkap.toLowerCase().includes(q) ||
-          m.nrp.toLowerCase().includes(q) ||
-          (m.jabatanTerakhir || m.jabatan || '').toLowerCase().includes(q) ||
-          (m.satuanKerja || m.satker || '').toLowerCase().includes(q) ||
-          (m.polda || '').toLowerCase().includes(q)
+          !isSuperadminAccount(m.nrp, (m as { role?: string }).role) &&
+          (m.namaLengkap.toLowerCase().includes(q) ||
+            m.nrp.toLowerCase().includes(q) ||
+            (m.jabatanTerakhir || m.jabatan || '').toLowerCase().includes(q) ||
+            (m.satuanKerja || m.satker || '').toLowerCase().includes(q) ||
+            (m.polda || '').toLowerCase().includes(q))
       )
       .slice(0, 8);
   }, [members, searchText]);

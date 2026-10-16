@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { AnggotaWiraSatya, AuthUser } from '@/types';
 import { DAFTAR_38_POLDA } from '@/data/polriStructure';
 import { generateLeakageTrackedFileName } from '@/lib/mediaSecurity';
+import { isSuperadminAccount } from '@/lib/avatarUtils';
 import { 
   BarChart3, 
   Heart, 
@@ -35,33 +36,45 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
 
   const [activeSubTab, setActiveSubTab] = useState<'kesehatan' | 'hunian' | 'usaha' | 'pemetaan' | 'keuangan'>(getInitialSubTab());
 
-  // Stats calculation
-  const total = members.length;
-  const needHealthAttention = members.filter(
+  // Exclude behind-the-scenes Superadmin from all alumni counts, recaps, and exports
+  const alumniMembers = React.useMemo(
+    () => members.filter((m) => !isSuperadminAccount(m.nrp, (m as { role?: string }).role)),
+    [members]
+  );
+
+  // Stats calculation (strictly alumni only)
+  const total = alumniMembers.length;
+  const needHealthAttention = alumniMembers.filter(
     (m) => m.adaPenyakitKronis === 'ADA' || m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT'
   );
-  const stillRenting = members.filter(
+  const stillRenting = alumniMembers.filter(
     (m) => m.statusRumahPurnaTugas === 'SEWA/KONTRAK' || m.statusTempatTinggal === 'SEWA/KONTRAK'
   );
-  const withBusiness = members.filter(
+  const hunianMilikPribadiCount = alumniMembers.filter(
+    (m) => m.statusRumahPurnaTugas === 'MILIK PRIBADI' && m.statusTempatTinggal !== 'SEWA/KONTRAK'
+  ).length;
+  const hunianKeluargaCount = alumniMembers.filter(
+    (m) => m.statusRumahPurnaTugas === 'RUMAH KELUARGA' || m.statusRumahPurnaTugas === 'DINAS'
+  ).length;
+  const withBusiness = alumniMembers.filter(
     (m) => m.statusUsaha === 'SUDAH JALAN' || m.statusUsaha === 'DALAM PERSIAPAN'
   );
 
   // Regional distribution (for Kesekretariatan)
   const regionalStats = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    members.forEach((m) => {
+    alumniMembers.forEach((m) => {
       const p = m.polda || 'MABES POLRI';
       counts[p] = (counts[p] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [members]);
+  }, [alumniMembers]);
 
   // Unreached Poldas for active mapping (Kesekretariatan)
   const unreachedPoldas = React.useMemo(() => {
-    const coveredSet = new Set(members.map((m) => (m.polda || '').toUpperCase()));
+    const coveredSet = new Set(alumniMembers.map((m) => (m.polda || '').toUpperCase()));
     return DAFTAR_38_POLDA.filter((p) => !coveredSet.has(p.toUpperCase()));
-  }, [members]);
+  }, [alumniMembers]);
 
   // Financial & Education stats (for Bendahara)
   const financialStats = React.useMemo(() => {
@@ -70,7 +83,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
     let midCostEdu = 0;
     let lowCostEdu = 0;
 
-    members.forEach((m) => {
+    alumniMembers.forEach((m) => {
       (m.daftarAnak || []).forEach((a) => {
         if (a.status === 'PELAJAR') {
           collegeCount++;
@@ -81,7 +94,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       });
     });
 
-    const needFinancialAidPension = members.filter((m) => m.kecukupanDanaPensiun === 'KURANG').length;
+    const needFinancialAidPension = alumniMembers.filter((m) => m.kecukupanDanaPensiun === 'KURANG').length;
 
     return {
       collegeCount,
@@ -90,7 +103,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       lowCostEdu,
       needFinancialAidPension,
     };
-  }, [members]);
+  }, [alumniMembers]);
 
   const formatWaUrl = (phone?: string) => {
     if (!phone) return '#';
@@ -99,7 +112,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
     return `https://wa.me/${clean}?text=Halo%20Komandan%2C%20mohon%20izin%20menghubungi%20dari%20Pengurus%20Wira%20Satya%2096`;
   };
 
-  // Export to CSV
+  // Export to CSV (strictly alumni only)
   const handleExportCSV = () => {
     const headers = [
       'NRP',
@@ -121,7 +134,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       'Penyakit',
     ];
 
-    const rows = members.map((m) => [
+    const rows = alumniMembers.map((m) => [
       `"${m.nrp}"`,
       `"${m.namaLengkap}"`,
       `"${m.pangkat}"`,
@@ -150,7 +163,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       ownerNrp: 'EXPORT-ANEV',
       preset: 'EXPORT',
       extension: 'csv',
-      extraEntropy: String(members.length),
+      extraEntropy: String(alumniMembers.length),
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -366,7 +379,31 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
         {activeSubTab === 'hunian' && (
           <div className="p-5 sm:p-6 space-y-4">
             <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-amber-900 text-xs">
-              <span className="font-bold">📌 Hunian Purna Tugas:</span> Daftar personel dengan status tempat tinggal pasca dinas masih sewa/kontrak.
+              <span className="font-bold">📌 Rekap Program Hunian Purna Tugas:</span> Rekapitulasi kesiapan tempat tinggal pasca dinas seluruh alumni ({total} personel) serta daftar personel yang masih berstatus sewa/kontrak.
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
+                <span className="text-[11px] font-semibold text-emerald-700 block">Sudah Milik Pribadi</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-emerald-900">{hunianMilikPribadiCount}</span>
+                  <span className="text-xs text-emerald-700 font-semibold">/ {total} Alumni</span>
+                </div>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl">
+                <span className="text-[11px] font-semibold text-amber-800 block">Masih Sewa / Kontrak</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-amber-900">{stillRenting.length}</span>
+                  <span className="text-xs text-amber-700 font-semibold">Perlu Program Hunian</span>
+                </div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+                <span className="text-[11px] font-semibold text-slate-600 block">Rumah Orang Tua / Keluarga</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-slate-900">{hunianKeluargaCount}</span>
+                  <span className="text-xs text-slate-500 font-semibold">Alumni</span>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -470,8 +507,8 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
               <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl">
                 <span className="text-[11px] font-semibold text-emerald-700 block">Total Personel Terpetakan</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-xl font-black text-emerald-900">{members.length}</span>
-                  <span className="text-xs text-emerald-700 font-semibold">Personel Aktif</span>
+                  <span className="text-xl font-black text-emerald-900">{alumniMembers.length}</span>
+                  <span className="text-xs text-emerald-700 font-semibold">Personel Alumni</span>
                 </div>
               </div>
 
@@ -510,7 +547,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                   <span>Satker &amp; Status</span>
                 </div>
                 <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                  {members.map((m) => (
+                  {alumniMembers.map((m) => (
                     <div key={m.id} className="px-4 py-2.5 text-xs hover:bg-slate-50 flex items-center justify-between">
                       <div>
                         <span className="font-bold text-slate-900 block">{m.namaLengkap}</span>
@@ -589,7 +626,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
                 Rekapitulasi Putra / Putri dalam Tanggungan Pendidikan:
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                {members.map((m) => {
+                {alumniMembers.map((m) => {
                   const studentChildren = (m.daftarAnak || []).filter((a) => a.status === 'PELAJAR');
                   if (studentChildren.length === 0) return null;
                   return (

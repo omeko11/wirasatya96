@@ -13,6 +13,7 @@ import {
   AssetCategory,
 } from '@/types';
 import { generateLeakageTrackedFileName } from '@/lib/mediaSecurity';
+import { isSuperadminAccount } from '@/lib/avatarUtils';
 import {
   Wallet,
   ArrowUpRight,
@@ -150,12 +151,15 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<'SEMUA' | 'MASUK' | 'KELUAR'>('SEMUA');
   const [showReadOnlyInfo, setShowReadOnlyInfo] = useState(false);
 
+  const filterOutSuperadminIuran = (list: IuranAnggota[]) =>
+    (list || []).filter((item) => !isSuperadminAccount(item.nrp));
+
   // Local synced state for finance data & config
   const [localSummary, setLocalSummary] = useState<FinanceSummary & { totalKasMasuk?: number; totalKasKeluar?: number }>(
     financeSummary
   );
   const [localTransactions, setLocalTransactions] = useState<KasTransaction[]>(transactions || []);
-  const [localIuranList, setLocalIuranList] = useState<IuranAnggota[]>(iuranList || []);
+  const [localIuranList, setLocalIuranList] = useState<IuranAnggota[]>(() => filterOutSuperadminIuran(iuranList || []));
   const [localAssets, setLocalAssets] = useState<AssetPortfolioItem[]>(propAssets || []);
   const [financeConfig, setFinanceConfig] = useState<FinanceConfig>(propFinanceConfig || DEFAULT_FINANCE_CONFIG);
   const [assetCategoryFilter, setAssetCategoryFilter] = useState<'SEMUA' | AssetCategory>('SEMUA');
@@ -169,7 +173,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   }, [transactions]);
 
   useEffect(() => {
-    setLocalIuranList(iuranList || []);
+    setLocalIuranList(filterOutSuperadminIuran(iuranList || []));
   }, [iuranList]);
 
   useEffect(() => {
@@ -254,7 +258,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
           if (rawIuran.length > 0) {
             const annualTarget = (Number(effectiveCfg.iuranWajibPerBulan) || 250000) * 12;
-            const syncedIuran = rawIuran.map((item) => {
+            const syncedIuran = filterOutSuperadminIuran(rawIuran).map((item) => {
               const status: IuranAnggota['status'] =
                 item.totalTerbayar >= annualTarget
                   ? 'LUNAS'
@@ -583,20 +587,21 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         setFinanceConfig(updatedCfg);
         if (onUpdateFinanceConfig) onUpdateFinanceConfig(updatedCfg);
 
-        const nextIuranList: IuranAnggota[] =
+        const nextIuranList: IuranAnggota[] = filterOutSuperadminIuran(
           data.iuranList ||
-          data.iuran ||
-          data.data?.iuranList ||
-          localIuranList.map((item) => {
-            const totalTagihan = nextIuran * 12;
-            const status =
-              item.totalTerbayar >= totalTagihan
-                ? 'LUNAS'
-                : item.totalTerbayar > 0
-                ? 'SEBAGIAN'
-                : 'BELUM_BAYAR';
-            return { ...item, tahun: nextTahun, totalTagihan, status };
-          });
+            data.iuran ||
+            data.data?.iuranList ||
+            localIuranList.map((item) => {
+              const totalTagihan = nextIuran * 12;
+              const status =
+                item.totalTerbayar >= totalTagihan
+                  ? 'LUNAS'
+                  : item.totalTerbayar > 0
+                  ? 'SEBAGIAN'
+                  : 'BELUM_BAYAR';
+              return { ...item, tahun: nextTahun, totalTagihan, status };
+            })
+        );
         setLocalIuranList(nextIuranList);
 
         if (data.summary || data.data?.summary) {
@@ -685,7 +690,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       const data = await res.json();
       if (data.success) {
         if (Array.isArray(data.transactions)) setLocalTransactions(data.transactions);
-        if (Array.isArray(data.iuranList)) setLocalIuranList(data.iuranList);
+        if (Array.isArray(data.iuranList)) setLocalIuranList(filterOutSuperadminIuran(data.iuranList));
         if (data.summary) setLocalSummary(data.summary);
         if (typeof window !== 'undefined') {
           localStorage.setItem(
@@ -694,7 +699,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               summary: data.summary || localSummary,
               transactions: data.transactions || localTransactions,
               assets: localAssets,
-              iuranList: data.iuranList || localIuranList,
+              iuranList: filterOutSuperadminIuran(data.iuranList || localIuranList),
               financeConfig,
             })
           );
@@ -823,7 +828,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       });
       const data = await res.json();
       if (data.success) {
-        if (Array.isArray(data.iuranList)) setLocalIuranList(data.iuranList);
+        if (Array.isArray(data.iuranList)) setLocalIuranList(filterOutSuperadminIuran(data.iuranList));
         if (Array.isArray(data.transactions)) setLocalTransactions(data.transactions);
         if (data.summary) setLocalSummary(data.summary);
       }
@@ -898,13 +903,18 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     document.body.removeChild(link);
   };
 
+  // Exclude behind-the-scenes Superadmin from alumni lists
+  const alumniMembers = members.filter(
+    (m) => !isSuperadminAccount(m.nrp, (m as { role?: string }).role)
+  );
+
   // Chronic ill members linked from Modul 4
-  const chronicIllMembers = members.filter(
+  const chronicIllMembers = alumniMembers.filter(
     (m) => m.adaPenyakitKronis === 'ADA' || m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT'
   );
 
   // Education burden linked from Modul 2
-  const collegeChildren = members.flatMap((m) =>
+  const collegeChildren = alumniMembers.flatMap((m) =>
     (m.daftarAnak || [])
       .filter((a) => a.status === 'PELAJAR')
       .map((a) => ({
@@ -915,7 +925,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       }))
   );
 
-  const filteredMemberOptions = members.filter(
+  const filteredMemberOptions = alumniMembers.filter(
     (m) =>
       !memberSearchQuery.trim() ||
       m.namaLengkap.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||

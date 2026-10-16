@@ -9,7 +9,7 @@ import {
   FeedPost,
   ChatMessage,
 } from '@/types';
-import { getAvatarUrl } from '@/lib/avatarUtils';
+import { getAvatarUrl, isSuperadminAccount } from '@/lib/avatarUtils';
 import { MetaVerifiedBadge } from '@/components/MetaVerifiedBadge';
 import {
   Bell,
@@ -140,10 +140,11 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
     // 2. Health Attention Alerts from Real Member Data (❤️ Kesehatan)
     const healthMembers = members.filter(
       (m) =>
-        m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' ||
-        m.kondisiKesehatan === 'SAKIT' ||
-        m.adaPenyakitKronis === 'ADA' ||
-        (m.daftarPenyakit && m.daftarPenyakit.length > 0)
+        !isSuperadminAccount(m.nrp, (m as { role?: string }).role) &&
+        (m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' ||
+          m.kondisiKesehatan === 'SAKIT' ||
+          m.adaPenyakitKronis === 'ADA' ||
+          (m.daftarPenyakit && m.daftarPenyakit.length > 0))
     );
 
     healthMembers.forEach((m) => {

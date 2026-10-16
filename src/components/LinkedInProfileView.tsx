@@ -20,6 +20,7 @@ import {
   detectStatusKedinasan,
   getActiveAdcSessionFromStorage,
   recordAdcActivityToAuditLog,
+  isSuperadminAccount,
 } from '@/lib/avatarUtils';
 import { MetaVerifiedBadge, resolveRoleForBadge } from '@/components/MetaVerifiedBadge';
 import { SecuritySettingsPanel } from '@/components/SecuritySettingsModal';
@@ -443,9 +444,14 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
     }
   };
 
-  // Find other peers in the same Polda
+  // Find other peers in the same Polda (always exclude behind-the-scenes Superadmin)
   const peersInSamePolda = allMembers
-    .filter((m) => m.id !== localMember.id && m.polda === localMember.polda)
+    .filter(
+      (m) =>
+        m.id !== localMember.id &&
+        m.polda === localMember.polda &&
+        !isSuperadminAccount(m.nrp, (m as { role?: string }).role)
+    )
     .slice(0, 4);
 
   // Render Cover Banner Visual
@@ -978,55 +984,57 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 </button>
               </div>
 
-              {/* Status Purna & Kesehatan Highlights Card */}
-              <div className="mt-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-4 h-4" />
+              {/* Status Purna & Kesehatan Highlights Card (alumni only; Superadmin shows only authority status) */}
+              {!isSuperadminDev && (
+                <div className="mt-4 p-3.5 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">
+                        Purna Tugas:
+                      </span>
+                      <span className="font-bold text-slate-900">
+                        {localMember.tahunPurnaTugas} ({localMember.sisaTahunDinas} Thn Lagi)
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">
-                      Purna Tugas:
-                    </span>
-                    <span className="font-bold text-slate-900">
-                      {localMember.tahunPurnaTugas} ({localMember.sisaTahunDinas} Thn Lagi)
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
-                    <Heart className="w-4 h-4" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                      <Heart className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">
+                        Kondisi Kesehatan:
+                      </span>
+                      <span className="font-bold text-emerald-700">
+                        {localMember.kondisiKesehatan}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">
-                      Kondisi Kesehatan:
-                    </span>
-                    <span className="font-bold text-emerald-700">
-                      {localMember.kondisiKesehatan}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block">
-                      Status Otoritas:
-                    </span>
-                    <span className="font-bold text-amber-800 inline-flex items-center gap-1">
-                      <span>{badgeStatus.label}</span>
-                      <MetaVerifiedBadge
-                        nrp={localMember.nrp}
-                        role={effectiveRole}
-                        size="xs"
-                      />
-                    </span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">
+                        Status Otoritas:
+                      </span>
+                      <span className="font-bold text-amber-800 inline-flex items-center gap-1">
+                        <span>{badgeStatus.label}</span>
+                        <MetaVerifiedBadge
+                          nrp={localMember.nrp}
+                          role={effectiveRole}
+                          size="xs"
+                        />
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
@@ -1233,7 +1241,8 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             </div>
           </div>
 
-          {/* 4. SECTION: KELUARGA */}
+          {/* 4. SECTION: KELUARGA (Alumni Only) */}
+          {!isSuperadminDev && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1309,8 +1318,10 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               </div>
             )}
           </div>
+          )}
 
-          {/* 5. SECTION: KESEHATAN */}
+          {/* 5. SECTION: KESEHATAN (Alumni Only) */}
+          {!isSuperadminDev && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1374,8 +1385,10 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               </div>
             )}
           </div>
+          )}
 
-          {/* 6. SECTION: PURNA TUGAS (BUP 58 TAHUN) */}
+          {/* 6. SECTION: PURNA TUGAS (BUP 58 TAHUN) (Alumni Only) */}
+          {!isSuperadminDev && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             {(() => {
               const ret58 = calculateRetirement58(localMember.tanggalLahir, localMember.nrp);
@@ -1444,6 +1457,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* ============================================================== */}

@@ -10,6 +10,7 @@ import {
   cleanJabatanOnly,
   formatJabatanWithSatker,
   getOrBuildUserProfile,
+  isSuperadminAccount,
 } from '@/lib/avatarUtils';
 import { LinkedInProfileView } from './LinkedInProfileView';
 import { LinkedInPostCard } from './LinkedInPostCard';
@@ -226,16 +227,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     [members, memberOverrides]
   );
 
-  // Public directory members (hide Superadmin 98010710 from non-Superadmin viewers)
+  // Public directory members (always exclude behind-the-scenes Superadmin from alumni directory & counts)
   const publicMembers = useMemo(
     () =>
       effectiveMembers.filter(
-        (m) =>
-          m.nrp !== '98010710' ||
-          currentUser?.nrp === '98010710' ||
-          currentUser?.role === 'SUPERADMIN'
+        (m) => !isSuperadminAccount(m.nrp, (m as { role?: string }).role)
       ),
-    [effectiveMembers, currentUser?.nrp, currentUser?.role]
+    [effectiveMembers]
   );
 
   // Current logged in member profile
@@ -244,10 +242,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     [currentUser, effectiveMembers]
   );
 
-  // Current logged in member's Iuran 2026 status
+  // Current logged in member's Iuran 2026 status (hidden for Superadmin since Superadmin is not an alumnus)
   const myIuran = useMemo(
-    () => iuranList.find((i) => i.nrp === currentUser.nrp),
-    [iuranList, currentUser.nrp]
+    () =>
+      isSuperadminAccount(currentUser.nrp, currentUser.role)
+        ? undefined
+        : iuranList.find((i) => i.nrp === currentUser.nrp),
+    [iuranList, currentUser.nrp, currentUser.role]
   );
 
   const syncPosts = (updated: FeedPost[]) => {

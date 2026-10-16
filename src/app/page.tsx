@@ -32,9 +32,10 @@ import {
   stripRankFromName,
   getActiveAdcSessionFromStorage,
   recordAdcActivityToAuditLog,
+  isSuperadminAccount,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v12';
+const STORAGE_VERSION = 'ws96_akpol96_real_v13';
 
 export default function Home() {
   const router = useRouter();
@@ -735,7 +736,10 @@ export default function Home() {
         if (parsed.assets) setAssets(parsed.assets);
         if (parsed.iuranList && parsed.iuranList.length >= 10) {
           setIuranList(
-            parsed.iuranList.filter((i: IuranAnggota) => !deletedOnMount.has((i.nrp || '').trim()))
+            parsed.iuranList.filter(
+              (i: IuranAnggota) =>
+                !deletedOnMount.has((i.nrp || '').trim()) && !isSuperadminAccount(i.nrp)
+            )
           );
         }
       } catch (err) {
@@ -1364,7 +1368,9 @@ export default function Home() {
 
   const unreadNotificationsCount = React.useMemo(() => {
     const healthCount = members.filter(
-      (m) => m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT'
+      (m) =>
+        !isSuperadminAccount(m.nrp, (m as { role?: string }).role) &&
+        (m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT')
     ).length;
     const verifCount =
       currentUser.role === 'SUPERADMIN' || currentUser.role === 'SEKRETARIAT'
@@ -1413,10 +1419,11 @@ export default function Home() {
     // 3. Health Attention Alerts
     const healthMembers = members.filter(
       (m) =>
-        m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' ||
-        m.kondisiKesehatan === 'SAKIT' ||
-        m.adaPenyakitKronis === 'ADA' ||
-        (m.daftarPenyakit && m.daftarPenyakit.length > 0)
+        !isSuperadminAccount(m.nrp, (m as { role?: string }).role) &&
+        (m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' ||
+          m.kondisiKesehatan === 'SAKIT' ||
+          m.adaPenyakitKronis === 'ADA' ||
+          (m.daftarPenyakit && m.daftarPenyakit.length > 0))
     );
     healthMembers.forEach((m) => {
       const diagnosa =
@@ -1553,7 +1560,7 @@ export default function Home() {
           }
           setActiveTab(tab);
         }}
-        totalMembers={members.length}
+        totalMembers={members.filter((m) => !isSuperadminAccount(m.nrp, (m as { role?: string }).role)).length}
         currentUser={currentUser}
         members={members}
         onSelectMember={(m) => setViewingMember(m)}

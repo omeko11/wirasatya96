@@ -1748,13 +1748,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     }
   };
 
-  const visibleRoleOptions = canImpersonate
-    ? ROLE_OPTIONS
-    : ROLE_OPTIONS.filter((r) => r.value !== 'SUPERADMIN');
+  const visibleRoleOptions = ROLE_OPTIONS.filter((r) => r.value !== 'SUPERADMIN');
 
-  const visibleUsers = canImpersonate
-    ? users
-    : users.filter((u) => u.role !== 'SUPERADMIN' && u.nrp !== '98010710');
+  const visibleUsers = users.filter((u) => u.role !== 'SUPERADMIN' && u.nrp !== '98010710');
 
   const filteredUsers = visibleUsers.filter((u) => {
     const q = userSearch.toLowerCase();
@@ -1808,7 +1804,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   });
 
   const filteredRegistrations = registrations.filter((r) => {
-    if (!canImpersonate && r.nrp === '98010710') return false;
+    if (r.nrp === '98010710') return false;
     const q = regSearch.toLowerCase();
     const matchesSearch = 
       r.nama.toLowerCase().includes(q) ||
@@ -1821,7 +1817,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   });
 
   const pendingCount = registrations.filter(
-    (r) => (canImpersonate || r.nrp !== '98010710') && r.status === 'PENDING_VERIFIKASI'
+    (r) => r.nrp !== '98010710' && r.status === 'PENDING_VERIFIKASI'
   ).length;
 
   const isUserAccountActive = (u: AuthUser, regInfo?: PendingRegistration): boolean => {

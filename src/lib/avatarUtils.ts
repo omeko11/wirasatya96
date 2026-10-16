@@ -610,3 +610,32 @@ export function recordAdcActivityToAuditLog(params: {
   }).catch(() => {});
 }
 
+/**
+ * Returns true if the given NRP or role belongs to a behind-the-scenes Superadmin account
+ * (e.g. NRP 98010710 / role SUPERADMIN). Superadmin accounts can log in, post on the feed,
+ * comment, and administer the platform, but are NEVER counted as Akpol 1996 alumni in
+ * directories, statistics, recaps (Hunian, Kesehatan, Usaha, Wilayah), or iuran lists.
+ */
+export function isSuperadminAccount(nrp?: string | null, role?: string | null): boolean {
+  const cleanNrp = (nrp || '').trim();
+  const cleanRole = (role || '').trim().toUpperCase();
+  if (cleanNrp === '98010710' || cleanRole === 'SUPERADMIN') {
+    return true;
+  }
+  if (typeof window !== 'undefined' && cleanNrp) {
+    try {
+      const roleMapRaw = localStorage.getItem('ws96_role_map');
+      if (roleMapRaw) {
+        const parsed = JSON.parse(roleMapRaw);
+        if (parsed && parsed[cleanNrp] === 'SUPERADMIN') {
+          return true;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return false;
+}
+
+
