@@ -106,10 +106,35 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           setApiNilaiAset(payload.totalValuasiAset);
         }
 
+        const serverCfg = payload.financeConfig || res.financeConfig;
+        let savedLocalIuran = 0;
+        if (typeof window !== 'undefined') {
+          try {
+            const rawCfg = localStorage.getItem('ws96_finance_config_v1');
+            if (rawCfg) {
+              const parsed = JSON.parse(rawCfg);
+              if (
+                parsed &&
+                Number(parsed.iuranWajibPerBulan) > 0 &&
+                parsed.updatedBy &&
+                parsed.updatedBy !== 'Sistem Default Kebendaharaan WS96'
+              ) {
+                savedLocalIuran = Number(parsed.iuranWajibPerBulan);
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        const isServerDefault =
+          !serverCfg || serverCfg.updatedBy === 'Sistem Default Kebendaharaan WS96';
         const cfgIuran =
-          payload.financeConfig?.iuranWajibPerBulan ??
-          res.financeConfig?.iuranWajibPerBulan ??
-          payload.summary?.iuranWajibPerBulan;
+          isServerDefault && savedLocalIuran > 0
+            ? savedLocalIuran
+            : serverCfg?.iuranWajibPerBulan ??
+              payload.summary?.iuranWajibPerBulan ??
+              savedLocalIuran;
         if (typeof cfgIuran === 'number' && cfgIuran > 0) {
           setIuranWajibPerBulan(cfgIuran);
         }
@@ -119,6 +144,25 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
       mounted = false;
     };
   }, [financeSummary, transactions.length]);
+
+  useEffect(() => {
+    const syncLocalCfg = () => {
+      try {
+        const rawCfg = localStorage.getItem('ws96_finance_config_v1');
+        if (rawCfg) {
+          const parsed = JSON.parse(rawCfg);
+          if (parsed && Number(parsed.iuranWajibPerBulan) > 0) {
+            setIuranWajibPerBulan(Number(parsed.iuranWajibPerBulan));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    syncLocalCfg();
+    window.addEventListener('ws96_finance_updated', syncLocalCfg);
+    return () => window.removeEventListener('ws96_finance_updated', syncLocalCfg);
+  }, []);
 
   const computedKasMasuk = useMemo(() => {
     if (transactions.length > 0) {

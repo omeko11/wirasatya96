@@ -19,6 +19,7 @@ import { PRESET_USERS } from '@/data/mockUsers';
 import { INITIAL_TRANSACTIONS, INITIAL_IURAN_LIST, INITIAL_FINANCE_SUMMARY, INITIAL_ASSETS } from '@/data/mockFinance';
 import { INITIAL_FEED_POSTS } from '@/data/mockPosts';
 import { AKPOL_1996_MEMBERS, AKPOL_1996_REGISTRATIONS, AKPOL_1996_USERS } from '@/data/akpol1996Alumni';
+import { calculateRetirement58 } from '@/lib/avatarUtils';
 
 export interface FinanceCategoryOption {
   code: string;
@@ -298,8 +299,8 @@ export function readDb(): GlobalStore {
         }
         const ref = akpolRefMap.get(u.nrp);
         if (ref) {
-          u.pangkat = ref.pangkat;
-          u.nama = ref.nama;
+          if (!u.pangkat) u.pangkat = ref.pangkat;
+          if (!u.nama) u.nama = ref.nama;
         }
       });
 
@@ -363,8 +364,8 @@ export function readDb(): GlobalStore {
         }
         const ref = akpolRefMap.get(m.nrp);
         if (ref) {
-          m.pangkat = ref.pangkat;
-          m.namaLengkap = ref.nama;
+          if (!m.pangkat) m.pangkat = ref.pangkat;
+          if (!m.namaLengkap) m.namaLengkap = ref.nama;
         }
         const matchedUser = userByNrpMap.get(m.nrp);
         if (matchedUser) {
@@ -391,8 +392,8 @@ export function readDb(): GlobalStore {
         }
         const ref = akpolRefMap.get(r.nrp);
         if (ref) {
-          r.pangkat = ref.pangkat;
-          r.nama = ref.nama;
+          if (!r.pangkat) r.pangkat = ref.pangkat;
+          if (!r.nama) r.nama = ref.nama;
         }
       });
 
@@ -402,8 +403,8 @@ export function readDb(): GlobalStore {
         }
         const ref = akpolRefMap.get(i.nrp);
         if (ref) {
-          i.pangkat = ref.pangkat;
-          i.namaLengkap = ref.nama;
+          if (!i.pangkat) i.pangkat = ref.pangkat;
+          if (!i.namaLengkap) i.namaLengkap = ref.nama;
         }
         i.totalTagihan = annualTagihan;
         if (i.totalTerbayar >= annualTagihan) {
@@ -515,9 +516,11 @@ export const serverStore = {
   saveMember: (member: AnggotaWiraSatya) => {
     const annualTagihan = (globalStore.financeConfig?.iuranWajibPerBulan || 250000) * 12;
     const idx = globalStore.members.findIndex((m) => m.id === member.id || m.nrp === member.nrp);
-    const uIdx = globalStore.users.findIndex((u) => u.nrp === member.nrp);
     if (idx >= 0) {
       const prevMember = globalStore.members[idx];
+      const oldNrp = prevMember.nrp;
+      const newNrp = (member.nrp || prevMember.nrp).trim();
+      const uIdx = globalStore.users.findIndex((u) => u.nrp === oldNrp || u.nrp === newNrp);
       const existingUser = uIdx >= 0 ? globalStore.users[uIdx] : undefined;
       const syncedFotoUrl = resolveBestFotoUrl(member.fotoUrl, prevMember.fotoUrl, existingUser?.fotoUrl);
       const syncedCoverUrl = member.coverUrl ?? prevMember.coverUrl ?? existingUser?.coverUrl;
@@ -525,24 +528,35 @@ export const serverStore = {
       globalStore.members[idx] = {
         ...prevMember,
         ...member,
+        nrp: newNrp,
         fotoUrl: syncedFotoUrl,
         ...(syncedCoverUrl !== undefined ? { coverUrl: syncedCoverUrl } : {}),
         updatedAt: new Date().toISOString(),
       };
       const savedMember = globalStore.members[idx];
-      // Also sync name/pangkat/fotoUrl/coverUrl/bio/email/secondaryEmail to user if exists
+      // Also sync nrp/name/pangkat/fotoUrl/coverUrl/bio/email/secondaryEmail to user if exists
       if (uIdx >= 0) {
+        globalStore.users[uIdx].nrp = newNrp;
         globalStore.users[uIdx].nama = savedMember.namaLengkap;
         globalStore.users[uIdx].pangkat = savedMember.pangkat;
         globalStore.users[uIdx].satker = cleanSatkerRoleSuffix(savedMember.satuanKerja, savedMember.nrp);
         globalStore.users[uIdx].polda = savedMember.polda;
-        if (savedMember.email) globalStore.users[uIdx].email = savedMember.email;
+        if (savedMember.email) {
+          globalStore.users[uIdx].email =
+            oldNrp !== newNrp && savedMember.email === `${oldNrp}@polri.go.id`
+              ? `${newNrp}@polri.go.id`
+              : savedMember.email;
+        }
         if (savedMember.secondaryEmail !== undefined) globalStore.users[uIdx].secondaryEmail = savedMember.secondaryEmail;
         globalStore.users[uIdx].fotoUrl = syncedFotoUrl;
         if (syncedCoverUrl !== undefined) globalStore.users[uIdx].coverUrl = syncedCoverUrl;
         if (savedMember.bio !== undefined) globalStore.users[uIdx].bio = savedMember.bio;
       }
-      if (globalStore.activeSession && globalStore.activeSession.nrp === member.nrp) {
+      if (
+        globalStore.activeSession &&
+        (globalStore.activeSession.nrp === oldNrp || globalStore.activeSession.nrp === newNrp)
+      ) {
+        globalStore.activeSession.nrp = newNrp;
         globalStore.activeSession.nama = savedMember.namaLengkap;
         globalStore.activeSession.pangkat = savedMember.pangkat;
         globalStore.activeSession.satker = cleanSatkerRoleSuffix(savedMember.satuanKerja, savedMember.nrp);
@@ -553,13 +567,32 @@ export const serverStore = {
         if (syncedCoverUrl !== undefined) globalStore.activeSession.coverUrl = syncedCoverUrl;
         if (savedMember.bio !== undefined) globalStore.activeSession.bio = savedMember.bio;
       }
-      const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === member.nrp);
+      const rIdx = globalStore.registrations.findIndex((r) => r.nrp === oldNrp || r.nrp === newNrp);
+      if (rIdx >= 0) {
+        globalStore.registrations[rIdx].nrp = newNrp;
+        globalStore.registrations[rIdx].nama = savedMember.namaLengkap;
+        globalStore.registrations[rIdx].pangkat = savedMember.pangkat;
+        globalStore.registrations[rIdx].satker = cleanSatkerRoleSuffix(savedMember.satuanKerja, savedMember.nrp);
+        globalStore.registrations[rIdx].polda = savedMember.polda;
+        if (savedMember.noHp) globalStore.registrations[rIdx].noHp = savedMember.noHp;
+      }
+      const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === oldNrp || i.nrp === newNrp);
       if (iIdx >= 0) {
+        globalStore.iuranList[iIdx].nrp = newNrp;
         globalStore.iuranList[iIdx].namaLengkap = savedMember.namaLengkap;
         globalStore.iuranList[iIdx].pangkat = savedMember.pangkat;
         globalStore.iuranList[iIdx].polda = savedMember.polda;
       }
+      if (oldNrp !== newNrp) {
+        globalStore.posts.forEach((p) => {
+          if (p.authorNrp === oldNrp) p.authorNrp = newNrp;
+          p.comments?.forEach((c) => {
+            if (c.authorNrp === oldNrp) c.authorNrp = newNrp;
+          });
+        });
+      }
     } else {
+      const uIdx = globalStore.users.findIndex((u) => u.nrp === member.nrp);
       const existingUser = uIdx >= 0 ? globalStore.users[uIdx] : undefined;
       const syncedFotoUrl = resolveBestFotoUrl(member.fotoUrl, existingUser?.fotoUrl);
       const syncedCoverUrl = member.coverUrl ?? existingUser?.coverUrl;
@@ -763,79 +796,146 @@ export const serverStore = {
     return user;
   },
 
-  updateUser: (nrp: string, updates: Partial<AuthUser> & { noHp?: string }) => {
-    const idx = globalStore.users.findIndex((u) => u.nrp === nrp);
-    if (idx < 0) return null;
-    if (updates.satker !== undefined) {
-      updates.satker = cleanSatkerRoleSuffix(updates.satker, nrp);
+  updateUser: (
+    nrp: string,
+    updates: Partial<AuthUser> & {
+      noHp?: string;
+      newNrp?: string;
+      jabatanTerakhir?: string;
+      tanggalLahir?: string;
+      tempatLahir?: string;
     }
-    globalStore.users[idx] = { ...globalStore.users[idx], ...updates };
+  ) => {
+    const cleanOldNrp = nrp.trim();
+    const idx = globalStore.users.findIndex((u) => u.nrp === cleanOldNrp);
+    if (idx < 0) return null;
+
+    const cleanNewNrp = (updates.newNrp || updates.nrp || cleanOldNrp).trim();
+    const isNrpChanged = Boolean(cleanNewNrp && cleanNewNrp !== cleanOldNrp);
+
+    if (isNrpChanged) {
+      const collision = globalStore.users.some((u, i) => i !== idx && u.nrp === cleanNewNrp);
+      if (collision) {
+        return null;
+      }
+    }
+
+    const { newNrp: _ignoredNewNrp, jabatanTerakhir, tanggalLahir, tempatLahir, ...userUpdates } = updates;
+    if (userUpdates.satker !== undefined) {
+      userUpdates.satker = cleanSatkerRoleSuffix(userUpdates.satker, cleanNewNrp);
+    }
+
+    globalStore.users[idx] = {
+      ...globalStore.users[idx],
+      ...userUpdates,
+      nrp: cleanNewNrp,
+    };
+    if (isNrpChanged && (!userUpdates.email || userUpdates.email === `${cleanOldNrp}@polri.go.id`)) {
+      globalStore.users[idx].email = `${cleanNewNrp}@polri.go.id`;
+    }
+    if (userUpdates.password) {
+      globalStore.users[idx].password = userUpdates.password;
+      globalStore.users[idx].status = 'AKTIF';
+    }
     if (updates.role) {
       globalStore.users[idx].role = updates.role;
     }
     const updatedUser = globalStore.users[idx];
 
-    // Sync member name/pangkat/satker/noHp/emails if changed (NEVER overwrite jabatanTerakhir with angkatan role!)
-    const mIdx = globalStore.members.findIndex((m) => m.nrp === nrp);
+    // Sync member nrp/name/pangkat/satker/jabatan/tanggalLahir/noHp/emails if changed
+    const mIdx = globalStore.members.findIndex((m) => m.nrp === cleanOldNrp || m.nrp === cleanNewNrp);
     if (mIdx >= 0) {
+      globalStore.members[mIdx].nrp = cleanNewNrp;
       if (updates.nama) globalStore.members[mIdx].namaLengkap = updates.nama;
       if (updates.pangkat) globalStore.members[mIdx].pangkat = updates.pangkat;
-      if (updates.satker) {
-        globalStore.members[mIdx].satuanKerja = updates.satker;
-        (globalStore.members[mIdx] as unknown as Record<string, unknown>).satker = updates.satker;
-        if (!globalStore.members[mIdx].jabatanTerakhir) {
-          globalStore.members[mIdx].jabatanTerakhir = `Perwira ${updates.satker}`;
+      if (userUpdates.satker) {
+        globalStore.members[mIdx].satuanKerja = userUpdates.satker;
+        (globalStore.members[mIdx] as unknown as Record<string, unknown>).satker = userUpdates.satker;
+        if (!globalStore.members[mIdx].jabatanTerakhir && !jabatanTerakhir) {
+          globalStore.members[mIdx].jabatanTerakhir = `Perwira ${userUpdates.satker}`;
         }
       }
-      const currentJabatan = globalStore.members[mIdx].jabatanTerakhir || '';
-      if (
-        currentJabatan.includes('Ketua Batalyon') ||
-        currentJabatan.includes('Sekretaris Batalyon') ||
-        currentJabatan.includes('Sekretariat Batalyon') ||
-        currentJabatan.includes('Bendahara Batalyon')
-      ) {
-        if (nrp === '980107102') {
-          globalStore.members[mIdx].jabatanTerakhir = 'Irwil I Itwasum Polri';
-        } else if (nrp === '980107103') {
-          globalStore.members[mIdx].jabatanTerakhir = 'Karobinkar SSDM Polri';
-        } else if (nrp === '980107104') {
-          globalStore.members[mIdx].jabatanTerakhir = 'Kabagrenmin Puskeu Polri';
-        } else {
-          const refMember = AKPOL_1996_MEMBERS.find((am) => am.nrp === nrp);
-          globalStore.members[mIdx].jabatanTerakhir =
-            refMember?.jabatanTerakhir ||
-            `Perwira ${globalStore.members[mIdx].satuanKerja || 'Polri'}`;
+      if (jabatanTerakhir !== undefined && jabatanTerakhir.trim().length > 0) {
+        globalStore.members[mIdx].jabatanTerakhir = jabatanTerakhir.trim();
+      } else {
+        const currentJabatan = globalStore.members[mIdx].jabatanTerakhir || '';
+        if (
+          currentJabatan.includes('Ketua Batalyon') ||
+          currentJabatan.includes('Sekretaris Batalyon') ||
+          currentJabatan.includes('Sekretariat Batalyon') ||
+          currentJabatan.includes('Bendahara Batalyon')
+        ) {
+          if (cleanNewNrp === '980107102') {
+            globalStore.members[mIdx].jabatanTerakhir = 'Irwil I Itwasum Polri';
+          } else if (cleanNewNrp === '980107103') {
+            globalStore.members[mIdx].jabatanTerakhir = 'Karobinkar SSDM Polri';
+          } else if (cleanNewNrp === '980107104') {
+            globalStore.members[mIdx].jabatanTerakhir = 'Kabagrenmin Puskeu Polri';
+          } else {
+            const refMember = AKPOL_1996_MEMBERS.find((am) => am.nrp === cleanNewNrp);
+            globalStore.members[mIdx].jabatanTerakhir =
+              refMember?.jabatanTerakhir ||
+              `Perwira ${globalStore.members[mIdx].satuanKerja || 'Polri'}`;
+          }
         }
+      }
+      if (tempatLahir !== undefined && tempatLahir.trim()) {
+        globalStore.members[mIdx].tempatLahir = tempatLahir.trim();
+      }
+      if (tanggalLahir !== undefined && tanggalLahir.trim()) {
+        const calc58 = calculateRetirement58(tanggalLahir.trim(), cleanNewNrp);
+        globalStore.members[mIdx].tanggalLahir = calc58.tanggalLahir;
+        globalStore.members[mIdx].usia = calc58.usiaTahun;
+        globalStore.members[mIdx].tahunPurnaTugas = calc58.tahunPurnaTugas;
+        globalStore.members[mIdx].sisaTahunDinas = calc58.sisaTahunDinas;
       }
       if (updates.polda) globalStore.members[mIdx].polda = updates.polda;
-      if (updates.email) globalStore.members[mIdx].email = updates.email;
+      if (updatedUser.email) globalStore.members[mIdx].email = updatedUser.email;
       if (updates.secondaryEmail !== undefined) globalStore.members[mIdx].secondaryEmail = updates.secondaryEmail;
       if (updates.noHp !== undefined) globalStore.members[mIdx].noHp = updates.noHp;
     }
 
-    if (globalStore.activeSession && globalStore.activeSession.nrp === nrp) {
+    if (
+      globalStore.activeSession &&
+      (globalStore.activeSession.nrp === cleanOldNrp || globalStore.activeSession.nrp === cleanNewNrp)
+    ) {
       globalStore.activeSession = {
         ...globalStore.activeSession,
         ...updatedUser,
       };
     }
 
-    const rIdx = globalStore.registrations.findIndex((r) => r.nrp === nrp);
+    const rIdx = globalStore.registrations.findIndex((r) => r.nrp === cleanOldNrp || r.nrp === cleanNewNrp);
     if (rIdx >= 0) {
+      globalStore.registrations[rIdx].nrp = cleanNewNrp;
       if (updates.nama) globalStore.registrations[rIdx].nama = updates.nama;
       if (updates.pangkat) globalStore.registrations[rIdx].pangkat = updates.pangkat;
-      if (updates.satker) globalStore.registrations[rIdx].satker = updates.satker;
+      if (userUpdates.satker) globalStore.registrations[rIdx].satker = userUpdates.satker;
       if (updates.polda) globalStore.registrations[rIdx].polda = updates.polda;
-      if (updates.email) globalStore.registrations[rIdx].email = updates.email;
+      if (updatedUser.email) globalStore.registrations[rIdx].email = updatedUser.email;
       if (updates.secondaryEmail !== undefined) globalStore.registrations[rIdx].secondaryEmail = updates.secondaryEmail;
       if (updates.noHp !== undefined) globalStore.registrations[rIdx].noHp = updates.noHp;
+      if (userUpdates.password) {
+        globalStore.registrations[rIdx].password = userUpdates.password;
+        globalStore.registrations[rIdx].status = 'AKTIF';
+      }
     }
 
-    const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === nrp);
+    const iIdx = globalStore.iuranList.findIndex((i) => i.nrp === cleanOldNrp || i.nrp === cleanNewNrp);
     if (iIdx >= 0) {
+      globalStore.iuranList[iIdx].nrp = cleanNewNrp;
       if (updates.nama) globalStore.iuranList[iIdx].namaLengkap = updates.nama;
       if (updates.pangkat) globalStore.iuranList[iIdx].pangkat = updates.pangkat;
       if (updates.polda) globalStore.iuranList[iIdx].polda = updates.polda;
+    }
+
+    if (isNrpChanged) {
+      globalStore.posts.forEach((p) => {
+        if (p.authorNrp === cleanOldNrp) p.authorNrp = cleanNewNrp;
+        p.comments?.forEach((c) => {
+          if (c.authorNrp === cleanOldNrp) c.authorNrp = cleanNewNrp;
+        });
+      });
     }
 
     persistLocalStore(globalStore);

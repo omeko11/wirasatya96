@@ -13,6 +13,8 @@ import {
   formatMemberDisplayName,
   cleanJabatanOnly,
   formatJabatanWithSatker,
+  calculateRetirement58,
+  RETIREMENT_AGE_POLRI,
   DEFAULT_AVATAR_URL,
   DEFAULT_COVER_URL,
 } from '@/lib/avatarUtils';
@@ -1264,17 +1266,47 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             )}
           </div>
 
-          {/* 6. SECTION: PURNA TUGAS */}
+          {/* 6. SECTION: PURNA TUGAS (BUP 58 TAHUN) */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Home className="w-5 h-5 text-polri-goldDark" />
-                Purna Tugas
-              </h2>
-              <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">
-                Pensiun {localMember.tahunPurnaTugas}
-              </span>
-            </div>
+            {(() => {
+              const ret58 = calculateRetirement58(localMember.tanggalLahir, localMember.nrp);
+              return (
+                <>
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <Home className="w-5 h-5 text-polri-goldDark" />
+                      Purna Tugas (BUP {RETIREMENT_AGE_POLRI} Tahun)
+                    </h2>
+                    <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                      Pensiun {ret58.tahunPurnaTugas} • {ret58.sisaMasaDinasLabel}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">Tempat &amp; Tanggal Lahir:</span>
+                      <span className="font-extrabold text-slate-900">
+                        {localMember.tempatLahir || 'Jakarta'}, {ret58.formattedTanggalLahir}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">Usia Saat Ini:</span>
+                      <span className="font-extrabold text-polri-navy">
+                        {ret58.usiaLabel}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[11px]">
+                        Jatuh Tempo Pensiun ({RETIREMENT_AGE_POLRI} Thn):
+                      </span>
+                      <span className="font-extrabold text-amber-800">
+                        {ret58.formattedTanggalPensiun}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
@@ -1349,6 +1381,23 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 {jabatanAngkatanLabel}
               </span>
             </div>
+
+            {(() => {
+              const ret58 = calculateRetirement58(localMember.tanggalLahir, localMember.nrp);
+              return (
+                <div>
+                  <span className="text-slate-500 block text-[11px]">
+                    Tanggal Lahir &amp; BUP {RETIREMENT_AGE_POLRI} Tahun:
+                  </span>
+                  <span className="font-bold text-slate-800 block">
+                    {ret58.formattedTanggalLahir} ({ret58.usiaLabel})
+                  </span>
+                  <span className="text-[11px] font-semibold text-amber-800">
+                    Pensiun Thn {ret58.tahunPurnaTugas} • {ret58.sisaMasaDinasLabel}
+                  </span>
+                </div>
+              );
+            })()}
 
             <div>
               <span className="text-slate-500 block text-[11px]">

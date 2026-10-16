@@ -85,8 +85,9 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const targetNrpForEmail = String(updates.newNrp || nrp).trim();
     if (updates.email !== undefined && typeof updates.email === 'string') {
-      updates.email = updates.email.trim() || `${String(nrp).trim()}@polri.go.id`;
+      updates.email = updates.email.trim() || `${targetNrpForEmail}@polri.go.id`;
     }
     if (updates.secondaryEmail !== undefined && typeof updates.secondaryEmail === 'string') {
       updates.secondaryEmail = updates.secondaryEmail.trim();
@@ -94,12 +95,21 @@ export async function PUT(req: NextRequest) {
 
     const updated = serverStore.updateUser(nrp, updates);
     if (!updated) {
-      return NextResponse.json({ success: false, message: 'Pengguna tidak ditemukan' }, { status: 404 });
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            updates.newNrp && updates.newNrp !== nrp
+              ? `Gagal mengubah NRP ke ${updates.newNrp}: NRP baru sudah digunakan atau pengguna tidak ditemukan.`
+              : 'Pengguna tidak ditemukan',
+        },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Data pengguna ${updated.nama} berhasil diperbarui.`,
+      message: `Data pengguna ${updated.nama} (NRP ${updated.nrp}) berhasil diperbarui.`,
       data: updated,
     });
   } catch (error) {

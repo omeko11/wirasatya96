@@ -62,6 +62,7 @@ export interface AdcPersonel {
   nrp?: string;
   pangkat: string;
   jabatan?: string;
+  tanggalLahir?: string;
   noHp: string;
   email?: string;
 }

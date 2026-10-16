@@ -13,6 +13,13 @@ import {
   resolveAvatarUrl,
   formatJabatanWithSatker,
 } from '@/lib/avatarUtils';
+import {
+  getJabatanGroupsForPangkat,
+  isStandardPolriJabatan,
+  isOfficerRankIpdaUp,
+  EXTERNAL_JABATAN_SENTINEL,
+  classifyJabatanForStats,
+} from '@/data/polriJabatan';
 import { MetaVerifiedBadge, resolveRoleForBadge } from './MetaVerifiedBadge';
 import { 
   Briefcase, 
@@ -128,7 +135,9 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
     return [...visibleCustom, ...memberEntries];
   }, [customJabatanList, members, canSeeSuperadmin]);
 
+  const [selectedKategoriJabatan, setSelectedKategoriJabatan] = useState<string>('SEMUA');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isNewExternalJabatan, setIsNewExternalJabatan] = useState(false);
   const [newJabatan, setNewJabatan] = useState({
     jabatan: '',
     polda: 'MABES POLRI',
@@ -140,6 +149,19 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
     prestasiOperasional: '',
     dasarTR: '',
   });
+
+  const jabatanCategoryStats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    jabatanList.forEach((item) => {
+      const cat = classifyJabatanForStats(
+        item.jabatan,
+        item.pangkat,
+        item.polda === 'KEMEN/LEMBAGA' ? 'KEMEN/LEMBAGA' : undefined
+      );
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [jabatanList]);
 
   const filteredJabatan = useMemo(() => {
     return jabatanList.filter((item) => {
@@ -154,13 +176,23 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
       const matchesFungsi = selectedFungsi === 'SEMUA' || item.fungsiPolri === selectedFungsi;
       const matchesPolda = selectedPolda === 'SEMUA' || item.polda.toUpperCase() === selectedPolda.toUpperCase();
-      return matchesSearch && matchesFungsi && matchesPolda;
+      const itemCat = classifyJabatanForStats(
+        item.jabatan,
+        item.pangkat,
+        item.polda === 'KEMEN/LEMBAGA' ? 'KEMEN/LEMBAGA' : undefined
+      );
+      const matchesKategori = selectedKategoriJabatan === 'SEMUA' || itemCat === selectedKategoriJabatan;
+      return matchesSearch && matchesFungsi && matchesPolda && matchesKategori;
     });
-  }, [jabatanList, searchQuery, selectedFungsi, selectedPolda]);
+  }, [jabatanList, searchQuery, selectedFungsi, selectedPolda, selectedKategoriJabatan]);
 
   const handleAddJabatanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newJabatan.jabatan) return;
+    const fallbackGroups = getJabatanGroupsForPangkat(currentUser.pangkat, currentUser.nrp);
+    const effectiveJabatan =
+      newJabatan.jabatan.trim() ||
+      (!isNewExternalJabatan ? fallbackGroups[0]?.options[0] || 'Staf' : '');
+    if (!effectiveJabatan) return;
 
     const composedSatker =
       newJabatan.subSatker && newJabatan.subSatker !== 'Pimpinan / Staf Utama Satker'
@@ -173,7 +205,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       namaPerwira: currentUser.nama.replace(/\(.*?\)/g, '').trim(),
       pangkat: currentUser.pangkat,
       avatarUrl: getAvatarUrl(currentUser.fotoUrl),
-      jabatan: newJabatan.jabatan,
+      jabatan: effectiveJabatan,
       satker: composedSatker,
       polda: newJabatan.polda,
       fungsiPolri: newJabatan.fungsiPolri,
@@ -192,7 +224,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
     // Sync active jabatan/satker/polda to members & users database
     if (onUpdateMemberJabatan) {
-      onUpdateMemberJabatan(currentUser.nrp, newJabatan.jabatan, composedSatker, newJabatan.polda);
+      onUpdateMemberJabatan(currentUser.nrp, effectiveJabatan, composedSatker, newJabatan.polda);
     }
 
     setIsAddModalOpen(false);
@@ -343,6 +375,52 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
 
             <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
               Sumber: TR Mutasi &amp; Data Mandiri
+            </div>
+          </div>
+
+          {/* Rekapitulasi Hitungan Kategori Jabatan Organisasi Polri */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
+                <Award className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <span className="truncate">Rekap Kategori Jabatan</span>
+              </h4>
+              {selectedKategoriJabatan !== 'SEMUA' && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedKategoriJabatan('SEMUA')}
+                  className="text-[10px] font-bold text-red-700 hover:underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5 text-xs">
+              {jabatanCategoryStats.map(([cat, count]) => {
+                const isSelected = selectedKategoriJabatan === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedKategoriJabatan(isSelected ? 'SEMUA' : cat)}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
+                      isSelected
+                        ? 'bg-red-800 text-white font-bold'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                    }`}
+                  >
+                    <span className="truncate pr-2 text-[11px]">{cat}</span>
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -602,16 +680,72 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
 
             <form onSubmit={handleAddJabatanSubmit} className="p-6 space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Nama Jabatan *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Misal: Dirreskrimum Polda Metro Jaya / Kapolrestabes..."
-                  value={newJabatan.jabatan}
-                  onChange={(e) => setNewJabatan({ ...newJabatan, jabatan: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
-                />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-700">
+                    Jabatan Organisasi Polri <span className="text-red-600">*</span>
+                  </label>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    {isOfficerRankIpdaUp(currentUser.pangkat)
+                      ? `Standar ${currentUser.pangkat}`
+                      : 'Staf / ADC'}
+                  </span>
+                </div>
+                {(() => {
+                  const groups = getJabatanGroupsForPangkat(currentUser.pangkat, currentUser.nrp);
+                  const curVal = newJabatan.jabatan.trim();
+                  const isStd = isStandardPolriJabatan(curVal, currentUser.pangkat, currentUser.nrp);
+                  const selectVal = isNewExternalJabatan
+                    ? EXTERNAL_JABATAN_SENTINEL
+                    : isStd
+                    ? curVal
+                    : groups[0]?.options[0] || 'Staf';
+
+                  return (
+                    <>
+                      <select
+                        value={selectVal}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === EXTERNAL_JABATAN_SENTINEL) {
+                            setIsNewExternalJabatan(true);
+                            setNewJabatan({ ...newJabatan, jabatan: '', fungsiPolri: 'LUAR_STRUKTUR' });
+                          } else {
+                            setIsNewExternalJabatan(false);
+                            setNewJabatan({ ...newJabatan, jabatan: val });
+                          }
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg font-semibold focus:ring-2 focus:ring-red-800 focus:outline-none"
+                      >
+                        {groups.map((grp) => (
+                          <optgroup key={grp.group} label={grp.group}>
+                            {grp.options.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        <optgroup label="Penugasan Luar Struktur (Eksternal Polri)">
+                          <option value={EXTERNAL_JABATAN_SENTINEL}>
+                            Penugasan Luar Struktur (Eksternal Polri) — Tulis Sendiri
+                          </option>
+                        </optgroup>
+                      </select>
+
+                      {isNewExternalJabatan && (
+                        <input
+                          type="text"
+                          required
+                          placeholder="Ketik nama jabatan eksternal (misal BNN, KPK, BNPT, Kementerian)..."
+                          value={newJabatan.jabatan}
+                          onChange={(e) => setNewJabatan({ ...newJabatan, jabatan: e.target.value })}
+                          className="w-full px-3 py-2 border border-amber-300 bg-amber-50/50 rounded-lg focus:ring-2 focus:ring-red-800 focus:outline-none"
+                        />
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -226,8 +226,59 @@ export default function Home() {
             setAssets(res.data.assets);
           }
 
+          let savedCfg: any = null;
+          if (typeof window !== 'undefined') {
+            try {
+              const rawCfg = localStorage.getItem('ws96_finance_config_v1');
+              if (rawCfg) savedCfg = JSON.parse(rawCfg);
+              else if (localFin?.financeConfig) savedCfg = localFin.financeConfig;
+            } catch {
+              savedCfg = null;
+            }
+          }
+
+          const serverCfg = res.data.financeConfig || res.financeConfig;
+          const isServerDefaultCfg =
+            !serverCfg || serverCfg.updatedBy === 'Sistem Default Kebendaharaan WS96';
+          const hasCustomLocalCfg =
+            savedCfg &&
+            Number(savedCfg.iuranWajibPerBulan) > 0 &&
+            savedCfg.updatedBy &&
+            savedCfg.updatedBy !== 'Sistem Default Kebendaharaan WS96';
+
+          const effectiveIuranPerBulan =
+            isServerDefaultCfg && hasCustomLocalCfg
+              ? Number(savedCfg.iuranWajibPerBulan)
+              : Number(serverCfg?.iuranWajibPerBulan) || 250000;
+
           if (Array.isArray(res.data.iuranList) && res.data.iuranList.length > 0) {
-            setIuranList(res.data.iuranList);
+            const annualTarget = effectiveIuranPerBulan * 12;
+            const syncedIuran = res.data.iuranList.map((item: IuranAnggota) => {
+              const status: IuranAnggota['status'] =
+                item.totalTerbayar >= annualTarget
+                  ? 'LUNAS'
+                  : item.totalTerbayar > 0
+                  ? 'SEBAGIAN'
+                  : 'BELUM_BAYAR';
+              return { ...item, totalTagihan: annualTarget, status };
+            });
+            setIuranList(syncedIuran);
+          }
+
+          if (isServerDefaultCfg && hasCustomLocalCfg && savedCfg) {
+            fetch('/api/finance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'UPDATE_FINANCE_CONFIG',
+                actorRole: 'SUPERADMIN',
+                iuranWajibPerBulan: savedCfg.iuranWajibPerBulan,
+                tahunBuku: savedCfg.tahunBuku,
+                subKategoriMasuk: savedCfg.subKategoriMasuk,
+                subKategoriKeluar: savedCfg.subKategoriKeluar,
+                updatedBy: savedCfg.updatedBy,
+              }),
+            }).catch(() => {});
           }
         }
       })

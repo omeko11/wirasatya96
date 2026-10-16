@@ -5,6 +5,17 @@ import { AuthUser, PendingRegistration, UserAccountStatus, UserRole, DAFTAR_PANG
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
 import { MetaVerifiedBadge, setDynamicRoleMap, updateDynamicUserRole } from './MetaVerifiedBadge';
+import {
+  getJabatanGroupsForPangkat,
+  isStandardPolriJabatan,
+  isOfficerRankIpdaUp,
+  EXTERNAL_JABATAN_SENTINEL,
+} from '@/data/polriJabatan';
+import {
+  calculateRetirement58,
+  deriveBirthDateFromNrp,
+  RETIREMENT_AGE_POLRI,
+} from '@/lib/avatarUtils';
 import { 
   ShieldCheck, 
   X, 
@@ -84,9 +95,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
   // Edit User Modal state (inside Manajemen Pengguna)
   const [editingUser, setEditingUser] = useState<AuthUser | null>(null);
+  const [editNrp, setEditNrp] = useState('');
   const [editNama, setEditNama] = useState('');
   const [editPangkat, setEditPangkat] = useState('Kombes Pol');
   const [editRole, setEditRole] = useState<UserRole>('ANGGOTA');
+  const [editJabatan, setEditJabatan] = useState('');
+  const [editIsExternalJabatan, setEditIsExternalJabatan] = useState(false);
+  const [editTanggalLahir, setEditTanggalLahir] = useState('');
   const [editPolda, setEditPolda] = useState('MABES POLRI');
   const [editSatkerUtama, setEditSatkerUtama] = useState('BARESKRIM POLRI');
   const [editSubSatker, setEditSubSatker] = useState('');
@@ -95,6 +110,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   const [editEmail, setEditEmail] = useState('');
   const [editSecondaryEmail, setEditSecondaryEmail] = useState('');
   const [editNoHp, setEditNoHp] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   // Filters for Verification tab
   const [regSearch, setRegSearch] = useState('');
@@ -142,6 +159,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       setEditSubSatker(result.subSatker);
       setEditComposedSatker(result.composedSatker);
       setEditKodeSatker(result.kodeSatker);
+      if (
+        result.polda === 'KEMEN/LEMBAGA' ||
+        result.satkerUtama?.toUpperCase().includes('LUAR STRUKTUR') ||
+        result.satkerUtama?.toUpperCase().includes('EKSTERNAL')
+      ) {
+        setEditIsExternalJabatan(true);
+      }
     } else if (satkerPickerMode === 'ADD') {
       setNewPolda(result.polda);
       setNewSatkerUtama(result.satkerUtama);
@@ -161,6 +185,19 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     }
   };
 
+  const handleEditNrpChange = (rawVal: string) => {
+    const cleanedVal = rawVal.replace(/\s+/g, '');
+    const oldAutoEmail = `${editNrp}@polri.go.id`;
+    const origAutoEmail = editingUser ? `${editingUser.nrp}@polri.go.id` : '';
+    setEditNrp(cleanedVal);
+    if (!editEmail.trim() || editEmail.trim() === oldAutoEmail || editEmail.trim() === origAutoEmail) {
+      setEditEmail(cleanedVal ? `${cleanedVal}@polri.go.id` : '');
+    }
+    if (!editTanggalLahir && cleanedVal.replace(/\D/g, '').length >= 4) {
+      setEditTanggalLahir(deriveBirthDateFromNrp(cleanedVal));
+    }
+  };
+
   const fetchAllData = async () => {
     setLoading(true);
     try {
@@ -172,7 +209,24 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       const regData = await regRes.json();
 
       if (usersData.success && Array.isArray(usersData.data)) {
-        const fetchedUsers = usersData.data as AuthUser[];
+        let fetchedUsers = usersData.data as AuthUser[];
+        if (typeof window !== 'undefined') {
+          try {
+            const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+            if (rawOverrides) {
+              const parsedOverrides: Record<string, Partial<AuthUser> & { oldNrp?: string }> = JSON.parse(rawOverrides);
+              fetchedUsers = fetchedUsers.map((u) => {
+                const ov = parsedOverrides[u.nrp] || Object.values(parsedOverrides).find((item) => item.oldNrp === u.nrp);
+                if (ov) {
+                  return { ...u, ...ov };
+                }
+                return u;
+              });
+            }
+          } catch {
+            // ignore
+          }
+        }
         setUsers(fetchedUsers);
         const map: Record<string, UserRole> = {};
         fetchedUsers.forEach((u) => {
@@ -248,10 +302,40 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     const poldaVal = u.polda || 'MABES POLRI';
     const satkerVal = (u.satker || 'BARESKRIM POLRI').split(' / ')[0].trim();
     const regMatch = registrations.find((r) => r.nrp === u.nrp);
+
+    // Lookup member's current jabatanTerakhir & tanggalLahir from localStorage cache if available
+    let memberJabatan = '';
+    let memberBirthDate = '';
+    if (typeof window !== 'undefined') {
+      try {
+        const rawMembers = localStorage.getItem('wirasatya96_members');
+        if (rawMembers) {
+          const parsedMembers = JSON.parse(rawMembers);
+          if (Array.isArray(parsedMembers)) {
+            const matchedMember = parsedMembers.find((m: any) => m.nrp === u.nrp);
+            if (matchedMember) {
+              memberJabatan = matchedMember.jabatanTerakhir || '';
+              memberBirthDate = matchedMember.tanggalLahir || '';
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    const rankGroups = getJabatanGroupsForPangkat(u.pangkat || 'Kombes Pol', u.nrp);
+    const defaultJab = memberJabatan || rankGroups[0]?.options[0] || (isOfficerRankIpdaUp(u.pangkat) ? 'Pamen Polri' : 'Staf');
+    const calc58 = calculateRetirement58(memberBirthDate || undefined, u.nrp);
+
     setEditingUser(u);
+    setEditNrp(u.nrp);
     setEditNama(u.nama);
     setEditPangkat(u.pangkat || 'Kombes Pol');
     setEditRole(u.role);
+    setEditJabatan(defaultJab);
+    setEditIsExternalJabatan(poldaVal === 'KEMEN/LEMBAGA');
+    setEditTanggalLahir(calc58.tanggalLahir);
     setEditPolda(poldaVal);
     setEditSatkerUtama(satkerVal);
     setEditSubSatker('');
@@ -260,12 +344,20 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     setEditEmail(u.email || `${u.nrp}@polri.go.id`);
     setEditSecondaryEmail(u.secondaryEmail || regMatch?.secondaryEmail || '');
     setEditNoHp(u.noHp || regMatch?.noHp || '');
+    setEditPassword('');
+    setShowEditPassword(false);
   };
 
   const handleSaveEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
     const targetNrp = editingUser.nrp;
+    const nextNrp = editNrp.trim() || targetNrp;
+    if (!nextNrp) {
+      showToast('NRP / NIP tidak boleh kosong.', 'error');
+      return;
+    }
+
     const composedSatker = (
       editComposedSatker ||
       (editSubSatker && editSubSatker !== 'Pimpinan / Staf Utama Satker'
@@ -273,9 +365,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         : editSatkerUtama) ||
       'MABES POLRI'
     ).split(' / ')[0].trim();
-    const cleanedEmail = editEmail.trim() || `${targetNrp}@polri.go.id`;
+    const cleanedEmail =
+      editEmail.trim() && editEmail.trim() !== `${targetNrp}@polri.go.id`
+        ? editEmail.trim()
+        : `${nextNrp}@polri.go.id`;
     const cleanedSecondaryEmail = editSecondaryEmail.trim();
     const cleanedNoHp = editNoHp.trim();
+    const cleanedJabatan = editJabatan.trim();
 
     // Immediate optimistic update on users state and dynamic badge role map
     setUsers((prev) =>
@@ -283,6 +379,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         u.nrp === targetNrp
           ? {
               ...u,
+              nrp: nextNrp,
               nama: editNama.trim(),
               pangkat: editPangkat,
               role: editRole,
@@ -295,7 +392,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           : u
       )
     );
-    updateDynamicUserRole(targetNrp, editRole);
+    updateDynamicUserRole(nextNrp, editRole);
     setUpdatingUserNrp(targetNrp);
 
     try {
@@ -304,18 +401,77 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nrp: targetNrp,
+          newNrp: nextNrp !== targetNrp ? nextNrp : undefined,
           nama: editNama.trim(),
           pangkat: editPangkat,
           role: editRole,
+          jabatanTerakhir: cleanedJabatan || undefined,
+          tanggalLahir: editTanggalLahir || undefined,
           polda: editPolda || 'MABES POLRI',
           satker: composedSatker,
           email: cleanedEmail,
           secondaryEmail: cleanedSecondaryEmail,
           noHp: cleanedNoHp,
+          password: editPassword.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (data.success) {
+        if (typeof window !== 'undefined') {
+          try {
+            const rawOverrides = localStorage.getItem('ws96_user_overrides_v1');
+            const parsedOverrides = rawOverrides ? JSON.parse(rawOverrides) : {};
+            if (nextNrp !== targetNrp) {
+              delete parsedOverrides[targetNrp];
+            }
+            parsedOverrides[nextNrp] = {
+              oldNrp: targetNrp,
+              nrp: nextNrp,
+              nama: editNama.trim(),
+              pangkat: editPangkat,
+              role: editRole,
+              polda: editPolda || 'MABES POLRI',
+              satker: composedSatker,
+              email: cleanedEmail,
+              secondaryEmail: cleanedSecondaryEmail,
+              noHp: cleanedNoHp,
+            };
+            localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedOverrides));
+
+            // Also update wirasatya96_members & ws96_member_overrides_v1 in localStorage
+            const calc58 = calculateRetirement58(editTanggalLahir || undefined, nextNrp);
+            const rawMembers = localStorage.getItem('wirasatya96_members');
+            if (rawMembers) {
+              const parsedMembers = JSON.parse(rawMembers);
+              if (Array.isArray(parsedMembers)) {
+                const updatedMembers = parsedMembers.map((m: any) =>
+                  m.nrp === targetNrp || m.nrp === nextNrp
+                    ? {
+                        ...m,
+                        nrp: nextNrp,
+                        namaLengkap: editNama.trim(),
+                        pangkat: editPangkat,
+                        satuanKerja: composedSatker,
+                        polda: editPolda || 'MABES POLRI',
+                        jabatanTerakhir: cleanedJabatan || m.jabatanTerakhir,
+                        tanggalLahir: calc58.tanggalLahir,
+                        usia: calc58.usiaTahun,
+                        tahunPurnaTugas: calc58.tahunPurnaTugas,
+                        sisaTahunDinas: calc58.sisaTahunDinas,
+                        email: cleanedEmail,
+                        secondaryEmail: cleanedSecondaryEmail,
+                        noHp: cleanedNoHp || m.noHp,
+                      }
+                    : m
+                );
+                localStorage.setItem('wirasatya96_members', JSON.stringify(updatedMembers));
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
         if (Array.isArray(data.data)) {
           const updatedUsers = data.data as AuthUser[];
           setUsers(updatedUsers);
@@ -327,7 +483,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
           });
           setDynamicRoleMap(map);
         }
-        showToast(`Data, Email & Satker ${editNama} (NRP ${targetNrp}) berhasil diperbarui.`, 'success');
+        showToast(
+          `Data pengguna ${editNama.trim()} (NRP ${nextNrp}) berhasil diperbarui.`,
+          'success'
+        );
         setEditingUser(null);
         await fetchAllData();
         if (onVerificationUpdate) onVerificationUpdate();
@@ -1393,7 +1552,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Nama Lengkap &amp; Gelar</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Nama Lengkap &amp; Gelar <span className="text-red-600">*</span>
+                    </label>
                     <input
                       type="text"
                       required
@@ -1409,7 +1570,21 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       <label className="block font-semibold text-slate-700 mb-1">Pangkat</label>
                       <select
                         value={editPangkat}
-                        onChange={(e) => setEditPangkat(e.target.value)}
+                        onChange={(e) => {
+                          const nextRank = e.target.value;
+                          setEditPangkat(nextRank);
+                          if (!editIsExternalJabatan) {
+                            const nextGroups = getJabatanGroupsForPangkat(nextRank, editNrp || editingUser.nrp);
+                            const allOpts = nextGroups.flatMap((g) => g.options);
+                            if (!isOfficerRankIpdaUp(nextRank)) {
+                              if (!allOpts.includes(editJabatan.trim())) {
+                                setEditJabatan(allOpts[0] || 'Staf');
+                              }
+                            } else if (!editJabatan.trim()) {
+                              setEditJabatan(allOpts[0] || '');
+                            }
+                          }
+                        }}
                         className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                       >
                         {PANGKAT_OPTIONS.map((p) => (
@@ -1419,7 +1594,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Role Akses</label>
+                      <label className="block font-semibold text-slate-700 mb-1">Role Akses (Angkatan)</label>
                       <select
                         value={editRole}
                         onChange={(e) => setEditRole(e.target.value as UserRole)}
@@ -1432,6 +1607,108 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                         ))}
                       </select>
                     </div>
+                  </div>
+
+                  {/* JABATAN ORGANISASI POLRI (DROPDOWN STANDAR PERPOL 4/2025 + EKSTERNAL) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block font-semibold text-slate-700">
+                        Jabatan Organisasi Polri
+                      </label>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                        {isOfficerRankIpdaUp(editPangkat) ? `Standar ${editPangkat}` : 'Staf / ADC'}
+                      </span>
+                    </div>
+                    {(() => {
+                      const groups = getJabatanGroupsForPangkat(editPangkat, editNrp || editingUser.nrp);
+                      const curJab = editJabatan.trim();
+                      const isCurInStd = isStandardPolriJabatan(curJab, editPangkat, editNrp || editingUser.nrp);
+                      const isOfficer = isOfficerRankIpdaUp(editPangkat);
+                      const selectVal = editIsExternalJabatan
+                        ? EXTERNAL_JABATAN_SENTINEL
+                        : isCurInStd
+                        ? curJab
+                        : isOfficer && curJab
+                        ? curJab
+                        : groups[0]?.options[0] || 'Staf';
+
+                      return (
+                        <>
+                          <select
+                            value={selectVal}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === EXTERNAL_JABATAN_SENTINEL) {
+                                setEditIsExternalJabatan(true);
+                                if (isStandardPolriJabatan(curJab, editPangkat, editNrp || editingUser.nrp)) {
+                                  setEditJabatan('');
+                                }
+                              } else {
+                                setEditIsExternalJabatan(false);
+                                setEditJabatan(val);
+                              }
+                            }}
+                            className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                          >
+                            {!editIsExternalJabatan && isOfficer && curJab && !isCurInStd && (
+                              <optgroup label="Jabatan Tersimpan Saat Ini">
+                                <option value={curJab}>{curJab}</option>
+                              </optgroup>
+                            )}
+                            {groups.map((grp) => (
+                              <optgroup key={grp.group} label={grp.group}>
+                                {grp.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            <optgroup label="Penugasan Luar Struktur (Eksternal Polri)">
+                              <option value={EXTERNAL_JABATAN_SENTINEL}>
+                                Penugasan Luar Struktur (Eksternal Polri) — Tulis Sendiri
+                              </option>
+                            </optgroup>
+                          </select>
+
+                          {editIsExternalJabatan && (
+                            <input
+                              type="text"
+                              required
+                              value={editJabatan}
+                              onChange={(e) => setEditJabatan(e.target.value)}
+                              placeholder="Ketik nama jabatan eksternal (misal BNN, KPK, BNPT, Kementerian)..."
+                              className="w-full px-3.5 py-2 border border-amber-300 bg-amber-50/50 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:outline-none"
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* TANGGAL LAHIR & BUP 58 TAHUN */}
+                  <div>
+                    {(() => {
+                      const calc = calculateRetirement58(editTanggalLahir, editNrp || editingUser.nrp);
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block font-semibold text-slate-700">
+                              Tanggal Lahir (BUP {RETIREMENT_AGE_POLRI} Thn)
+                            </label>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                              Usia: {calc.usiaTahun} Thn • Pensiun: {calc.tahunPurnaTugas}
+                            </span>
+                          </div>
+                          <input
+                            type="date"
+                            value={editTanggalLahir || calc.tanggalLahir}
+                            onChange={(e) => setEditTanggalLahir(e.target.value)}
+                            className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                          />
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* SATKER MELEKAT (ALA CAS) */}
@@ -1475,12 +1752,22 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">NRP / NIP (Terkunci)</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold text-slate-700">
+                        NRP / NIP <span className="text-red-600">*</span>
+                      </label>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Dapat Diubah (Superadmin / Sekretaris)
+                      </span>
+                    </div>
                     <input
                       type="text"
-                      disabled
-                      value={editingUser.nrp}
-                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-500 cursor-not-allowed"
+                      required
+                      autoComplete="off"
+                      value={editNrp}
+                      onChange={(e) => handleEditNrpChange(e.target.value)}
+                      placeholder="Masukkan NRP / NIP"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
 
@@ -1496,7 +1783,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                           setEditEmail(`${editEmail.trim()}@polri.go.id`);
                         }
                       }}
-                      placeholder={`${editingUser.nrp}@polri.go.id`}
+                      placeholder={`${editNrp || editingUser.nrp}@polri.go.id`}
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
@@ -1526,6 +1813,29 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Reset / Ganti Password <span className="text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showEditPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder="Masukkan password baru (opsional)"
+                        className="w-full pl-3.5 pr-8 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowEditPassword(!showEditPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showEditPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1534,7 +1844,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      const targetNrp = editingUser.nrp;
+                      const targetNrp = editNrp.trim() || editingUser.nrp;
                       setEditingUser(null);
                       if (!asPage) onClose();
                       onEditMemberByNrp(targetNrp);
@@ -1542,7 +1852,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-[11px] flex items-center gap-1.5"
                   >
                     <FilePlus2 className="w-3.5 h-3.5" />
-                    <span>Edit Biodata Lengkap (5 Tahap)</span>
+                    <span>Edit Biodata Lengkap (4 Tahap)</span>
                   </button>
                 ) : <span />}
 
@@ -1585,7 +1895,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
         <div className="flex items-center gap-1.5">
           <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Otoritas Manajemen Pengguna: <strong>Sekretaris Batalyon Wira Satya 96</strong></span>
+          <span>Otoritas Manajemen Pengguna: <strong>Superadmin &amp; Sekretaris Wira Satya 96</strong></span>
         </div>
         {!asPage && (
           <button

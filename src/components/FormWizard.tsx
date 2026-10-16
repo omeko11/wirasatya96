@@ -7,10 +7,19 @@ import {
   getCoverUrl,
   resolveAvatarUrl,
   cleanJabatanOnly,
+  calculateRetirement58,
+  deriveBirthDateFromNrp,
+  RETIREMENT_AGE_POLRI,
   DEFAULT_AVATAR_URL,
   DEFAULT_COVER_URL,
 } from '@/lib/avatarUtils';
 import { SatkerBerjenjangModal } from '@/components/SatkerBerjenjangModal';
+import {
+  getJabatanGroupsForPangkat,
+  isStandardPolriJabatan,
+  isOfficerRankIpdaUp,
+  EXTERNAL_JABATAN_SENTINEL,
+} from '@/data/polriJabatan';
 import {
   Shield,
   Users,
@@ -28,6 +37,8 @@ import {
   Info,
   Image as ImageIcon,
   Mail,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { processSecureImageUpload } from '@/lib/mediaSecurity';
 
@@ -127,6 +138,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
   const [penyakitLainnya, setPenyakitLainnya] = useState('');
   const [isSatkerModalOpen, setIsSatkerModalOpen] = useState(false);
   const [avatarCleared, setAvatarCleared] = useState(false);
+  const [isExternalJabatan, setIsExternalJabatan] = useState(false);
 
   // Form State initialized from existing member or defaults
   const [formData, setFormData] = useState<FormWizardData>({
@@ -172,6 +184,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     if (existingMember) {
       const isSelf = existingMember.nrp === currentUser.nrp;
       const resolvedKind = resolveDefaultJenisAnggota(existingMember, isSelf ? currentUser : undefined);
+      const calc58 = calculateRetirement58(existingMember.tanggalLahir, existingMember.nrp);
 
       // Build initial daftarAdc from existingMember.daftarAdc or migrate legacy kontakAdc/namaAdc
       let initialDaftarAdc: AdcPersonel[] = [];
@@ -187,15 +200,25 @@ export const FormWizard: React.FC<FormWizardProps> = ({
             nrp: '',
             pangkat: 'Briptu',
             jabatan: 'ADC / Ajudan',
+            tanggalLahir: '',
             noHp: parts.length > 1 ? parts.slice(1).join(' ') : raw,
             email: '',
           },
         ];
       }
 
+      const cleanedJabatan = cleanJabatanOnly(existingMember.jabatanTerakhir) || existingMember.jabatanTerakhir || '';
+      const isExt = existingMember.tipeSatker === 'KEMEN/LEMBAGA';
+      setIsExternalJabatan(isExt);
+
       setFormData({
         ...existingMember,
-        jabatanTerakhir: cleanJabatanOnly(existingMember.jabatanTerakhir) || existingMember.jabatanTerakhir,
+        tempatLahir: existingMember.tempatLahir || 'Jakarta',
+        tanggalLahir: calc58.tanggalLahir,
+        usia: calc58.usiaTahun,
+        tahunPurnaTugas: calc58.tahunPurnaTugas,
+        sisaTahunDinas: calc58.sisaTahunDinas,
+        jabatanTerakhir: cleanedJabatan,
         jenisAnggota: resolvedKind,
         daftarAdc: initialDaftarAdc,
         tipeSatker:
@@ -228,11 +251,17 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       }
     } else if (currentUser.role === 'ANGGOTA') {
       const resolvedKind = resolveDefaultJenisAnggota(undefined, currentUser);
+      const calc58 = calculateRetirement58(undefined, currentUser.nrp);
       setFormData((prev) => ({
         ...prev,
         nrp: currentUser.nrp,
         namaLengkap: currentUser.nama,
         pangkat: currentUser.pangkat,
+        tempatLahir: 'Jakarta',
+        tanggalLahir: calc58.tanggalLahir,
+        usia: calc58.usiaTahun,
+        tahunPurnaTugas: calc58.tahunPurnaTugas,
+        sisaTahunDinas: calc58.sisaTahunDinas,
         jenisAnggota: resolvedKind,
         satuanKerja: currentUser.satker || 'Bareskrim Polri',
         polda: currentUser.polda || 'MABES POLRI',
@@ -245,11 +274,17 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       }));
     } else {
       // Clean form for adding new member
+      const calc58 = calculateRetirement58('1974-01-01', '');
       setFormData((prev) => ({
         ...prev,
         id: undefined,
         nrp: '',
         namaLengkap: '',
+        tempatLahir: 'Jakarta',
+        tanggalLahir: calc58.tanggalLahir,
+        usia: calc58.usiaTahun,
+        tahunPurnaTugas: calc58.tahunPurnaTugas,
+        sisaTahunDinas: calc58.sisaTahunDinas,
         jenisAnggota: 'ANGGOTA POLRI',
         jabatanTerakhir: '',
         satuanKerja: 'Bareskrim Polri',
@@ -268,11 +303,27 @@ export const FormWizard: React.FC<FormWizardProps> = ({
     }
   }, [existingMember, currentUser]);
 
+  const retirementCalc = React.useMemo(
+    () => calculateRetirement58(formData.tanggalLahir, formData.nrp),
+    [formData.tanggalLahir, formData.nrp]
+  );
+
   const handleInputChange = (
     field: keyof FormWizardData,
     value: string | number | string[] | undefined
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleBirthDateChange = (newBirthDate: string) => {
+    const calc = calculateRetirement58(newBirthDate, formData.nrp);
+    setFormData((prev) => ({
+      ...prev,
+      tanggalLahir: newBirthDate,
+      usia: calc.usiaTahun,
+      tahunPurnaTugas: calc.tahunPurnaTugas,
+      sisaTahunDinas: calc.sisaTahunDinas,
+    }));
   };
 
   const handleAddAdc = () => {
@@ -282,6 +333,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       nrp: '',
       pangkat: 'Briptu',
       jabatan: 'ADC / Ajudan',
+      tanggalLahir: '',
       noHp: '',
       email: '',
     };
@@ -308,12 +360,15 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       const currentItem = updated[index];
       if (!currentItem) return prev;
       const nextItem: AdcPersonel = { ...currentItem, [field]: value };
-      // Auto-fill official email when NRP is typed
+      // Auto-fill official email and birth date when NRP is typed
       if (field === 'nrp') {
         const cleanNrp = value.replace(/\s+/g, '');
         const oldAutoEmail = currentItem.nrp ? `${currentItem.nrp.replace(/\s+/g, '')}@polri.go.id` : '';
         if (!currentItem.email || currentItem.email === oldAutoEmail) {
           nextItem.email = cleanNrp ? `${cleanNrp}@polri.go.id` : '';
+        }
+        if (!currentItem.tanggalLahir && cleanNrp.length >= 4) {
+          nextItem.tanggalLahir = deriveBirthDateFromNrp(cleanNrp);
         }
       }
       updated[index] = nextItem;
@@ -413,6 +468,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         ? validAdcList.map((a) => `${a.pangkat ? a.pangkat + ' ' : ''}${a.nama}`.trim()).join(', ')
         : '';
 
+    const finalCalc58 = calculateRetirement58(formData.tanggalLahir, formData.nrp);
+
     const memberToSave: AnggotaWiraSatya = {
       id: existingMember?.id || 'ws-' + (formData.nrp || Date.now()),
       nrp: formData.nrp || '',
@@ -431,8 +488,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       pendidikanTerakhir: formData.pendidikanTerakhir || '',
       nomorKtp: formData.nomorKtp || '',
       tempatLahir: formData.tempatLahir || 'Jakarta',
-      tanggalLahir: formData.tanggalLahir || '1974-01-01',
-      usia: Number(formData.usia) || 52,
+      tanggalLahir: finalCalc58.tanggalLahir,
+      usia: finalCalc58.usiaTahun,
       jenisKelamin: formData.jenisKelamin || 'LAKI-LAKI',
       noHp: formData.noHp || '',
       email: formData.email || `${formData.nrp}@polri.go.id`,
@@ -456,8 +513,8 @@ export const FormWizard: React.FC<FormWizardProps> = ({
       daftarAnak: formData.daftarAnak || [],
       tanggunganLain: formData.tanggunganLain,
 
-      tahunPurnaTugas: Number(formData.tahunPurnaTugas) || 2032,
-      sisaTahunDinas: Number(formData.sisaTahunDinas) || 6,
+      tahunPurnaTugas: finalCalc58.tahunPurnaTugas,
+      sisaTahunDinas: finalCalc58.sisaTahunDinas,
       alamatPurnaTugas: formData.alamatPurnaTugas || '',
       statusRumahPurnaTugas: formData.statusRumahPurnaTugas || 'MILIK PRIBADI',
       detailSewaPurnaTugas: formData.detailSewaPurnaTugas || '',
@@ -650,7 +707,22 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   </label>
                   <select
                     value={formData.pangkat || 'Kombes Pol'}
-                    onChange={(e) => handleInputChange('pangkat', e.target.value)}
+                    onChange={(e) => {
+                      const nextPangkat = e.target.value;
+                      handleInputChange('pangkat', nextPangkat);
+                      if (!isExternalJabatan) {
+                        const nextGroups = getJabatanGroupsForPangkat(nextPangkat, formData.nrp);
+                        const allNextOptions = nextGroups.flatMap((g) => g.options);
+                        const curJab = (formData.jabatanTerakhir || '').trim();
+                        if (!isOfficerRankIpdaUp(nextPangkat)) {
+                          if (!allNextOptions.includes(curJab)) {
+                            handleInputChange('jabatanTerakhir', allNextOptions[0] || 'Staf');
+                          }
+                        } else if (!curJab) {
+                          handleInputChange('jabatanTerakhir', allNextOptions[0] || 'Kombes Pol');
+                        }
+                      }
+                    }}
                     className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
                   >
                     {DAFTAR_PANGKAT_POLRI.map((p) => (
@@ -676,7 +748,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
               </div>
 
               {/* Satker Melekat (Pilih Satker Berjenjang) & Jabatan Organisasi Polri Saat Ini */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
                 <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-2.5">
                   <div className="space-y-0.5 min-w-0">
                     <div className="text-[11px] font-bold text-slate-600">
@@ -702,17 +774,94 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   </button>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Jabatan Organisasi Polri Saat Ini <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Lead Developer / Kabagbinopsnal / Dirreskrimsus"
-                    value={formData.jabatanTerakhir || ''}
-                    onChange={(e) => handleInputChange('jabatanTerakhir', e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                  />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Jabatan Organisasi Polri Saat Ini <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700">
+                      {isOfficerRankIpdaUp(formData.pangkat)
+                        ? `Standar ${formData.pangkat}`
+                        : 'Staf / ADC'}
+                    </span>
+                  </div>
+
+                  {(() => {
+                    const groups = getJabatanGroupsForPangkat(formData.pangkat, formData.nrp);
+                    const curJab = (formData.jabatanTerakhir || '').trim();
+                    const isCurInStandard = isStandardPolriJabatan(curJab, formData.pangkat, formData.nrp);
+                    const isOfficer = isOfficerRankIpdaUp(formData.pangkat);
+                    const selectValue = isExternalJabatan
+                      ? EXTERNAL_JABATAN_SENTINEL
+                      : isCurInStandard
+                      ? curJab
+                      : isOfficer && curJab
+                      ? curJab
+                      : groups[0]?.options[0] || 'Staf';
+
+                    return (
+                      <>
+                        <select
+                          value={selectValue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === EXTERNAL_JABATAN_SENTINEL) {
+                              setIsExternalJabatan(true);
+                              if (isStandardPolriJabatan(curJab, formData.pangkat, formData.nrp)) {
+                                handleInputChange('jabatanTerakhir', '');
+                              }
+                            } else {
+                              setIsExternalJabatan(false);
+                              handleInputChange('jabatanTerakhir', val);
+                            }
+                          }}
+                          className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-semibold bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                        >
+                          {!isExternalJabatan && isOfficer && curJab && !isCurInStandard && (
+                            <optgroup label="Jabatan Tersimpan Saat Ini">
+                              <option value={curJab}>{curJab}</option>
+                            </optgroup>
+                          )}
+                          {groups.map((grp) => (
+                            <optgroup key={grp.group} label={grp.group}>
+                              {grp.options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                          <optgroup label="Penugasan Luar Struktur (Eksternal Polri)">
+                            <option value={EXTERNAL_JABATAN_SENTINEL}>
+                              Penugasan Luar Struktur (Eksternal Polri) — Tulis Sendiri
+                            </option>
+                          </optgroup>
+                        </select>
+
+                        {isExternalJabatan ? (
+                          <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 space-y-1">
+                            <label className="block text-[11px] font-bold text-amber-900">
+                              Ketik Nama Jabatan Eksternal (Luar Struktur Polri) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Contoh: Deputi Pemberantasan BNN / Direktur Penyidikan KPK / Staf Ahli Kementerian..."
+                              value={formData.jabatanTerakhir || ''}
+                              onChange={(e) => handleInputChange('jabatanTerakhir', e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-amber-300 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-slate-500 leading-tight">
+                            {isOfficer
+                              ? 'Pilihan jabatan distandarisasi sesuai pangkat (Perpol 4/2025 & SOTK Kewilayahan). Pilih Eksternal Polri jika penugasan di luar struktur.'
+                              : 'Untuk pangkat selain IPDA ke atas di dalam struktur Polri cukup pilih Staf atau ADC (atau pilih Eksternal Polri untuk ketik sendiri).'}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -856,7 +1005,16 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     readOnly={currentUser.role === 'ANGGOTA' && !!existingMember}
                     placeholder="Contoh: 98010710"
                     value={formData.nrp || ''}
-                    onChange={(e) => handleInputChange('nrp', e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleInputChange('nrp', val);
+                      if (
+                        (!formData.tanggalLahir || formData.tanggalLahir === '1974-01-01') &&
+                        val.replace(/[^0-9]/g, '').length >= 4
+                      ) {
+                        handleBirthDateChange(deriveBirthDateFromNrp(val));
+                      }
+                    }}
                     className={`w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none ${
                       currentUser.role === 'ANGGOTA' && existingMember
                         ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
@@ -868,6 +1026,90 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                       NRP terkunci sebagai identitas utama akun.
                     </span>
                   )}
+                </div>
+
+                {/* Tempat Lahir & Tanggal Lahir (Terkait Hitungan Usia Pensiun 58 Tahun) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Tempat Lahir
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Jakarta / Surabaya / Bandung"
+                    value={formData.tempatLahir || ''}
+                    onChange={(e) => handleInputChange('tempatLahir', e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Tanggal Lahir <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                      Usia: {retirementCalc.usiaLabel}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="date"
+                      required
+                      value={formData.tanggalLahir || retirementCalc.tanggalLahir}
+                      onChange={(e) => handleBirthDateChange(e.target.value)}
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Banner: Hitungan Otomatis Usia Pensiun 58 Tahun (BUP Polri) */}
+                <div className="sm:col-span-2 p-3.5 rounded-xl bg-gradient-to-r from-slate-900 via-polri-navy to-slate-900 text-white border border-polri-gold/30 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-polri-gold flex-shrink-0" />
+                      <span className="text-xs font-extrabold tracking-wide text-polri-gold uppercase">
+                        Kalkulasi Otomatis Pensiun Polri (BUP {RETIREMENT_AGE_POLRI} Tahun)
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-slate-200">
+                      Lahir: {retirementCalc.formattedTanggalLahir}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <span className="text-[10px] text-slate-300 block">Usia Saat Ini</span>
+                      <span className="font-extrabold text-white text-sm">
+                        {retirementCalc.usiaLabel}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <span className="text-[10px] text-slate-300 block">
+                        Jatuh Tempo Pensiun (Usia {RETIREMENT_AGE_POLRI} Thn)
+                      </span>
+                      <span className="font-extrabold text-amber-300 text-sm">
+                        Tahun {retirementCalc.tahunPurnaTugas}{' '}
+                        <span className="text-[11px] font-normal text-slate-200">
+                          ({retirementCalc.formattedTanggalPensiun})
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">
+                      <span className="text-[10px] text-slate-300 block">
+                        Sisa Masa Dinas menuju {RETIREMENT_AGE_POLRI} Tahun
+                      </span>
+                      <span
+                        className={`font-extrabold text-sm ${
+                          retirementCalc.isPurnaTugas ? 'text-red-300' : 'text-emerald-300'
+                        }`}
+                      >
+                        {retirementCalc.sisaMasaDinasLabel}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
@@ -985,114 +1227,136 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   </div>
                 )}
 
-                {formData.daftarAdc?.map((adc, idx) => (
-                  <div
-                    key={adc.id || idx}
-                    className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
-                  >
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                      <span className="text-xs font-extrabold text-polri-navy flex items-center gap-1.5">
-                        <Shield className="w-3.5 h-3.5 text-polri-gold" />
-                        <span>ADC / Ajudan ke-{idx + 1}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAdc(idx)}
-                        className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus</span>
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          Nama Lengkap &amp; Gelar ADC <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Contoh: Aryo Pratama, S.H."
-                          value={adc.nama}
-                          onChange={(e) => handleUpdateAdc(idx, 'nama', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          NRP / NIP ADC
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Contoh: 99040123"
-                          value={adc.nrp || ''}
-                          onChange={(e) => handleUpdateAdc(idx, 'nrp', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          Pangkat / Golongan ADC
-                        </label>
-                        <select
-                          value={adc.pangkat || 'Briptu'}
-                          onChange={(e) => handleUpdateAdc(idx, 'pangkat', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                {formData.daftarAdc?.map((adc, idx) => {
+                  const adcCalc = adc.tanggalLahir
+                    ? calculateRetirement58(adc.tanggalLahir, adc.nrp)
+                    : null;
+                  return (
+                    <div
+                      key={adc.id || idx}
+                      className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3"
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <span className="text-xs font-extrabold text-polri-navy flex items-center gap-1.5">
+                          <Shield className="w-3.5 h-3.5 text-polri-gold" />
+                          <span>ADC / Ajudan ke-{idx + 1}</span>
+                          {adcCalc && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                              Usia: {adcCalc.usiaTahun} Thn
+                            </span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdc(idx)}
+                          className="text-red-500 hover:text-red-700 text-xs font-semibold flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-red-50 transition-colors cursor-pointer"
                         >
-                          {DAFTAR_PANGKAT_POLRI.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
                       </div>
 
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          Peran / Jabatan Pendamping
-                        </label>
-                        <select
-                          value={adc.jabatan || 'ADC / Ajudan'}
-                          onChange={(e) => handleUpdateAdc(idx, 'jabatan', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                        >
-                          <option value="ADC / Ajudan">ADC / Ajudan</option>
-                          <option value="Spri / Sekpri">Spri / Sekpri</option>
-                          <option value="Walpri">Walpri</option>
-                          <option value="Staf Pribadi">Staf Pribadi</option>
-                        </select>
-                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Nama Lengkap &amp; Gelar ADC <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: Aryo Pratama, S.H."
+                            value={adc.nama}
+                            onChange={(e) => handleUpdateAdc(idx, 'nama', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          Nomor WhatsApp Aktif ADC <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0812-xxxx-xxxx"
-                          value={adc.noHp}
-                          onChange={(e) => handleUpdateAdc(idx, 'noHp', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                        />
-                      </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            NRP / NIP ADC
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: 99040123"
+                            value={adc.nrp || ''}
+                            onChange={(e) => handleUpdateAdc(idx, 'nrp', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          />
+                        </div>
 
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                          Email Dinas / Pribadi ADC
-                        </label>
-                        <input
-                          type="email"
-                          placeholder="Contoh: 99040123@polri.go.id"
-                          value={adc.email || ''}
-                          onChange={(e) => handleUpdateAdc(idx, 'email', e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
-                        />
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Pangkat / Golongan ADC
+                          </label>
+                          <select
+                            value={adc.pangkat || 'Briptu'}
+                            onChange={(e) => handleUpdateAdc(idx, 'pangkat', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          >
+                            {DAFTAR_PANGKAT_POLRI.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Tanggal Lahir ADC
+                          </label>
+                          <input
+                            type="date"
+                            value={adc.tanggalLahir || ''}
+                            onChange={(e) => handleUpdateAdc(idx, 'tanggalLahir', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Peran / Jabatan Pendamping
+                          </label>
+                          <select
+                            value={adc.jabatan || 'ADC / Ajudan'}
+                            onChange={(e) => handleUpdateAdc(idx, 'jabatan', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          >
+                            <option value="ADC / Ajudan">ADC / Ajudan</option>
+                            <option value="Spri / Sekpri">Spri / Sekpri</option>
+                            <option value="Walpri">Walpri</option>
+                            <option value="Staf Pribadi">Staf Pribadi</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Nomor WhatsApp Aktif ADC <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="0812-xxxx-xxxx"
+                            value={adc.noHp}
+                            onChange={(e) => handleUpdateAdc(idx, 'noHp', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                            Email Dinas / Pribadi ADC
+                          </label>
+                          <input
+                            type="email"
+                            placeholder="Contoh: 99040123@polri.go.id"
+                            value={adc.email || ''}
+                            onChange={(e) => handleUpdateAdc(idx, 'email', e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-polri-navy"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1134,6 +1398,23 @@ export const FormWizard: React.FC<FormWizardProps> = ({
               </div>
 
               <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir Pasangan</label>
+                <input
+                  type="date"
+                  value={formData.tanggalLahirIstri || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    handleInputChange('tanggalLahirIstri', val);
+                    if (val) {
+                      const c = calculateRetirement58(val);
+                      handleInputChange('usiaIstri', c.usiaTahun);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Kontak Pasangan / Keluarga</label>
                 <input
                   type="text"
@@ -1144,7 +1425,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 />
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah Anak</label>
                 <input
                   type="number"
@@ -1192,17 +1473,34 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Nama Anak
+                      </label>
                       <input
                         type="text"
-                        placeholder="Nama Anak"
+                        placeholder="Nama Lengkap Anak"
                         value={anak.nama}
                         onChange={(e) => handleUpdateChild(idx, 'nama', e.target.value)}
                         className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-polri-navy"
                       />
                     </div>
                     <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Tanggal Lahir Anak
+                      </label>
+                      <input
+                        type="date"
+                        value={anak.tanggalLahir || ''}
+                        onChange={(e) => handleUpdateChild(idx, 'tanggalLahir', e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-polri-navy"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Status Kegiatan
+                      </label>
                       <select
                         value={anak.status}
                         onChange={(e) => handleUpdateChild(idx, 'status', e.target.value)}
@@ -1214,6 +1512,9 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                       </select>
                     </div>
                     <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        Estimasi Biaya Pendidikan
+                      </label>
                       <select
                         value={anak.biayaPendidikanTahunan || '< 5.000.000'}
                         onChange={(e) => handleUpdateChild(idx, 'biayaPendidikanTahunan', e.target.value)}
@@ -1239,19 +1540,67 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 <Home className="w-4 h-4 text-polri-gold" />
                 Persiapan Purna Tugas &amp; Rencana Usaha
               </h3>
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200">
+                BUP Polri: {RETIREMENT_AGE_POLRI} Tahun
+              </span>
+            </div>
+
+            {/* Kartu Kalkulasi Usia Pensiun 58 Tahun Otomatis dari Tanggal Lahir */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-extrabold text-polri-navy block">
+                    Hitungan Otomatis Pensiun di Usia {RETIREMENT_AGE_POLRI} Tahun
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    Dihitung otomatis dari Tanggal Lahir personel ({retirementCalc.formattedTanggalLahir})
+                  </span>
+                </div>
+                <span className="text-xs font-extrabold px-3 py-1 rounded-lg bg-polri-navy text-polri-gold">
+                  Pensiun: {retirementCalc.tahunPurnaTugas} ({retirementCalc.sisaMasaDinasShort})
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Tanggal Lahir Personel
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.tanggalLahir || retirementCalc.tanggalLahir}
+                    onChange={(e) => handleBirthDateChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Tahun Purna Tugas (Usia {RETIREMENT_AGE_POLRI} Thn)
+                  </label>
+                  <input
+                    type="number"
+                    readOnly
+                    value={retirementCalc.tahunPurnaTugas}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 text-xs font-extrabold text-slate-800 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Sisa Masa Dinas Aktif
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${retirementCalc.sisaMasaDinasLabel} (Usia kini ${retirementCalc.usiaTahun} Thn)`}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-100 text-xs font-extrabold text-emerald-800 cursor-not-allowed"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tahun Purna Tugas (Pensiun)</label>
-                <input
-                  type="number"
-                  value={formData.tahunPurnaTugas || 2032}
-                  onChange={(e) => handleInputChange('tahunPurnaTugas', Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-polri-navy focus:outline-none"
-                />
-              </div>
-
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Status Tempat Tinggal Setelah Pensiun</label>
                 <select
@@ -1266,7 +1615,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                 </select>
               </div>
 
-              <div className="sm:col-span-2">
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Alamat Rencana Domisili Purna Tugas</label>
                 <input
                   type="text"
@@ -1488,13 +1837,24 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         initialSatker={formData.satkerMabes || ''}
         initialSubSatker={formData.subSatker || ''}
         onApply={(result) => {
+          const isKemen =
+            result.polda === 'KEMEN/LEMBAGA' ||
+            result.satkerUtama?.toUpperCase().includes('LUAR STRUKTUR') ||
+            result.satkerUtama?.toUpperCase().includes('EKSTERNAL');
+          if (isKemen) {
+            setIsExternalJabatan(true);
+          }
           setFormData((prev) => ({
             ...prev,
             polda: result.polda,
             satuanKerja: result.composedSatker,
             satkerMabes: result.satkerUtama,
             subSatker: result.subSatker,
-            tipeSatker: result.polda === 'MABES POLRI' ? 'MABES' : 'POLDA',
+            tipeSatker: isKemen
+              ? 'KEMEN/LEMBAGA'
+              : result.polda === 'MABES POLRI'
+              ? 'MABES'
+              : 'POLDA',
           }));
         }}
       />

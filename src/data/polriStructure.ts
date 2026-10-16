@@ -49,21 +49,21 @@ export const SATKER_MABES_LIST = [
 
 export type SatkerMabes = (typeof SATKER_MABES_LIST)[number];
 
-// 3. Sub-Satker Khusus Bareskrim Polri
+// 3. Sub-Satker Khusus Bareskrim Polri (Sesuai Perpol Nomor 4 Tahun 2025 Pasal 23)
 export const SUB_SATKER_BARESKRIM = [
   'DITTIPIDUM',
   'DITTIPIDEKSUS',
-  'DITTIPIDKOR',
+  'DITTIPIDNARKOBA',
   'DITTIPIDTER',
   'DITTIPIDSIBER',
-  'DITTIPIDNARKOBA',
-  'DITTIPID PPAPPO',
-  'ROBINOPSNAL',
-  'ROWASIDIK',
-  'ROKORWAS PPNS',
+  'DITTIPID PPA DAN PPO',
+  'SATRESMOB',
   'RORENMIN',
+  'ROBINOPSNAL',
+  'ROWASSIDIK',
+  'ROKORWAS PPNS',
   'PUSIKNAS',
-  'PUSINAFIS',
+  'PUSIDENT',
   'PUSLABFOR',
 ] as const;
 
@@ -181,12 +181,16 @@ export const SUB_SATKER_DENSUS88 = [
   'SATGASWIL DENSUS 88',
 ] as const;
 
-// 15. Sub-Satker Khusus Kortastipidkor Polri
+// 15. Sub-Satker Khusus Kortastipidkor Polri (Sesuai Perpol Nomor 4 Tahun 2025 Pasal 23A)
 export const SUB_SATKER_KORTASTIPIDKOR = [
-  'DITPENCEGAHAN KORUPSI',
-  'DITPENYIDIKAN KORUPSI',
-  'DITPENELUSURAN & PENGAMANAN ASET',
-  'BAG RENMIN',
+  'DITCEGAH (Direktorat Pencegahan)',
+  'DITTINDAK (Direktorat Penindakan)',
+  'DIT P2A (Direktorat Penelusuran & Pengamanan Aset)',
+  'BAGRENMIN KORTASTIPIDKOR',
+  'BAGOPS KORTASTIPIDKOR',
+  'BAGWASBANTEK KORTASTIPIDKOR',
+  'TAUD KORTASTIPIDKOR',
+  'SIKEU KORTASTIPIDKOR',
 ] as const;
 
 // 16. Sub-Satker Khusus Pusdokkes Polri

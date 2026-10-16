@@ -179,26 +179,106 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   useEffect(() => {
     if (propFinanceConfig) {
       setFinanceConfig(propFinanceConfig);
+    } else if (typeof window !== 'undefined') {
+      try {
+        const rawCfg = localStorage.getItem('ws96_finance_config_v1');
+        if (rawCfg) {
+          const parsedCfg = JSON.parse(rawCfg);
+          if (parsedCfg && Number(parsedCfg.iuranWajibPerBulan) > 0) {
+            setFinanceConfig(parsedCfg);
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
   }, [propFinanceConfig]);
 
-  // Fetch latest finance state and config from API
+  // Fetch latest finance state and config from API (preserving user-saved config against serverless cold starts)
   useEffect(() => {
+    let savedLocalCfg: FinanceConfig | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const rawCfg = localStorage.getItem('ws96_finance_config_v1');
+        if (rawCfg) {
+          savedLocalCfg = JSON.parse(rawCfg);
+        } else {
+          const rawFin = localStorage.getItem('wirasatya96_finance');
+          if (rawFin) {
+            const parsedFin = JSON.parse(rawFin);
+            if (parsedFin?.financeConfig) savedLocalCfg = parsedFin.financeConfig;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     fetch('/api/finance')
       .then((r) => r.json())
       .then((res) => {
         if (res.success) {
           const payload = res.data || res;
-          if (payload.summary) setLocalSummary(payload.summary);
+          const serverCfg: FinanceConfig | undefined = payload.financeConfig;
+          const isServerDefault =
+            !serverCfg ||
+            serverCfg.updatedBy === 'Sistem Default Kebendaharaan WS96';
+          const hasCustomLocalCfg =
+            savedLocalCfg &&
+            Number(savedLocalCfg.iuranWajibPerBulan) > 0 &&
+            savedLocalCfg.updatedBy &&
+            savedLocalCfg.updatedBy !== 'Sistem Default Kebendaharaan WS96';
+
+          const effectiveCfg =
+            isServerDefault && hasCustomLocalCfg ? savedLocalCfg! : serverCfg || savedLocalCfg || DEFAULT_FINANCE_CONFIG;
+
+          setFinanceConfig(effectiveCfg);
+
+          if (payload.summary) {
+            setLocalSummary({
+              ...payload.summary,
+              iuranWajibPerBulan: effectiveCfg.iuranWajibPerBulan,
+            });
+          }
           if (Array.isArray(payload.transactions)) setLocalTransactions(payload.transactions);
           if (Array.isArray(payload.assets)) setLocalAssets(payload.assets);
-          if (Array.isArray(payload.iuranList) && payload.iuranList.length > 0) {
-            setLocalIuranList(payload.iuranList);
-          } else if (Array.isArray(payload.iuran) && payload.iuran.length > 0) {
-            setLocalIuranList(payload.iuran);
+
+          const rawIuran: IuranAnggota[] =
+            Array.isArray(payload.iuranList) && payload.iuranList.length > 0
+              ? payload.iuranList
+              : Array.isArray(payload.iuran) && payload.iuran.length > 0
+              ? payload.iuran
+              : [];
+
+          if (rawIuran.length > 0) {
+            const annualTarget = (Number(effectiveCfg.iuranWajibPerBulan) || 250000) * 12;
+            const syncedIuran = rawIuran.map((item) => {
+              const status: IuranAnggota['status'] =
+                item.totalTerbayar >= annualTarget
+                  ? 'LUNAS'
+                  : item.totalTerbayar > 0
+                  ? 'SEBAGIAN'
+                  : 'BELUM_BAYAR';
+              return { ...item, totalTagihan: annualTarget, status };
+            });
+            setLocalIuranList(syncedIuran);
           }
-          if (payload.financeConfig) {
-            setFinanceConfig(payload.financeConfig);
+
+          // Re-hydrate cold-started server with user's custom saved config
+          if (isServerDefault && hasCustomLocalCfg && savedLocalCfg) {
+            fetch('/api/finance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'UPDATE_FINANCE_CONFIG',
+                actorRole: 'SUPERADMIN',
+                iuranWajibPerBulan: savedLocalCfg.iuranWajibPerBulan,
+                tahunBuku: savedLocalCfg.tahunBuku,
+                subKategoriMasuk: savedLocalCfg.subKategoriMasuk,
+                subKategoriKeluar: savedLocalCfg.subKategoriKeluar,
+                updatedBy: savedLocalCfg.updatedBy,
+              }),
+            }).catch(() => {});
           }
         }
       })
@@ -418,6 +498,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         }
 
         if (typeof window !== 'undefined') {
+          localStorage.setItem('ws96_finance_config_v1', JSON.stringify(updatedCfg));
           localStorage.setItem(
             'wirasatya96_finance',
             JSON.stringify({
@@ -428,6 +509,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               financeConfig: updatedCfg,
             })
           );
+          window.dispatchEvent(new Event('ws96_finance_updated'));
         }
       }
     } catch {
@@ -441,6 +523,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         updatedBy: currentUser.nama,
       };
       setFinanceConfig(updatedCfg);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ws96_finance_config_v1', JSON.stringify(updatedCfg));
+        window.dispatchEvent(new Event('ws96_finance_updated'));
+      }
     } finally {
       setIsSavingConfig(false);
       setIsConfigModalOpen(false);
