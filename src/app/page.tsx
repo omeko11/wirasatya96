@@ -35,7 +35,7 @@ import {
   isSuperadminAccount,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v13';
+const STORAGE_VERSION = 'ws96_akpol96_real_v14';
 
 export default function Home() {
   const router = useRouter();
@@ -597,6 +597,14 @@ export default function Home() {
     if (currentVersion !== STORAGE_VERSION) {
       localStorage.removeItem('wirasatya96_members');
       try {
+        const rawDel = localStorage.getItem('ws96_deleted_nrps_v1');
+        if (rawDel) {
+          const parsedDel: string[] = JSON.parse(rawDel);
+          const cleanedDel = parsedDel.filter(
+            (n) => String(n).trim() !== '74060709' && String(n).trim() !== '74090168'
+          );
+          localStorage.setItem('ws96_deleted_nrps_v1', JSON.stringify(cleanedDel));
+        }
         const rawUOv = localStorage.getItem('ws96_user_overrides_v1');
         if (rawUOv) {
           const parsedUOv = JSON.parse(rawUOv) || {};
@@ -608,6 +616,9 @@ export default function Home() {
               delete parsedUOv[k];
             } else if (parsedUOv[k]?.nama) {
               parsedUOv[k].nama = cleanNama;
+              if (bName === 'arief adiharsa' && parsedUOv[k]?.oldNrp === '74090168') {
+                parsedUOv[k].oldNrp = '74090260';
+              }
             }
           });
           localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
@@ -623,6 +634,9 @@ export default function Home() {
               delete parsedMOv[k];
             } else if (parsedMOv[k]?.namaLengkap) {
               parsedMOv[k].namaLengkap = cleanNama;
+              if (bName === 'arief adiharsa' && parsedMOv[k]?.oldNrp === '74090168') {
+                parsedMOv[k].oldNrp = '74090260';
+              }
             }
           });
           localStorage.setItem('ws96_member_overrides_v1', JSON.stringify(parsedMOv));

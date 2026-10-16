@@ -703,9 +703,12 @@ export function readDb(): GlobalStore {
         r.nama = stripRankFromName(r.nama) || r.nama;
         const baseNameKey = `name:${stripRankFromName(r.nama).split(',')[0].trim().toLowerCase()}`;
         const ref =
-          akpolRefMap.get(r.nrp) ||
-          (/^74090\d{3}$/.test(r.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
+          akpolRefMap.get(baseNameKey) ||
+          akpolRefMap.get(r.nrp);
         if (ref) {
+          if (ref.id) {
+            r.id = ref.id.replace(/^u-/, 'reg-');
+          }
           if (/^74090\d{3}$/.test(r.nrp) && ref.nrp !== r.nrp) {
             r.nrp = ref.nrp;
           }
@@ -744,7 +747,6 @@ export function readDb(): GlobalStore {
         const bn = stripRankFromName(ar.nama).split(',')[0].trim().toLowerCase();
         if (
           !existingRegKeys.has(ar.nrp) &&
-          !existingRegKeys.has(ar.id) &&
           !(bn && existingRegKeys.has(`name:${bn}`))
         ) {
           loadedRegs.push({
@@ -762,9 +764,12 @@ export function readDb(): GlobalStore {
         i.namaLengkap = stripRankFromName(i.namaLengkap) || i.namaLengkap;
         const baseNameKey = `name:${stripRankFromName(i.namaLengkap).split(',')[0].trim().toLowerCase()}`;
         const ref =
-          akpolRefMap.get(i.nrp) ||
-          (/^74090\d{3}$/.test(i.nrp) ? akpolRefMap.get(baseNameKey) : undefined);
+          akpolRefMap.get(baseNameKey) ||
+          akpolRefMap.get(i.nrp);
         if (ref) {
+          if (ref.id) {
+            i.id = ref.id.replace(/^u-/, 'iur-');
+          }
           if (/^74090\d{3}$/.test(i.nrp) && ref.nrp !== i.nrp) {
             i.nrp = ref.nrp;
           }
@@ -798,7 +803,6 @@ export function readDb(): GlobalStore {
         const bn = stripRankFromName(ai.namaLengkap).split(',')[0].trim().toLowerCase();
         if (
           !existingIuranKeys.has(ai.nrp) &&
-          !existingIuranKeys.has(ai.id) &&
           !(bn && existingIuranKeys.has(`name:${bn}`))
         ) {
           loadedIuran.push({

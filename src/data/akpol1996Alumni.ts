@@ -183,7 +183,7 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
   { no: 165, nama: 'Jhonny Edison Isir, S.I.K., M.T.C.P.', pangkat: 'Irjen Pol', nrp: '75060702', tanggalLahir: '1975-06-07', tempatLahir: 'Jayapura', jabatan: 'Kadiv Humas Polri', satker: 'Divhumas Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 166, nama: 'Dr. Ribut Hari Wibowo, S.H., S.I.K., M.H.', pangkat: 'Irjen Pol', nrp: '74070746', tanggalLahir: '1974-07-30', tempatLahir: 'Magetan', jabatan: 'Wakalemdiklat Polri', satker: 'Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 167, nama: 'Yudhi Sulistianto Wahid, S.I.K., M.Si.', pangkat: 'Irjen Pol', nrp: '72080762', tanggalLahir: '1972-08-22', tempatLahir: 'Wajo', jabatan: 'Kapolda Bengkulu', satker: 'Polda Bengkulu', polda: 'POLDA BENGKULU', tipeSatker: 'POLDA' },
-  { no: 168, nama: 'Arief Adiharsa, S.I.K., M.T.C.P.', pangkat: 'Brigjen Pol', nrp: '75050535', tanggalLahir: '1975-05-12', tempatLahir: 'Jakarta', jabatan: 'Wakapolda Kalimantan Utara', satker: 'Polda Kalimantan Utara', polda: 'POLDA KALIMANTAN UTARA', tipeSatker: 'POLDA' },
+  { no: 168, nama: 'Jeffri Dian Juniarta, S.H., S.I.K., M.H., M.I.Kom.', pangkat: 'Kombes Pol', nrp: '74060709', tanggalLahir: '1974-06-01', tempatLahir: 'Jawa Tengah', jabatan: 'Pengawas Penyidikan Kepolisian Madya Tk. I Bareskrim Polri', satker: 'Bareskrim Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 169, nama: 'Dr. Herry Heryawan, S.I.K., M.H., M.Hum.', pangkat: 'Irjen Pol', nrp: '72020677', tanggalLahir: '1972-02-23', tempatLahir: 'Ambon', jabatan: 'Kapolda Riau', satker: 'Polda Riau', polda: 'POLDA RIAU', tipeSatker: 'POLDA' },
   { no: 170, nama: 'Dr. Barito Mulyo Ratmono, S.H., S.I.K., M.Si.', pangkat: 'Irjen Pol', nrp: '74110750', tanggalLahir: '1974-11-18', tempatLahir: 'Jakarta', jabatan: 'Staf Ahli Bidang Hankam BIN', satker: 'Badan Intelijen Negara (BIN)', polda: 'MABES POLRI', tipeSatker: 'KEMEN/LEMBAGA' },
   { no: 171, nama: 'Arif Makhfudiharto, S.I.K., M.H.', pangkat: 'Irjen Pol', nrp: '74050719', tanggalLahir: '1974-05-15', tempatLahir: 'Purwokerto', jabatan: 'Deputi Bidang Pencegahan, Perlindungan, dan Deradikalisasi BNPT RI', satker: 'BNPT RI', polda: 'MABES POLRI', tipeSatker: 'KEMEN/LEMBAGA' },
@@ -275,7 +275,7 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
   { no: 257, nama: 'Suwoyo, S.I.K., M.Si.', pangkat: 'Kombes Pol', nrp: '74080689', tanggalLahir: '1974-08-21', tempatLahir: 'Pati', jabatan: 'Kabid TIK Polda Jawa Tengah', satker: 'Bid TIK Polda Jateng', polda: 'POLDA JAWA TENGAH', tipeSatker: 'POLDA' },
   { no: 258, nama: 'Heri Setyawan, S.I.K., M.H.', pangkat: 'Kombes Pol', nrp: '74110465', tanggalLahir: '1974-11-06', tempatLahir: 'Yogyakarta', jabatan: 'Dirreskrimum Polda Bengkulu', satker: 'Ditreskrimum Polda Bengkulu', polda: 'POLDA BENGKULU', tipeSatker: 'POLDA' },
   { no: 259, nama: 'Dr. Asep Amar Permana, S.I.K., M.M.', pangkat: 'Kombes Pol', nrp: '74090574', tanggalLahir: '1974-09-28', tempatLahir: 'Garut', jabatan: 'Analis Kebijakan Madya Bidang Kamsel Korlantas Polri', satker: 'Korlantas Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
-  { no: 260, nama: 'M. Difa Ardiansyah, S.I.K., M.H.', pangkat: 'Kombes Pol', nrp: '75020384', tanggalLahir: '1975-02-10', tempatLahir: 'Jakarta', jabatan: 'Kasubdit III Dittipidum Bareskrim Polri', satker: 'Bareskrim Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
+  { no: 260, nama: 'Arief Adiharsa, S.I.K., M.T.C.P.', pangkat: 'Brigjen Pol', nrp: '75050535', tanggalLahir: '1975-05-12', tempatLahir: 'Jakarta', jabatan: 'Wakapolda Kalimantan Utara', satker: 'Polda Kalimantan Utara', polda: 'POLDA KALIMANTAN UTARA', tipeSatker: 'POLDA' },
   { no: 261, nama: 'Syahbuddin, S.I.K., M.Si.', pangkat: 'Kombes Pol', nrp: '73060615', tanggalLahir: '1973-06-29', tempatLahir: 'Banda Aceh', jabatan: 'Dirsamapta Polda Aceh', satker: 'Ditsamapta Polda Aceh', polda: 'POLDA ACEH', tipeSatker: 'POLDA' },
   { no: 262, nama: 'Heri Sulistya Budi Santosa, S.I.K., M.Hum.', pangkat: 'Kombes Pol', nrp: '74040748', tanggalLahir: '1974-04-11', tempatLahir: 'Surabaya', jabatan: 'Karorena Polda Sumatera Utara', satker: 'Rorena Polda Sumut', polda: 'POLDA SUMATERA UTARA', tipeSatker: 'POLDA' },
   { no: 263, nama: 'Christian Tory, S.I.K., M.H.', pangkat: 'Kombes Pol', nrp: '74120642', tanggalLahir: '1974-12-21', tempatLahir: 'Pontianak', jabatan: 'Dirresnarkoba Polda Kalimantan Barat', satker: 'Ditresnarkoba Polda Kalbar', polda: 'POLDA KALIMANTAN BARAT', tipeSatker: 'POLDA' },
@@ -294,7 +294,7 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
 ];
 
 export const PURGED_NON_1996_BASE_NAMES: Set<string> = new Set([
-  'jeffri dian juniarta',
+  'm. difa ardiansyah',
   'faried zulkarnain',
   'suratno',
   'dr. leonardus harapantua simarmata permata',
