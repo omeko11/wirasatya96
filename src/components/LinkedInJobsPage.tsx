@@ -373,19 +373,19 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   const getFungsiBadge = (fungsi: FungsiPolri) => {
     switch (fungsi) {
       case 'RESERSE':
-        return { label: 'Bareskrim / Reserse', bg: 'bg-red-50 text-red-800 border-red-200' };
+        return { label: '🔍 Reserse', bg: 'bg-red-50 text-red-800 border-red-200' };
       case 'INTELKAM':
-        return { label: 'Intelkam', bg: 'bg-amber-50 text-amber-800 border-amber-200' };
+        return { label: '🛡️ Intelkam', bg: 'bg-amber-50 text-amber-800 border-amber-200' };
       case 'LANTAS':
-        return { label: 'Lalu Lintas', bg: 'bg-blue-50 text-blue-800 border-blue-200' };
+        return { label: '🚦 Lantas', bg: 'bg-blue-50 text-blue-800 border-blue-200' };
       case 'BRIMOB_SABHARA':
-        return { label: 'Brimob / Sabhara', bg: 'bg-slate-100 text-slate-800 border-slate-300' };
+        return { label: '⚡ Brimob', bg: 'bg-slate-100 text-slate-800 border-slate-300' };
       case 'KEWILAYAHAN':
-        return { label: 'Kewilayahan (Polda/Polres)', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+        return { label: '🏛️ Wilayah', bg: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
       case 'LEMDIKLAT':
-        return { label: 'Lemdiklat / Sespim', bg: 'bg-purple-50 text-purple-800 border-purple-200' };
+        return { label: '🎓 Lemdiklat', bg: 'bg-purple-50 text-purple-800 border-purple-200' };
       case 'LUAR_STRUKTUR':
-        return { label: 'Luar Struktur / Humas', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
+        return { label: '🇮🇩 Luar Struktur', bg: 'bg-indigo-50 text-indigo-800 border-indigo-200' };
       default:
         return { label: 'Polri', bg: 'bg-slate-100 text-slate-700 border-slate-200' };
     }
@@ -490,16 +490,16 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
               {[
                 {
                   key: 'SEMUA',
-                  label: 'Total Tercatat:',
+                  label: 'Semua',
                   count: jabatanList.length,
                   baseCls: 'bg-slate-50 hover:bg-slate-100 text-slate-700',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
-                  textCls: 'text-slate-600',
+                  textCls: 'text-slate-600 font-medium',
                   countCls: 'text-slate-900',
                 },
                 {
                   key: 'RESERSE',
-                  label: '🔍 Bareskrim & Reserse:',
+                  label: '🔍 Reserse',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'RESERSE').length,
                   baseCls: 'bg-red-50 hover:bg-red-100/80 text-red-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
@@ -508,7 +508,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 },
                 {
                   key: 'INTELKAM',
-                  label: '🛡️ Intelijen Keamanan:',
+                  label: '🛡️ Intelkam',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'INTELKAM').length,
                   baseCls: 'bg-amber-50 hover:bg-amber-100/80 text-amber-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
@@ -517,7 +517,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 },
                 {
                   key: 'LANTAS',
-                  label: '🚦 Korlantas / Lalu Lintas:',
+                  label: '🚦 Lantas',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'LANTAS').length,
                   baseCls: 'bg-blue-50 hover:bg-blue-100/80 text-blue-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
@@ -526,7 +526,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 },
                 {
                   key: 'BRIMOB_SABHARA',
-                  label: '⚡ Brimob & Sabhara:',
+                  label: '⚡ Brimob',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'BRIMOB_SABHARA').length,
                   baseCls: 'bg-slate-100 hover:bg-slate-200/80 text-slate-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
@@ -535,7 +535,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 },
                 {
                   key: 'KEWILAYAHAN',
-                  label: '🏛️ Kapolres & Kewilayahan:',
+                  label: '🏛️ Wilayah',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'KEWILAYAHAN').length,
                   baseCls: 'bg-emerald-50 hover:bg-emerald-100/80 text-emerald-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
@@ -544,7 +544,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 },
                 {
                   key: 'LEMDIKLAT',
-                  label: '🎓 Lemdiklat & Sespim:',
+                  label: '🎓 Lemdiklat',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'LEMDIKLAT').length,
                   baseCls: 'bg-purple-50 hover:bg-purple-100/80 text-purple-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
@@ -553,7 +553,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 },
                 {
                   key: 'LUAR_STRUKTUR',
-                  label: '🇮🇩 Luar Struktur & Humas:',
+                  label: '🇮🇩 Luar Struktur',
                   count: jabatanList.filter((j) => j.fungsiPolri === 'LUAR_STRUKTUR').length,
                   baseCls: 'bg-indigo-50 hover:bg-indigo-100/80 text-indigo-900',
                   activeCls: 'bg-red-800 text-white ring-2 ring-red-800/30',
