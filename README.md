@@ -64,13 +64,13 @@ graph LR
 
 | Modul | Ikon | Deskripsi & Fungsionalitas | Pengguna Sasaran |
 |---|:---:|---|---|
-| **Buku Saku Digital** | 📖 | Direktori perwira alumni Akpol 1996 lengkap dengan filter penempatan wilayah (38 Polda, Mabes Polri, Polres, Kemen/Lembaga), pencarian cepat nama/NRP, serta tombol *One-Click WhatsApp* ke perwira dan Ajudan (ADC). | Seluruh Alumni & Pengurus |
-| **Linimasa Silaturahmi (Feed)** | 💬 | Feed publikasi kegiatan leting bergaya LinkedIn dengan dukungan 6 multi-reaksi khas kepolisian (Siap, Mantap, Hormat, Peduli, Semangat, Terharu), komentar bersarang, dan unggah foto media. | Seluruh Alumni |
-| **Riwayat Jabatan & TR** | 🎖️ | Rekapitulasi mutasi dan promosi jabatan leting berdasarkan Surat Telegram (TR) Kapolri, pencarian riwayat satker, dan pengelompokan fungsi (Reserse, Intelkam, Lantas, Binmas, Samapta, Brimob). | Seluruh Alumni & SDM |
-| **Anev Leting & Kesehatan** | 🩺 | Panel monitoring atensi rekan atau keluarga yang membutuhkan pendampingan medis, pemetaan penyakit kronis, dan monitoring fasilitas rujukan RS Bhayangkara. | Bidang Kesejahteraan & Pimpinan |
-| **Bendahara Portal** | 💰 | Sistem transparansi kas paguyuban: total saldo kas, grafik pemasukan & pengeluaran, rekapitulasi iuran sukarela leting, dan unduh laporan perbendaharaan transparan. | Bendahara & Seluruh Alumni |
-| **Kesiapan Purna Tugas** | 👔 | Analisis tahun pensiun, kalkulasi sisa tahun dinas perwira leting, direktori unit usaha/bisnis mandiri rekan leting, dan fasilitas sinergi ekonomi pasca dinas aktif. | Pamen/Pati & Bhayangkara Purna |
-| **Executive Dashboard** | 📊 | Dashboard analitik komprehensif bagi pimpinan dan sekretaris: rasio sebaran penugasan perwira di seluruh Indonesia, visualisasi demografi, dan rekapitulasi data belum terisi. | Ketua & Sekretaris |
+| **Buku Saku Digital** | 📖 | Direktori perwira alumni Akpol 1996 lengkap dengan filter penempatan wilayah (Mabes Polri, 38 Polda, Kewilayahan, Luar Struktur), pencarian cepat, serta kontak *One-Click WhatsApp* perwira & Ajudan (ADC). | Seluruh Alumni & Pengurus |
+| **Linimasa Silaturahmi (Feed)** | 💬 | Feed publikasi kegiatan leting yang responsif di HP & Desktop dengan multi-reaksi, komentar bersarang, dan unggah foto media. | Seluruh Alumni |
+| **Riwayat Jabatan & Tour of Duty** | 🎖️ | Rekapitulasi penempatan dan riwayat jabatan personel berdasarkan TR Kapolri, filter fungsi kepolisian, serta status kedinasan. | Seluruh Alumni & SDM |
+| **Anev Leting & Kesehatan** | 🩺 | Panel monitoring atensi rekan atau keluarga yang membutuhkan pendampingan medis dan informasi fasilitas rujukan kesehatan. | Bidang Kesejahteraan & Pimpinan |
+| **Bendahara Portal** | 💰 | Sistem transparansi kas paguyuban: ringkasan saldo kas, mutasi pemasukan & pengeluaran, rekapitulasi iuran tahunan anggota aktif, serta laporan perbendaharaan. | Bendahara & Seluruh Alumni |
+| **Kesiapan Purna Tugas** | 👔 | Analisis masa purna bhakti, direktori unit usaha mandiri rekan leting, dan fasilitas sinergi pasca dinas aktif. | Pamen/Pati & Bhayangkara Purna |
+| **Executive Dashboard** | 📊 | Dashboard analitik bagi pengurus: sebaran penugasan wilayah, ringkasan fungsi kepolisian, dan manajemen verifikasi anggota. | Pengurus & Administrator |
 
 ---
 
@@ -80,21 +80,17 @@ Platform ini menerapkan tema resmi **Bareskrim Crimson Red**:
 - **Warna Utama**: Deep Crimson Red (`#8B0000` / `#991B1B`), dipadukan dengan aksen Emas Kehormatan Perwira Polri (`#D97706`).
 - **Logo Resmi WS 1996**: Desain *squircle* 3D dengan gradasi merah elegan, teks **"WS"** menggunakan tipografi tegas **Arial Black**, dan **"1996"** menggunakan font geometris modern **Bierstadt** (fallback: *Aptos*).
 - **Favicon & Web App Icon**: Terintegrasi otomatis dalam format SVG vektor beresolusi tinggi di [src/app/icon.svg](file:///d:/Project/KAP%20IDAH/wirasatya96/src/app/icon.svg).
-- **Desain Bersih**: Menghilangkan warna biru generik media sosial dan menggantinya dengan sentuhan wibawa korps kepolisian Indonesia.
+- **Desain Responsif**: Tata letak adaptif untuk layar *smartphone* maupun Desktop.
 
 ---
 
 ## 👮 Struktur Organisasi & Tata Kerja (SOTK) Polri
 
-Sistem informasi ini mengadopsi struktur SOTK Polri resmi terkini:
-1. **MABES POLRI**: Mencakup Bareskrim (seluruh Dittipid dan Puslabfor/Inafis/Iknas), Baintelkam, Baharkam, Korbrimob, Korlantas, **Kortastipidkor** (*Korps Baru Pemberantasan Korupsi 2024*), Densus 88 AT, Lemdiklat Polri (Sespim, Akpol, STIK), Pusdokkes, Itwasum, Astamaops, Astamarena, SSDM, Slog, Divpropam, Divhumas, Divhubinter, Divkum, dan DivTIK.
-2. **POLDA (38 Wilayah Hukum)**: 34 Polda eksisting ditambah 4 Polda baru di wilayah Papua (Polda Papua Tengah, Papua Selatan, Papua Barat Daya, Papua Pegunungan) dengan struktur Direktorat, Biro, dan Bidang lengkap.
-3. **POLRES / POLRESTABES / POLRES METRO**: Satuan kewilayahan untuk jabatan Kapolres, Wakapolres, dan PJU Polres.
-4. **KEMENTERIAN / LEMBAGA (Penugasan Luar Struktur)**: BIN, BNN, BNPT, Lemhannas RI, KPK, BSSN, Kemenko Polkam, Kemensetneg/Setmilpres, Bakamla, dan kementerian terkait.
-5. **PURNA TUGAS**: Klasifikasi kehormatan untuk rekan purnawirawan dan masa persiapan pensiun (MPP).
-
-> [!TIP]
-> **Catatan Relevansi**: Seluruh letting Akpol 1996 saat ini berpangkat **Kombes Pol**, **Brigjen Pol**, atau **Irjen Pol**. Oleh karena itu, satuan kerja tingkat **Polsek telah dieliminasi total** dari formulir pendataan dan antarmuka filter demi menjaga relevansi serta efisiensi input data.
+Sistem informasi ini mendukung pemetaan penugasan berdasarkan SOTK Polri terkini:
+1. **MABES POLRI**: Unsur Pimpinan, Unsur Pengawas dan Pembantu Pimpinan, Unsur Pelaksana Tugas Pokok, serta Unsur Pendukung dan Pelayanan.
+2. **POLDA (38 Wilayah Hukum) & KEWILAYAHAN**: Seluruh Polda di Indonesia beserta satuan kerja kewilayahan jajaran.
+3. **KEMENTERIAN / LEMBAGA (Penugasan Luar Struktur)**: Penugasan perwira Polri pada kementerian, badan, dan lembaga negara terkait.
+4. **STATUS KEDINASAN**: Klasifikasi status personel aktif maupun non-aktif (Purna Tugas, PTDH, dan Almarhum/Gugur).
 
 ---
 

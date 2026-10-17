@@ -9,12 +9,33 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. ENUMS
 CREATE TYPE user_role AS ENUM ('SUPERADMIN', 'PENGURUS', 'ANGGOTA');
 CREATE TYPE fungsi_polri AS ENUM (
-  'RESERSE', 
-  'INTELKAM', 
-  'LANTAS', 
-  'BRIMOB_SABHARA', 
-  'LEMDIKLAT', 
-  'KEWILAYAHAN', 
+  'WASUM',
+  'RENA',
+  'OPS',
+  'LEMDIKLAT',
+  'RESERSE',
+  'INTELKAM',
+  'HARKAM',
+  'BRIMOB',
+  'SLOG',
+  'SAHLI',
+  'LANTAS',
+  'DENSUS',
+  'HUMAS',
+  'PROPAM',
+  'HUKUM',
+  'HUBINTER',
+  'TIK',
+  'SDM',
+  'TASPIDKOR',
+  'KEU',
+  'DOKKES',
+  'LITBANG',
+  'SEJARAH',
+  'SETUM',
+  'YANMA',
+  'SPRIPIM',
+  'KEWILAYAHAN',
   'LUAR_STRUKTUR'
 );
 CREATE TYPE reaction_type AS ENUM (
@@ -63,7 +84,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   banner_url TEXT,
   bio TEXT,
   status_iuran_2026 VARCHAR(50) DEFAULT 'LUNAS',
-  total_rekan_leting INT DEFAULT 286,
+  total_rekan_leting INT DEFAULT 261,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -204,62 +225,54 @@ CREATE INDEX IF NOT EXISTS idx_atensi_kesehatan_kondisi ON atensi_kesehatan(kond
 
 -- 1. Seed Polda Directory
 INSERT INTO polda_directory (id, name, wilayah, alamat_mapolda, total_alumni_96, kapolda_nama, kapolda_pangkat) VALUES
-('polda-metro-jaya', 'Polda Metro Jaya', 'DKI Jakarta', 'Jl. Jenderal Sudirman No.55, Jakarta Selatan', 42, 'Irjen Pol Karyoto, S.I.K.', 'Irjen Pol'),
-('polda-jawa-barat', 'Polda Jawa Barat', 'Jawa Barat', 'Jl. Soekarno-Hatta No.748, Bandung', 28, 'Irjen Pol Dr. Akhmad Wiyagus, S.I.K., M.Si., M.M.', 'Irjen Pol'),
-('polda-jawa-tengah', 'Polda Jawa Tengah', 'Jawa Tengah', 'Jl. Pahlawan No.1, Semarang', 25, 'Irjen Pol Ribut Hari Wibowo, S.H., S.I.K.', 'Irjen Pol'),
-('polda-jawa-timur', 'Polda Jawa Timur', 'Jawa Timur', 'Jl. Ahmad Yani No.116, Surabaya', 34, 'Irjen Pol Drs. Imam Sugianto, M.Si.', 'Irjen Pol'),
-('polda-sumut', 'Polda Sumatera Utara', 'Sumatera Utara', 'Jl. Sisingamangaraja KM 10.5, Medan', 22, 'Irjen Pol Whisnu Hermawan Februanto, S.I.K., M.H.', 'Irjen Pol'),
-('polda-bali', 'Polda Bali', 'Bali', 'Jl. W.R. Supratman No.7, Denpasar', 14, 'Irjen Pol Daniel Adityajaya, S.H., S.I.K., M.Si.', 'Irjen Pol'),
-('bareskrim-mabes', 'Bareskrim Mabes Polri', 'Mabes Polri', 'Jl. Trunojoyo No.3, Kebayoran Baru, Jakarta Selatan', 38, 'Komjen Pol Drs. Wahyu Widada, M.Phil.', 'Komjen Pol')
+('polda-metro-jaya', 'Polda Metro Jaya', 'DKI Jakarta', 'Jl. Jenderal Sudirman No.55, Jakarta Selatan', 18, '-', 'Irjen Pol'),
+('polda-jawa-barat', 'Polda Jawa Barat', 'Jawa Barat', 'Jl. Soekarno-Hatta No.748, Bandung', 12, '-', 'Irjen Pol'),
+('polda-jawa-tengah', 'Polda Jawa Tengah', 'Jawa Tengah', 'Jl. Pahlawan No.1, Semarang', 10, '-', 'Irjen Pol'),
+('polda-jawa-timur', 'Polda Jawa Timur', 'Jawa Timur', 'Jl. Ahmad Yani No.116, Surabaya', 14, '-', 'Irjen Pol'),
+('polda-sumut', 'Polda Sumatera Utara', 'Sumatera Utara', 'Jl. Sisingamangaraja KM 10.5, Medan', 10, '-', 'Irjen Pol'),
+('polda-riau', 'Polda Riau', 'Riau', 'Jl. Pattimura No.13, Pekanbaru', 8, 'Irjen Pol Dr. Herry Heryawan, S.I.K., M.H., M.Hum.', 'Irjen Pol'),
+('bareskrim-mabes', 'Bareskrim Mabes Polri', 'Mabes Polri', 'Jl. Trunojoyo No.3, Kebayoran Baru, Jakarta Selatan', 30, '-', 'Komjen Pol')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Seed Users
 INSERT INTO users (id, username, email, password_hash, role, fido2_passkey_enabled, two_factor_enabled) VALUES
 ('11111111-1111-1111-1111-111111111111', 'ekoagung', 'agungkrisdianto96@gmail.com', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueEkoDev', 'SUPERADMIN', TRUE, TRUE),
-('22222222-2222-2222-2222-222222222222', 'iqbal96', 'm.iqbal96@polri.go.id', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueIqbal', 'PENGURUS', FALSE, TRUE),
-('33333333-3333-3333-3333-333333333333', 'hengki96', 'hengki.haryadi96@polri.go.id', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueHengki', 'ANGGOTA', FALSE, TRUE),
-('44444444-4444-4444-4444-444444444444', 'adesafri96', 'ade.safri96@polri.go.id', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueAdeSafri', 'ANGGOTA', FALSE, FALSE)
+('22222222-2222-2222-2222-222222222222', 'herry96', 'herry.heryawan@polri.go.id', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueHerry', 'PENGURUS', FALSE, TRUE),
+('33333333-3333-3333-3333-333333333333', 'gidion96', 'gidion.arif@polri.go.id', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueGidion', 'PENGURUS', FALSE, TRUE),
+('44444444-4444-4444-4444-444444444444', 'hendra96', 'hendra.wirawan@polri.go.id', '$2a$12$e8w.XvjUeK0k0.WiraSatya96SuperSecretHashValueHendra', 'PENGURUS', FALSE, FALSE)
 ON CONFLICT (username) DO NOTHING;
 
--- 3. Seed Profiles (Matching Screenshot Eko Agung)
+-- 3. Seed Profiles
 INSERT INTO profiles (user_id, nama_lengkap, pangkat, nrp, jabatan, satker, polda, polda_id, angkatan, batalyon, no_hp, alamat, foto_url, status_iuran_2026, total_rekan_leting, bio) VALUES
-('11111111-1111-1111-1111-111111111111', 'Eko Agung', 'Briptu', '96081299', 'Developer', 'Dittipidsiber Bareskrim Polri', 'Mabes Polri', 'bareskrim-mabes', 1996, 'Wira Satya', '0812-9696-1996', 'Kebayoran Baru, Jakarta Selatan', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256', '-', 286, 'Superadministrator & Developer Platform Alumni Wira Satya 96. Selalu Bahagia!'),
-('22222222-2222-2222-2222-222222222222', 'Irjen Pol Dr. H. Mohammad Iqbal, S.I.K., M.H.', 'Irjen Pol', '70070451', 'Kapolda Riau', 'Polda Riau', 'Polda Riau', 'bareskrim-mabes', 1996, 'Wira Satya', '0811-9600-001', 'Pekanbaru, Riau', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=256', 'LUNAS', 286, 'Ketua Angkatan Alumni Akpol 1996 Wira Satya. Mengabdi untuk Polri dan NKRI.'),
-('33333333-3333-3333-3333-333333333333', 'Brigjen Pol Hengki Haryadi, S.I.K., M.H.', 'Brigjen Pol', '74100234', 'Dirtipidum Bareskrim Polri', 'Dittipidum Bareskrim', 'Mabes Polri', 'bareskrim-mabes', 1996, 'Wira Satya', '0812-9600-002', 'Jakarta Selatan', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=256', 'LUNAS', 286, 'Direktur Tindak Pidana Umum Bareskrim Polri. Alumni Wira Satya 96.'),
-('44444444-4444-4444-4444-444444444444', 'Kombes Pol Ade Safri Simanjuntak, S.I.K., M.Si.', 'Kombes Pol', '74120345', 'Dirreskrimsus Polda Metro Jaya', 'Ditreskrimsus', 'Polda Metro Jaya', 'polda-metro-jaya', 1996, 'Wira Satya', '0813-9600-003', 'Jakarta', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=256', 'LUNAS', 286, 'Dirreskrimsus Polda Metro Jaya. Penegakan hukum berkeadilan dan humanis.')
+('11111111-1111-1111-1111-111111111111', 'Eko Agung, S.H.', 'Brigadir', '98010710', 'Bamin Subbagrenmin Dittipidsiber Bareskrim Polri', 'Dittipidsiber Bareskrim Polri', 'MABES POLRI', 'bareskrim-mabes', 1996, 'Wira Satya', '0812-9696-1996', 'Kebayoran Baru, Jakarta Selatan', '/default-avatar.png', '-', 261, 'Superadministrator & Developer Platform Alumni Wira Satya 96.'),
+('22222222-2222-2222-2222-222222222222', 'Dr. Herry Heryawan, S.I.K., M.H., M.Hum.', 'Irjen Pol', '72020677', 'Kapolda Riau', 'Polda Riau', 'POLDA RIAU', 'polda-riau', 1996, 'Wira Satya', '0811-9600-001', 'Pekanbaru, Riau', '/default-avatar.png', 'LUNAS', 261, 'Ketua Angkatan Alumni Akpol 1996 Wira Satya.'),
+('33333333-3333-3333-3333-333333333333', 'Dr. Gidion Arif Setyawan, S.I.K., S.H., M.Hum.', 'Brigjen Pol', '75060590', 'Wakapolda Sulawesi Tenggara', 'Polda Sultra', 'POLDA SULAWESI TENGGARA', 'bareskrim-mabes', 1996, 'Wira Satya', '0812-9600-002', 'Kendari, Sulawesi Tenggara', '/default-avatar.png', 'LUNAS', 261, 'Sekretaris Angkatan Alumni Akpol 1996 Wira Satya.'),
+('44444444-4444-4444-4444-444444444444', 'Hendra Wirawan, S.H., S.I.K., M.H.', 'Kombes Pol', '74080642', 'Kabagmutjab Robinkar SSDM Polri', 'SSDM Polri', 'MABES POLRI', 'bareskrim-mabes', 1996, 'Wira Satya', '0813-9600-003', 'Jakarta Selatan', '/default-avatar.png', 'LUNAS', 261, 'Bendahara Angkatan Alumni Akpol 1996 Wira Satya.')
 ON CONFLICT (user_id) DO NOTHING;
 
 -- 4. Seed Riwayat Jabatan Leting 96 (Tour of Duty Internal)
 INSERT INTO riwayat_jabatan (user_id, nama_perwira, pangkat, jabatan, satker, polda, polda_id, fungsi, periode, dasar_tr, deskripsi, pencapaian, is_current) VALUES
-('33333333-3333-3333-3333-333333333333', 'Brigjen Pol Hengki Haryadi, S.I.K., M.H.', 'Brigjen Pol', 'Dirtipidum Bareskrim Polri', 'Bareskrim Mabes Polri', 'Mabes Polri', 'bareskrim-mabes', 'RESERSE', '2023 - Sekarang', 'ST/2864/XII/KEP./2023', 'Memimpin penindakan kejahatan pidana umum transnasional dan atensi publik nasional.', 'Pengungkapan sindikat TPPO internasional dan reformasi digitalisasi penyidikan Reserse.', TRUE),
-('44444444-4444-4444-4444-444444444444', 'Kombes Pol Ade Safri Simanjuntak, S.I.K., M.Si.', 'Kombes Pol', 'Dirreskrimsus Polda Metro Jaya', 'Ditreskrimsus Polda Metro Jaya', 'Polda Metro Jaya', 'polda-metro-jaya', 'RESERSE', '2023 - Sekarang', 'ST/1395/VI/KEP./2023', 'Memimpin pengusutan tipidkor, perbankan, dan cyber crime di wilayah hukum Polda Metro Jaya.', 'Penuntasan perkara korupsi strategis dan digital forensik terintegrasi.', TRUE),
-('11111111-1111-1111-1111-111111111111', 'Eko Agung', 'Briptu', 'Developer & Superadmin', 'Dittipidsiber Bareskrim Polri', 'Mabes Polri', 'bareskrim-mabes', 'RESERSE', '2024 - Sekarang', 'SPRIN/096/WS96/BARESKRIM/2024', 'Pengembangan platform terpadu Direktori 38 Polda, Kas Yayasan, dan Jejaring Letting Wira Satya 96.', 'Modernisasi sistem pendataan digital 286 perwira alumni Akpol 1996.', TRUE)
+('22222222-2222-2222-2222-222222222222', 'Dr. Herry Heryawan, S.I.K., M.H., M.Hum.', 'Irjen Pol', 'Kapolda Riau', 'Polda Riau', 'POLDA RIAU', 'polda-riau', 'KEWILAYAHAN', '2025 - Sekarang', 'Data Direktori & UKP', 'Penugasan Perwira Tinggi Alumni Akpol 1996 Batalyon Wira Satya.', '-', TRUE),
+('33333333-3333-3333-3333-333333333333', 'Dr. Gidion Arif Setyawan, S.I.K., S.H., M.Hum.', 'Brigjen Pol', 'Wakapolda Sulawesi Tenggara', 'Polda Sultra', 'POLDA SULAWESI TENGGARA', 'bareskrim-mabes', 'KEWILAYAHAN', '2025 - Sekarang', 'Data Direktori & UKP', 'Penugasan Perwira Tinggi Alumni Akpol 1996 Batalyon Wira Satya.', '-', TRUE),
+('44444444-4444-4444-4444-444444444444', 'Hendra Wirawan, S.H., S.I.K., M.H.', 'Kombes Pol', 'Kabagmutjab Robinkar SSDM Polri', 'SSDM Polri', 'MABES POLRI', 'bareskrim-mabes', 'SDM', '2024 - Sekarang', 'Data Direktori & UKP', 'Penugasan Perwira Menengah Alumni Akpol 1996 Batalyon Wira Satya.', '-', TRUE)
 ON CONFLICT DO NOTHING;
 
--- 5. Seed Initial Posts with Reactions & Comments
+-- 5. Seed Initial Posts
 INSERT INTO posts (id, author_id, author_name, author_pangkat, author_jabatan, author_avatar, content, likes_count, comments_count, reposts_count) VALUES
-('aaaa1111-aaaa-1111-aaaa-111111111111', '33333333-3333-3333-3333-333333333333', 'Brigjen Pol Hengki Haryadi, S.I.K., M.H.', 'Brigjen Pol', 'Dirtipidum Bareskrim Polri', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=256', 'Alhamdulillah, puji syukur ke hadirat Tuhan Yang Maha Esa. Hari ini Dittipidum Bareskrim Polri berhasil menuntaskan operasi penegakan hukum transnasional dan perlindungan PMI. Terima kasih tak terhingga atas doa restu dan dukungan solid dari seluruh abang dan rekan-rekan Letting Wira Satya 1996 di seluruh penjuru Tanah Air. Tetap semangat, jaga integritas Bhayangkara, dan #SelaluBahagia!', 48, 12, 5),
-('bbbb2222-bbbb-2222-bbbb-222222222222', '11111111-1111-1111-1111-111111111111', 'Eko Agung', 'Briptu', 'Developer • Dittipidsiber Bareskrim Polri', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256', 'Siap Jenderal dan Komandan sekalian! Pembaruan Sistem Informasi Batalyon Wira Satya 96 telah live dengan tampilan Bareskrim Deep Crimson Red, integrasi Riwayat Jabatan Leting, sistem reaksi multi-emoji, dan modul transparansi kas. Mohon koreksi dan arahannya.', 32, 8, 3)
+('aaaa1111-aaaa-1111-aaaa-111111111111', '22222222-2222-2222-2222-222222222222', 'Dr. Herry Heryawan, S.I.K., M.H., M.Hum.', 'Irjen Pol', 'Kapolda Riau', '/default-avatar.png', 'Salam kompak dan sehat selalu untuk seluruh rekan-rekan Batalyon Wira Satya Akpol 1996 di seluruh penjuru Tanah Air. Tetap jaga soliditas dan #SelaluBahagia!', 48, 12, 5),
+('bbbb2222-bbbb-2222-bbbb-222222222222', '11111111-1111-1111-1111-111111111111', 'Eko Agung, S.H.', 'Brigadir', 'Bamin Subbagrenmin Dittipidsiber Bareskrim Polri', '/default-avatar.png', 'Siap Jenderal dan Komandan sekalian! Pembaruan Sistem Informasi Batalyon Wira Satya 96 telah aktif.', 32, 8, 3)
 ON CONFLICT (id) DO NOTHING;
 
 -- 6. Seed Post Reactions
 INSERT INTO post_reactions (post_id, user_id, reaction) VALUES
 ('aaaa1111-aaaa-1111-aaaa-111111111111', '11111111-1111-1111-1111-111111111111', 'celebrate'),
-('aaaa1111-aaaa-1111-aaaa-111111111111', '22222222-2222-2222-2222-222222222222', 'support'),
-('aaaa1111-aaaa-1111-aaaa-111111111111', '44444444-4444-4444-4444-444444444444', 'like'),
-('bbbb2222-bbbb-2222-bbbb-222222222222', '33333333-3333-3333-3333-333333333333', 'insightful')
+('aaaa1111-aaaa-1111-aaaa-111111111111', '33333333-3333-3333-3333-333333333333', 'support'),
+('aaaa1111-aaaa-1111-aaaa-111111111111', '44444444-4444-4444-4444-444444444444', 'like')
 ON CONFLICT DO NOTHING;
 
--- 7. Seed Comments
-INSERT INTO post_comments (id, post_id, parent_id, author_id, author_name, author_pangkat, author_avatar, content, likes_count) VALUES
-('cccc1111-cccc-1111-cccc-111111111111', 'aaaa1111-aaaa-1111-aaaa-111111111111', NULL, '44444444-4444-4444-4444-444444444444', 'Kombes Pol Ade Safri Simanjuntak, S.I.K., M.Si.', 'Kombes Pol', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=256', 'Mantap Jenderal Hengki! Salut atas dedikasi dan ketegasannya. Salam hormat dari jajaran Polda Metro Jaya. Wira Satya 96 selalu terdepan!', 6),
-('cccc2222-cccc-2222-cccc-222222222222', 'aaaa1111-aaaa-1111-aaaa-111111111111', 'cccc1111-cccc-1111-cccc-111111111111', '33333333-3333-3333-3333-333333333333', 'Brigjen Pol Hengki Haryadi, S.I.K., M.H.', 'Brigjen Pol', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=256', 'Siap Ndan Ade Safri, terima kasih banyak sinergi lapangannya!', 4)
-ON CONFLICT (id) DO NOTHING;
-
--- 8. Seed Kas Transaksi
+-- 7. Seed Kas Transaksi
 INSERT INTO kas_transaksi (tipe, kategori, nominal, keterangan, tanggal, status_verifikasi) VALUES
-('MASUK', 'Iuran Wajib Bulanan', 28600000.00, 'Iuran bulanan perwira leting Oktober 2026 (286 Perwira)', '2026-10-01', 'VERIFIED'),
-('MASUK', 'Sumbangan Sukarela', 50000000.00, 'Donasi santunan sosial dan kas taktis dari alumni Jakarta', '2026-10-05', 'VERIFIED'),
-('KELUAR', 'Bantuan Kesehatan Leting', 15000000.00, 'Santunan pengobatan dan rawat inap keluarga Kombes Pol Budi H. di RS Siloam', '2026-10-10', 'VERIFIED'),
-('MASUK', 'Iuran Wajib Bulanan', 842500000.00, 'Saldo kumulatif Kas Yayasan Batalyon Wira Satya 96', '2026-10-14', 'VERIFIED')
+('MASUK', 'Iuran Anggota', 50000000.00, 'Rekapitulasi iuran anggota aktif Batalyon Wira Satya 96', '2026-10-01', 'VERIFIED'),
+('MASUK', 'Sumbangan Sukarela', 25000000.00, 'Donasi kegiatan sosial dan silaturahmi leting', '2026-10-05', 'VERIFIED'),
+('KELUAR', 'Sosial & Kesejahteraan', 10000000.00, 'Santunan atensi kesehatan keluarga besar Wira Satya 96', '2026-10-10', 'VERIFIED')
 ON CONFLICT DO NOTHING;
