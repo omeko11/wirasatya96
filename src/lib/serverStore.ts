@@ -1044,13 +1044,8 @@ async function syncFromSupabaseCloud(
         globalStore.users = Array.from(byNrp.values());
       }
 
-      if (cloudPosts.length > 0) {
-        globalStore.posts = cloudPosts;
-      }
-
-      if (cloudTransactions.length > 0) {
-        globalStore.transactions = cloudTransactions;
-      }
+      globalStore.posts = cloudPosts;
+      globalStore.transactions = cloudTransactions;
 
       if (cloudIuran.length > 0) {
         const byNrp = new Map<string, IuranAnggota>();
@@ -1065,9 +1060,7 @@ async function syncFromSupabaseCloud(
         globalStore.iuranList = Array.from(byNrp.values());
       }
 
-      if (cloudMessages.length > 0) {
-        globalStore.messages = cloudMessages;
-      }
+      globalStore.messages = cloudMessages;
 
       const refreshedMap = buildCloudSnapshotMap(globalStore);
       lastCloudSnapshotMap.clear();
