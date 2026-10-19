@@ -3,6 +3,7 @@ import { serverStore, getFinanceConfig, updateFinanceConfig, getFinanceSummary }
 import { withRedisCache, cacheInvalidatePrefix } from '@/lib/redisCache';
 
 export async function GET() {
+  await serverStore.ensureSynced();
   const { data: bundle, cacheMeta } = await withRedisCache(
     'ws96:finance:bundle',
     45,
@@ -48,6 +49,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body = await req.json();
     const session = serverStore.getSession();
     const effectiveRole = body.actorRole || body.role || session?.role;
@@ -77,6 +79,7 @@ export async function POST(req: NextRequest) {
         },
         updatedBy || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara')
       );
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:finance:');
       const financeData = serverStore.getFinance();
       const summary = getFinanceSummary();
@@ -107,6 +110,7 @@ export async function POST(req: NextRequest) {
       if (!updated) {
         return NextResponse.json({ success: false, message: 'Data iuran perwira tidak ditemukan' }, { status: 404 });
       }
+      await serverStore.flushCloud();
       const financeData = serverStore.getFinance();
       const summary = getFinanceSummary();
       await cacheInvalidatePrefix('ws96:finance:');
@@ -160,6 +164,7 @@ export async function POST(req: NextRequest) {
         dicatatOleh: dicatatOleh || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara'),
       });
 
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:finance:');
       const summary = getFinanceSummary();
       return NextResponse.json({
@@ -176,6 +181,7 @@ export async function POST(req: NextRequest) {
       if (!deleted) {
         return NextResponse.json({ success: false, message: 'Data aset tidak ditemukan' }, { status: 404 });
       }
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:finance:');
       return NextResponse.json({
         success: true,
@@ -230,6 +236,7 @@ export async function POST(req: NextRequest) {
       updatedIuran = serverStore.recordIuranPayment(nrpTerkait, Number(nominal), actorName, true);
     }
 
+    await serverStore.flushCloud();
     await cacheInvalidatePrefix('ws96:finance:');
     const financeData = serverStore.getFinance();
     const summary = getFinanceSummary();

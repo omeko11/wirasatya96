@@ -3,6 +3,7 @@ import { serverStore } from '@/lib/serverStore';
 import { withRedisCache, cacheInvalidatePrefix } from '@/lib/redisCache';
 
 export async function GET() {
+  await serverStore.ensureSynced();
   const { data: posts, cacheMeta } = await withRedisCache(
     'ws96:posts:all',
     45,
@@ -27,17 +28,20 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body = await req.json();
     const { action } = body;
 
     if (action === 'LIKE' && body.postId) {
       const updated = serverStore.toggleLikePost(body.postId, body.actorNrp, body.reaction);
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: true, post: updated, posts: serverStore.getPosts() });
     }
 
     if (action === 'REPOST' && body.postId) {
       const updated = serverStore.toggleRepost(body.postId, body.actorNrp);
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: true, post: updated, posts: serverStore.getPosts() });
     }
@@ -55,6 +59,7 @@ export async function POST(req: NextRequest) {
           tags: body.tags,
         }
       );
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: !!updated, post: updated, posts: serverStore.getPosts() });
     }
@@ -65,6 +70,7 @@ export async function POST(req: NextRequest) {
         body.actorNrp || '',
         body.actorRole || 'ANGGOTA'
       );
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: deleted, posts: serverStore.getPosts() });
     }
@@ -84,6 +90,7 @@ export async function POST(req: NextRequest) {
         replies: [],
       };
       const updated = serverStore.addCommentToPost(body.postId, commentObj, body.parentCommentId);
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: true, post: updated, posts: serverStore.getPosts() });
     }
@@ -97,6 +104,7 @@ export async function POST(req: NextRequest) {
         body.content || '',
         body.parentCommentId
       );
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: !!updated, post: updated, posts: serverStore.getPosts() });
     }
@@ -109,6 +117,7 @@ export async function POST(req: NextRequest) {
         body.actorRole || 'ANGGOTA',
         body.parentCommentId
       );
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: !!updated, post: updated, posts: serverStore.getPosts() });
     }
@@ -120,6 +129,7 @@ export async function POST(req: NextRequest) {
         body.actorNrp || '',
         body.parentCommentId
       );
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:posts:');
       return NextResponse.json({ success: !!updated, post: updated, posts: serverStore.getPosts() });
     }
@@ -145,6 +155,7 @@ export async function POST(req: NextRequest) {
       tags: body.tags,
     });
 
+    await serverStore.flushCloud();
     await cacheInvalidatePrefix('ws96:posts:');
     return NextResponse.json({
       success: true,

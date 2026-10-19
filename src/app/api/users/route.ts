@@ -5,6 +5,7 @@ import { stripRankFromName } from '@/lib/avatarUtils';
 import { AuthUser, StatusKedinasan, UserAuditAction, UserAuditLog, UserRole } from '@/types';
 
 export async function GET() {
+  await serverStore.ensureSynced();
   const { data: users, cacheMeta } = await withRedisCache<AuthUser[]>(
     'ws96:users:all',
     90,
@@ -32,6 +33,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body: Partial<AuthUser> & {
       action?: string;
       snapshotUser?: AuthUser;
@@ -72,6 +74,7 @@ export async function POST(req: NextRequest) {
       if (!restored.success) {
         return NextResponse.json(restored, { status: 400 });
       }
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:users:');
       await cacheInvalidatePrefix('ws96:members:');
       await cacheInvalidatePrefix('ws96:finance:');
@@ -143,6 +146,7 @@ export async function POST(req: NextRequest) {
         : `Menambahkan pengguna baru pada satker ${created.satker || 'Mabes Polri'} (${created.polda || 'MABES POLRI'}) dengan password standar ${defaultPassword}`,
     });
 
+    await serverStore.flushCloud();
     await cacheInvalidatePrefix('ws96:users:');
     await cacheInvalidatePrefix('ws96:members:');
     return NextResponse.json({
@@ -158,6 +162,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body = await req.json();
 
     // 1. Handle RECORD_AUDIT_LOG (e.g. ADC login / ADC activity / custom audit event)
@@ -197,6 +202,7 @@ export async function PUT(req: NextRequest) {
         details: rawEntry.details || body.details,
       });
 
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:users:');
       return NextResponse.json({
         success: true,
@@ -235,6 +241,7 @@ export async function PUT(req: NextRequest) {
           `Kata sandi akun ${updated?.nama || targetNrp} (NRP ${targetNrp}) direset menjadi ${newPassword} dan status diaktifkan.`,
       });
 
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:users:');
       return NextResponse.json({
         success: true,
@@ -284,6 +291,7 @@ export async function PUT(req: NextRequest) {
           `Personel ${resolvedPangkat} ${resolvedNama} (NRP ${resolvedNrp}) mengajukan permintaan reset kata sandi ke kredensial standar WS96@${resolvedNrp}.`,
       });
 
+      await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:users:');
       return NextResponse.json({
         success: true,
@@ -360,6 +368,7 @@ export async function PUT(req: NextRequest) {
       });
     }
 
+    await serverStore.flushCloud();
     await cacheInvalidatePrefix('ws96:users:');
     await cacheInvalidatePrefix('ws96:members:');
     await cacheInvalidatePrefix('ws96:finance:');
@@ -378,6 +387,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const { searchParams } = new URL(req.url);
     let nrp = searchParams.get('nrp');
     let actorNrp = searchParams.get('actorNrp') || undefined;
@@ -412,6 +422,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json(result, { status: 403 });
     }
 
+    await serverStore.flushCloud();
     await cacheInvalidatePrefix('ws96:users:');
     await cacheInvalidatePrefix('ws96:members:');
     await cacheInvalidatePrefix('ws96:finance:');

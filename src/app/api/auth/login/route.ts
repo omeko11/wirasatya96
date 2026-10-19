@@ -3,6 +3,7 @@ import { serverStore } from '@/lib/serverStore';
 
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body = await req.json();
     const { nrp, userId, username, identifier, password, mfaMethod, clientOverride } = body;
 
@@ -15,6 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     const authResult = serverStore.authenticate(targetId, password, clientOverride);
+    await serverStore.flushCloud();
 
     // If requires password setup (user was approved by Superadmin, now needs to create initial password)
     if (authResult.requiresPasswordSetup) {

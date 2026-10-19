@@ -5,6 +5,7 @@ import { UserRole } from '@/types';
 // POST /api/auth/verify - Superadmin/Sekretariat approves or rejects registration
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const session = serverStore.getSession();
     if (session && session.role !== 'SUPERADMIN' && session.role !== 'SEKRETARIAT') {
       return NextResponse.json(
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
       verifierName || 'Admin WS96',
       (role as UserRole) || 'ANGGOTA'
     );
+
+    await serverStore.flushCloud();
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });

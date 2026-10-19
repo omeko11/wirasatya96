@@ -4,6 +4,7 @@ import { serverStore } from '@/lib/serverStore';
 // GET /api/messages?user1=...&user2=... or ?userNrp=...
 export async function GET(request: Request) {
   try {
+    await serverStore.ensureSynced();
     const { searchParams } = new URL(request.url);
     const user1 = searchParams.get('user1') || searchParams.get('userNrp') || undefined;
     const user2 = searchParams.get('user2') || undefined;
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
 // POST /api/messages
 export async function POST(request: Request) {
   try {
+    await serverStore.ensureSynced();
     const body = await request.json();
     const {
       senderNrp,
@@ -57,6 +59,8 @@ export async function POST(request: Request) {
       attachmentName,
     });
 
+    await serverStore.flushCloud();
+
     return NextResponse.json({
       success: true,
       message: newMsg,
@@ -72,11 +76,13 @@ export async function POST(request: Request) {
 // PUT /api/messages (Mark as read)
 export async function PUT(request: Request) {
   try {
+    await serverStore.ensureSynced();
     const body = await request.json();
     const { senderNrp, receiverNrp } = body;
 
     if (senderNrp && receiverNrp) {
       serverStore.markMessagesAsRead(senderNrp, receiverNrp);
+      await serverStore.flushCloud();
     }
 
     return NextResponse.json({ success: true });

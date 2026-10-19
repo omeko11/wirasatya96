@@ -4,6 +4,7 @@ import { serverStore } from '@/lib/serverStore';
 // GET /api/auth/register - List registrations (for Superadmin/Sekretariat)
 export async function GET() {
   try {
+    await serverStore.ensureSynced();
     const registrations = serverStore.getRegistrations();
     return NextResponse.json({
       success: true,
@@ -21,6 +22,7 @@ export async function GET() {
 // POST /api/auth/register - Register new alumnus account
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body = await req.json();
     const { nrp, nama, pangkat, satker, polda, noHp, email, secondaryEmail, alasanDaftar } = body;
 
@@ -42,6 +44,8 @@ export async function POST(req: NextRequest) {
       secondaryEmail: secondaryEmail ? secondaryEmail.trim() : undefined,
       alasanDaftar,
     });
+
+    await serverStore.flushCloud();
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });

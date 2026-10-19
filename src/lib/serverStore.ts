@@ -31,6 +31,13 @@ import {
   PURGED_NON_1996_BASE_NAMES,
 } from '@/data/akpol1996Alumni';
 import { calculateRetirement58, stripRankFromName } from '@/lib/avatarUtils';
+import {
+  SupabaseRecordRow,
+  fetchAllSupabaseRecords,
+  upsertSupabaseBatch,
+  deleteSupabaseRecord,
+  checkSupabaseTableStatus,
+} from '@/lib/supabaseCloud';
 
 export interface FinanceCategoryOption {
   code: string;
@@ -818,7 +825,42 @@ function loadInitialStore(): GlobalStore {
   return readDb();
 }
 
-function persistLocalStore(store: GlobalStore) {
+let isInitialBoot = true;
+let lastSupabaseSyncAt = 0;
+let activeSyncPromise: Promise<{ synced: boolean; seeded?: boolean; rowCount?: number }> | null = null;
+const lastCloudSnapshotMap = new Map<string, string>();
+const pendingCloudPromises: Promise<unknown>[] = [];
+
+function buildCloudSnapshotMap(
+  store: GlobalStore
+): Map<string, { collection: string; record_id: string; payload: unknown; json: string }> {
+  const map = new Map<string, { collection: string; record_id: string; payload: unknown; json: string }>();
+  const addEntry = (collection: string, recordId: string, payload: unknown) => {
+    const cleanId = String(recordId || '').trim();
+    if (!cleanId) return;
+    const key = `${collection}:${cleanId}`;
+    const json = JSON.stringify(payload);
+    map.set(key, { collection, record_id: cleanId, payload, json });
+  };
+
+  (store.members || []).forEach((m) => addEntry('members', m.nrp, m));
+  (store.users || []).forEach((u) => addEntry('users', u.nrp, u));
+  (store.posts || []).forEach((p) => addEntry('posts', p.id, p));
+  (store.transactions || []).forEach((t) => addEntry('transactions', t.id, t));
+  (store.iuranList || []).forEach((i) => addEntry('iuran', i.nrp, i));
+  (store.messages || []).forEach((msg) => addEntry('messages', msg.id, msg));
+
+  addEntry('meta', 'financeSummary', store.financeSummary);
+  addEntry('meta', 'financeConfig', store.financeConfig);
+  addEntry('meta', 'deletedNrps', store.deletedNrps || []);
+  addEntry('meta', 'auditLogs', (store.auditLogs || []).slice(0, 250));
+  addEntry('meta', 'assets', store.assets || []);
+  addEntry('meta', 'registrations', store.registrations || []);
+
+  return map;
+}
+
+function writeDiskSnapshotOnly(store: GlobalStore) {
   try {
     const dir = path.dirname(LOCAL_DB_PATH);
     if (!fs.existsSync(dir)) {
@@ -830,8 +872,221 @@ function persistLocalStore(store: GlobalStore) {
   }
 }
 
+function persistLocalStore(store: GlobalStore) {
+  writeDiskSnapshotOnly(store);
+
+  const currentMap = buildCloudSnapshotMap(store);
+  if (isInitialBoot) {
+    currentMap.forEach((val, key) => {
+      lastCloudSnapshotMap.set(key, val.json);
+    });
+    return;
+  }
+
+  const changedRows: SupabaseRecordRow[] = [];
+  const deletedKeys: Array<{ collection: string; record_id: string }> = [];
+
+  currentMap.forEach((val, key) => {
+    const prevJson = lastCloudSnapshotMap.get(key);
+    if (prevJson !== val.json) {
+      changedRows.push({
+        collection: val.collection,
+        record_id: val.record_id,
+        payload: val.payload,
+      });
+      lastCloudSnapshotMap.set(key, val.json);
+    }
+  });
+
+  Array.from(lastCloudSnapshotMap.keys()).forEach((key) => {
+    if (!currentMap.has(key)) {
+      lastCloudSnapshotMap.delete(key);
+      const sepIdx = key.indexOf(':');
+      if (sepIdx > 0) {
+        deletedKeys.push({
+          collection: key.slice(0, sepIdx),
+          record_id: key.slice(sepIdx + 1),
+        });
+      }
+    }
+  });
+
+  if (changedRows.length > 0) {
+    const p = upsertSupabaseBatch(changedRows).catch(() => false);
+    pendingCloudPromises.push(p);
+  }
+
+  for (const del of deletedKeys) {
+    const p = deleteSupabaseRecord(del.collection, del.record_id).catch(() => false);
+    pendingCloudPromises.push(p);
+  }
+}
+
 const globalStore: GlobalStore = loadInitialStore();
 persistLocalStore(globalStore);
+isInitialBoot = false;
+
+async function flushCloudWrites(): Promise<void> {
+  if (pendingCloudPromises.length === 0) return;
+  const batch = pendingCloudPromises.splice(0, pendingCloudPromises.length);
+  await Promise.allSettled(batch);
+}
+
+async function syncFromSupabaseCloud(
+  force = false
+): Promise<{ synced: boolean; seeded?: boolean; rowCount?: number }> {
+  await flushCloudWrites();
+
+  if (!force && Date.now() - lastSupabaseSyncAt < 2000) {
+    return { synced: true, rowCount: lastCloudSnapshotMap.size };
+  }
+
+  if (activeSyncPromise) {
+    return activeSyncPromise;
+  }
+
+  activeSyncPromise = (async () => {
+    try {
+      const rows = await fetchAllSupabaseRecords();
+      if (rows === null) {
+        return { synced: false };
+      }
+
+      // Jika tabel ws96_records di Supabase masih kosong (0 baris), lakukan Initial Seed otomatis!
+      if (rows.length === 0) {
+        const snapshotMap = buildCloudSnapshotMap(globalStore);
+        const seedRows: SupabaseRecordRow[] = [];
+        snapshotMap.forEach((v, k) => {
+          seedRows.push({
+            collection: v.collection,
+            record_id: v.record_id,
+            payload: v.payload,
+          });
+          lastCloudSnapshotMap.set(k, v.json);
+        });
+        const ok = await upsertSupabaseBatch(seedRows);
+        if (ok) {
+          lastSupabaseSyncAt = Date.now();
+        }
+        return { synced: ok, seeded: ok, rowCount: seedRows.length };
+      }
+
+      // Hydrate globalStore dari baris-baris yang tersimpan di Supabase
+      const cloudMembers: AnggotaWiraSatya[] = [];
+      const cloudUsers: AuthUser[] = [];
+      const cloudPosts: FeedPost[] = [];
+      const cloudTransactions: KasTransaction[] = [];
+      const cloudIuran: IuranAnggota[] = [];
+      const cloudMessages: ChatMessage[] = [];
+
+      for (const r of rows) {
+        if (!r || !r.collection || !r.record_id) continue;
+        if (r.collection === 'members' && r.payload) {
+          cloudMembers.push(r.payload as AnggotaWiraSatya);
+        } else if (r.collection === 'users' && r.payload) {
+          cloudUsers.push(r.payload as AuthUser);
+        } else if (r.collection === 'posts' && r.payload) {
+          cloudPosts.push(r.payload as FeedPost);
+        } else if (r.collection === 'transactions' && r.payload) {
+          cloudTransactions.push(r.payload as KasTransaction);
+        } else if (r.collection === 'iuran' && r.payload) {
+          cloudIuran.push(r.payload as IuranAnggota);
+        } else if (r.collection === 'messages' && r.payload) {
+          cloudMessages.push(r.payload as ChatMessage);
+        } else if (r.collection === 'meta') {
+          if (r.record_id === 'deletedNrps' && Array.isArray(r.payload)) {
+            globalStore.deletedNrps = r.payload as string[];
+          } else if (r.record_id === 'financeSummary' && r.payload) {
+            globalStore.financeSummary = {
+              ...globalStore.financeSummary,
+              ...(r.payload as FinanceSummary),
+            };
+          } else if (r.record_id === 'financeConfig' && r.payload) {
+            globalStore.financeConfig = {
+              ...globalStore.financeConfig,
+              ...(r.payload as FinanceConfig),
+            };
+          } else if (r.record_id === 'auditLogs' && Array.isArray(r.payload)) {
+            globalStore.auditLogs = r.payload as UserAuditLog[];
+          } else if (r.record_id === 'assets' && Array.isArray(r.payload)) {
+            globalStore.assets = r.payload as AssetPortfolioItem[];
+          } else if (r.record_id === 'registrations' && Array.isArray(r.payload)) {
+            globalStore.registrations = r.payload as PendingRegistration[];
+          }
+        }
+      }
+
+      const deletedSet = new Set(globalStore.deletedNrps || []);
+
+      if (cloudMembers.length > 0) {
+        const byNrp = new Map<string, AnggotaWiraSatya>();
+        globalStore.members.forEach((m) => {
+          if (!deletedSet.has(m.nrp)) byNrp.set(m.nrp, m);
+        });
+        cloudMembers.forEach((cm) => {
+          if (cm && cm.nrp && !deletedSet.has(cm.nrp)) {
+            byNrp.set(cm.nrp, { ...(byNrp.get(cm.nrp) || {}), ...cm });
+          }
+        });
+        globalStore.members = Array.from(byNrp.values());
+      }
+
+      if (cloudUsers.length > 0) {
+        const byNrp = new Map<string, AuthUser>();
+        globalStore.users.forEach((u) => {
+          if (!deletedSet.has(u.nrp)) byNrp.set(u.nrp, u);
+        });
+        cloudUsers.forEach((cu) => {
+          if (cu && cu.nrp && !deletedSet.has(cu.nrp)) {
+            byNrp.set(cu.nrp, { ...(byNrp.get(cu.nrp) || {}), ...cu });
+          }
+        });
+        globalStore.users = Array.from(byNrp.values());
+      }
+
+      if (cloudPosts.length > 0) {
+        globalStore.posts = cloudPosts;
+      }
+
+      if (cloudTransactions.length > 0) {
+        globalStore.transactions = cloudTransactions;
+      }
+
+      if (cloudIuran.length > 0) {
+        const byNrp = new Map<string, IuranAnggota>();
+        globalStore.iuranList.forEach((i) => {
+          if (!deletedSet.has(i.nrp)) byNrp.set(i.nrp, i);
+        });
+        cloudIuran.forEach((ci) => {
+          if (ci && ci.nrp && !deletedSet.has(ci.nrp)) {
+            byNrp.set(ci.nrp, { ...(byNrp.get(ci.nrp) || {}), ...ci });
+          }
+        });
+        globalStore.iuranList = Array.from(byNrp.values());
+      }
+
+      if (cloudMessages.length > 0) {
+        globalStore.messages = cloudMessages;
+      }
+
+      const refreshedMap = buildCloudSnapshotMap(globalStore);
+      lastCloudSnapshotMap.clear();
+      refreshedMap.forEach((v, k) => {
+        lastCloudSnapshotMap.set(k, v.json);
+      });
+      writeDiskSnapshotOnly(globalStore);
+      lastSupabaseSyncAt = Date.now();
+
+      return { synced: true, rowCount: rows.length };
+    } catch {
+      return { synced: false };
+    } finally {
+      activeSyncPromise = null;
+    }
+  })();
+
+  return activeSyncPromise;
+}
 
 export type AuditLogInput = Partial<UserAuditLog> & {
   action: UserAuditLog['action'];
@@ -839,6 +1094,10 @@ export type AuditLogInput = Partial<UserAuditLog> & {
 };
 
 export const serverStore = {
+  ensureSynced: (force = false) => syncFromSupabaseCloud(force),
+  flushCloud: () => flushCloudWrites(),
+  checkCloudStatus: () => checkSupabaseTableStatus(),
+
   getDeletedNrps: (): string[] => globalStore.deletedNrps || [],
 
   getAuditLogs: (): UserAuditLog[] => {

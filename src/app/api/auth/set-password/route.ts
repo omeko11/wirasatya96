@@ -4,6 +4,7 @@ import { serverStore } from '@/lib/serverStore';
 // POST /api/auth/set-password - First-time password setup after Superadmin approval
 export async function POST(req: NextRequest) {
   try {
+    await serverStore.ensureSynced();
     const body = await req.json();
     const { nrp, password, mfaMethod } = body;
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
     }
 
     const result = serverStore.setPassword(nrp, password, mfaMethod || 'PIN');
+    await serverStore.flushCloud();
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 });
