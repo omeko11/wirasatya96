@@ -849,12 +849,12 @@ function buildCloudSnapshotMap(
   (store.transactions || []).forEach((t) => addEntry('transactions', t.id, t));
   (store.iuranList || []).forEach((i) => addEntry('iuran', i.nrp, i));
   (store.messages || []).forEach((msg) => addEntry('messages', msg.id, msg));
+  (store.assets || []).forEach((ast) => addEntry('assets', ast.id, ast));
+  (store.auditLogs || []).slice(0, 250).forEach((log) => addEntry('audit_logs', log.id, log));
 
   addEntry('meta', 'financeSummary', store.financeSummary);
   addEntry('meta', 'financeConfig', store.financeConfig);
   addEntry('meta', 'deletedNrps', store.deletedNrps || []);
-  addEntry('meta', 'auditLogs', (store.auditLogs || []).slice(0, 250));
-  addEntry('meta', 'assets', store.assets || []);
   addEntry('meta', 'registrations', store.registrations || []);
 
   return map;
@@ -952,7 +952,7 @@ async function syncFromSupabaseCloud(
         return { synced: false };
       }
 
-      // Jika tabel ws96_records di Supabase masih kosong (0 baris), lakukan Initial Seed otomatis!
+      // Jika seluruh tabel di Supabase masih kosong (0 baris), lakukan Initial Seed otomatis!
       if (rows.length === 0) {
         const snapshotMap = buildCloudSnapshotMap(globalStore);
         const seedRows: SupabaseRecordRow[] = [];
@@ -971,13 +971,15 @@ async function syncFromSupabaseCloud(
         return { synced: ok, seeded: ok, rowCount: seedRows.length };
       }
 
-      // Hydrate globalStore dari baris-baris yang tersimpan di Supabase
+      // Hydrate globalStore dari baris-baris yang tersimpan di 9 tabel Supabase
       const cloudMembers: AnggotaWiraSatya[] = [];
       const cloudUsers: AuthUser[] = [];
       const cloudPosts: FeedPost[] = [];
       const cloudTransactions: KasTransaction[] = [];
       const cloudIuran: IuranAnggota[] = [];
       const cloudMessages: ChatMessage[] = [];
+      const cloudAssets: AssetPortfolioItem[] = [];
+      const cloudAuditLogs: UserAuditLog[] = [];
 
       for (const r of rows) {
         if (!r || !r.collection || !r.record_id) continue;
@@ -993,6 +995,10 @@ async function syncFromSupabaseCloud(
           cloudIuran.push(r.payload as IuranAnggota);
         } else if (r.collection === 'messages' && r.payload) {
           cloudMessages.push(r.payload as ChatMessage);
+        } else if (r.collection === 'assets' && r.payload) {
+          cloudAssets.push(r.payload as AssetPortfolioItem);
+        } else if (r.collection === 'audit_logs' && r.payload) {
+          cloudAuditLogs.push(r.payload as UserAuditLog);
         } else if (r.collection === 'meta') {
           if (r.record_id === 'deletedNrps' && Array.isArray(r.payload)) {
             globalStore.deletedNrps = r.payload as string[];
@@ -1006,14 +1012,24 @@ async function syncFromSupabaseCloud(
               ...globalStore.financeConfig,
               ...(r.payload as FinanceConfig),
             };
-          } else if (r.record_id === 'auditLogs' && Array.isArray(r.payload)) {
+          } else if (r.record_id === 'auditLogs' && Array.isArray(r.payload) && cloudAuditLogs.length === 0) {
             globalStore.auditLogs = r.payload as UserAuditLog[];
-          } else if (r.record_id === 'assets' && Array.isArray(r.payload)) {
+          } else if (r.record_id === 'assets' && Array.isArray(r.payload) && cloudAssets.length === 0) {
             globalStore.assets = r.payload as AssetPortfolioItem[];
           } else if (r.record_id === 'registrations' && Array.isArray(r.payload)) {
             globalStore.registrations = r.payload as PendingRegistration[];
           }
         }
+      }
+
+      if (cloudAssets.length > 0) {
+        globalStore.assets = cloudAssets;
+      }
+
+      if (cloudAuditLogs.length > 0) {
+        globalStore.auditLogs = cloudAuditLogs.sort((a, b) =>
+          String(b.timestamp || '').localeCompare(String(a.timestamp || ''))
+        );
       }
 
       const deletedSet = new Set(globalStore.deletedNrps || []);
