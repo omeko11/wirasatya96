@@ -31,6 +31,7 @@ import {
   classifyJabatanForStats,
 } from '@/data/polriJabatan';
 import { MetaVerifiedBadge, resolveRoleForBadge } from './MetaVerifiedBadge';
+import { SortModalPopup, SortTriggerBar, UnifiedSortKey } from './SortModalPopup';
 import { 
   Briefcase, 
   Building2, 
@@ -165,8 +166,9 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   const [selectedFungsi, setSelectedFungsi] = useState<string>('SEMUA');
   const [selectedPolda, setSelectedPolda] = useState<string>('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'DEFAULT' | 'STATUS' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'>('DEFAULT');
+  const [sortBy, setSortBy] = useState<UnifiedSortKey>('DEFAULT');
   const [sortDesc, setSortDesc] = useState<boolean>(true);
+  const [isSortModalOpen, setIsSortModalOpen] = useState<boolean>(false);
   const myProfile = useMemo(() => getOrBuildUserProfile(currentUser, members), [currentUser, members]);
   const myAvatarUrl = resolveAvatarUrl(myProfile.fotoUrl, currentUser.fotoUrl);
 
@@ -312,21 +314,49 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
       getRoleRankOrder(resolveRoleForBadge(b.perwiraNrp));
 
     const comparePair = (a: RiwayatJabatanLeting, b: RiwayatJabatanLeting): number => {
+      if (sortBy === 'NRP') {
+        // Ascend (!sortDesc) = NRP Kecil -> Besar; Descend (sortDesc) = NRP Besar -> Kecil
+        const nrpDiff = sortDesc ? -cmpNrp(a, b) : cmpNrp(a, b);
+        return (
+          nrpDiff ||
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b)
+        );
+      }
+      if (sortBy === 'NAMA') {
+        // Ascend (!sortDesc) = Abjad A -> Z; Descend (sortDesc) = Abjad Z -> A
+        const namaDiff = sortDesc ? -cmpNama(a, b) : cmpNama(a, b);
+        return (
+          namaDiff ||
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNrp(a, b) ||
+          cmpRole(a, b)
+        );
+      }
+
       let res = 0;
-      if (sortBy === 'DEFAULT' || sortBy === 'STATUS') {
-        // 1. Aktif -> 2. Purna Tugas -> 3. PTDH -> 4. Almarhum
-        const statusDiff = cmpStatus(a, b);
-        if (statusDiff !== 0) {
-          res = statusDiff;
-        } else {
-          // Dalam setiap kelompok status (termasuk Aktif): NRP Kecil berada di urutan paling atas
-          res =
-            cmpNrp(a, b) ||
-            cmpPangkat(a, b) ||
-            cmpLevelSatker(a, b) ||
-            cmpNama(a, b) ||
-            cmpRole(a, b);
-        }
+      if (sortBy === 'PANGKAT_UTAMA') {
+        res =
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNrp(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b) ||
+          cmpStatus(a, b);
+      } else if (sortBy === 'STATUS') {
+        // 1. Aktif -> 2. Purna Tugas -> 3. PTDH -> 4. Almarhum (NRP Kecil di atas)
+        res =
+          cmpStatus(a, b) ||
+          cmpNrp(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b);
       } else if (sortBy === 'PANGKAT') {
         res =
           cmpPangkat(a, b) ||
@@ -343,22 +373,6 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           cmpNrp(a, b) ||
           cmpNama(a, b) ||
           cmpRole(a, b);
-      } else if (sortBy === 'NRP') {
-        res =
-          cmpNrp(a, b) ||
-          cmpStatus(a, b) ||
-          cmpPangkat(a, b) ||
-          cmpLevelSatker(a, b) ||
-          cmpNama(a, b) ||
-          cmpRole(a, b);
-      } else if (sortBy === 'NAMA') {
-        res =
-          cmpNama(a, b) ||
-          cmpStatus(a, b) ||
-          cmpPangkat(a, b) ||
-          cmpLevelSatker(a, b) ||
-          cmpNrp(a, b) ||
-          cmpRole(a, b);
       } else if (sortBy === 'ROLE') {
         res =
           cmpRole(a, b) ||
@@ -367,6 +381,16 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           cmpLevelSatker(a, b) ||
           cmpNrp(a, b) ||
           cmpNama(a, b);
+      } else {
+        // DEFAULT Kombinasi Utama (Menu User + Menu Jabatan):
+        // Status (Aktif -> Purna -> PTDH -> Almarhum) • Pangkat • Level Satker • NRP • Nama • Role
+        res =
+          cmpStatus(a, b) ||
+          cmpPangkat(a, b) ||
+          cmpLevelSatker(a, b) ||
+          cmpNrp(a, b) ||
+          cmpNama(a, b) ||
+          cmpRole(a, b);
       }
       return sortDesc ? res : -res;
     };
@@ -647,38 +671,31 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                   <span className="truncate">Riwayat Jabatan ({sortedJabatan.length})</span>
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  Penempatan aktif di Mabes Polri &amp; 38 Polda &bull; Urutan Default: Aktif (NRP Kecil) &rarr; Purna &rarr; PTDH &rarr; Almarhum
+                  Penempatan aktif di Mabes Polri &amp; 38 Polda &bull; Urutan Default: Status (Aktif &rarr; Purna &rarr; PTDH &rarr; Almarhum) &bull; Pangkat &bull; Level Satker &bull; NRP &bull; Nama &bull; Role
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
-                {/* Sorting Button & Dropdown (Far Left before Filter Wilayah & Searchbox) */}
-                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 min-w-0 max-w-full">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-red-800 flex-shrink-0" />
-                  <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">Urutkan:</span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer pr-1 min-w-0 flex-1 truncate"
-                    title="Urutkan Daftar Riwayat Jabatan"
-                  >
-                    <option value="DEFAULT">Default (Aktif [NRP Kecil] → Purna → PTDH → Almarhum)</option>
-                    <option value="STATUS">By Status (Aktif → Purna → PTDH → Almarhum)</option>
-                    <option value="PANGKAT">By Pangkat (Jenderal Polisi → Bharada)</option>
-                    <option value="LEVEL_SATKER">By Level Satker (Mabes → Polda → Polres → Polsek)</option>
-                    <option value="NRP">By NRP (Angka Kecil → Besar)</option>
-                    <option value="NAMA">By Nama (A → Z)</option>
-                    <option value="ROLE">By Role (Superadmin → Anggota)</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setSortDesc((prev) => !prev)}
-                    className="px-2 py-0.5 text-[10px] font-bold rounded bg-white border border-slate-200 text-slate-700 hover:bg-red-50 hover:text-red-800 hover:border-red-200 transition-colors whitespace-nowrap shrink-0"
-                    title={sortDesc ? 'Urutan Menurun (Descending) — Klik untuk Ascending' : 'Urutan Menaik (Ascending) — Klik untuk Descending'}
-                  >
-                    {sortDesc ? '↓ Desc' : '↑ Asc'}
-                  </button>
-                </div>
+                {/* Sorting Button Trigger -> Membuka Modal Pop-up List dengan Pilihan Ascend / Descend */}
+                <SortTriggerBar
+                  sortBy={sortBy}
+                  sortDesc={sortDesc}
+                  onOpenModal={() => setIsSortModalOpen(true)}
+                  onToggleDirection={() => setSortDesc((prev) => !prev)}
+                  compact
+                />
+
+                <SortModalPopup
+                  isOpen={isSortModalOpen}
+                  onClose={() => setIsSortModalOpen(false)}
+                  sortBy={sortBy}
+                  sortDesc={sortDesc}
+                  onSelectSort={(newKey, newDesc) => {
+                    setSortBy(newKey);
+                    setSortDesc(newDesc);
+                  }}
+                  contextTitle="Menu Jabatan (Riwayat Jabatan)"
+                />
 
                 <select
                   value={selectedPolda}

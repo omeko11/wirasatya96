@@ -9,10 +9,12 @@ import {
   UserAuditLog,
   UserAuditAction,
   DAFTAR_PANGKAT_POLRI,
+  StatusKedinasan,
 } from '@/types';
 import { ROLE_PERMISSIONS } from '@/data/mockUsers';
-import { PURGED_NON_1996_BASE_NAMES } from '@/data/akpol1996Alumni';
+import { PURGED_NON_1996_BASE_NAMES, AKPOL_1996_MEMBERS } from '@/data/akpol1996Alumni';
 import { SatkerBerjenjangModal, SatkerSelectionResult } from './SatkerBerjenjangModal';
+import { SortModalPopup, SortTriggerBar, UnifiedSortKey } from './SortModalPopup';
 import { MetaVerifiedBadge, setDynamicRoleMap, updateDynamicUserRole } from './MetaVerifiedBadge';
 import { UserTableSkeleton } from './SkeletonLoader';
 import {
@@ -29,6 +31,8 @@ import {
   getPangkatRankOrder,
   getLevelSatkerOrder,
   getRoleRankOrder,
+  detectStatusKedinasan,
+  getStatusKedinasanOrder,
 } from '@/lib/avatarUtils';
 import { 
   ShieldCheck, 
@@ -122,8 +126,9 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
   // Filters & Sorting for Users tab
   const [userSearch, setUserSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
-  const [sortBy, setSortBy] = useState<'DEFAULT' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'>('DEFAULT');
+  const [sortBy, setSortBy] = useState<UnifiedSortKey>('DEFAULT');
   const [sortDesc, setSortDesc] = useState<boolean>(true);
+  const [isSortModalOpen, setIsSortModalOpen] = useState<boolean>(false);
   const [updatingUserNrp, setUpdatingUserNrp] = useState<string | null>(null);
 
   // CAS-style Add User Modal state (when clicking "+ Tambah Pengguna")
@@ -1766,6 +1771,34 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     return matchesSearch && u.role === roleFilter;
   });
 
+  const resolveUserStatusKedinasan = (u: AuthUser): StatusKedinasan => {
+    if (
+      u.statusKedinasan === 'AKTIF' ||
+      u.statusKedinasan === 'PURNA_TUGAS' ||
+      u.statusKedinasan === 'PTDH' ||
+      u.statusKedinasan === 'ALMARHUM'
+    ) {
+      return u.statusKedinasan;
+    }
+    const cleanNrp = (u.nrp || '').trim();
+    const cleanOld = (u.oldNrp || '').trim();
+    const baseName = (stripRankFromName(u.nama) || u.nama).split(',')[0].trim().toLowerCase();
+    const matchedMember = AKPOL_1996_MEMBERS.find(
+      (m) =>
+        m.nrp === cleanNrp ||
+        (cleanOld && m.nrp === cleanOld) ||
+        (m.oldNrp && m.oldNrp === cleanNrp) ||
+        (stripRankFromName(m.namaLengkap) || m.namaLengkap).split(',')[0].trim().toLowerCase() === baseName
+    );
+    return detectStatusKedinasan(
+      matchedMember?.statusKedinasan || matchedMember?.statusDinas,
+      u.jabatanTerakhir || matchedMember?.jabatanTerakhir
+    );
+  };
+
+  const cmpStatus = (a: AuthUser, b: AuthUser) =>
+    getStatusKedinasanOrder(resolveUserStatusKedinasan(a)) -
+    getStatusKedinasanOrder(resolveUserStatusKedinasan(b));
   const cmpPangkat = (a: AuthUser, b: AuthUser) =>
     getPangkatRankOrder(a.pangkat) - getPangkatRankOrder(b.pangkat);
   const cmpLevelSatker = (a: AuthUser, b: AuthUser) =>
@@ -1784,21 +1817,83 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
     getRoleRankOrder(a.role) - getRoleRankOrder(b.role);
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
+    if (sortBy === 'NRP') {
+      // Ascend (!sortDesc) = NRP Kecil -> Besar; Descend (sortDesc) = NRP Besar -> Kecil
+      const nrpDiff = sortDesc ? -cmpNrp(a, b) : cmpNrp(a, b);
+      return (
+        nrpDiff ||
+        cmpStatus(a, b) ||
+        cmpPangkat(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNama(a, b) ||
+        cmpRole(a, b)
+      );
+    }
+    if (sortBy === 'NAMA') {
+      // Ascend (!sortDesc) = Abjad A -> Z; Descend (sortDesc) = Abjad Z -> A
+      const namaDiff = sortDesc ? -cmpNama(a, b) : cmpNama(a, b);
+      return (
+        namaDiff ||
+        cmpStatus(a, b) ||
+        cmpPangkat(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNrp(a, b) ||
+        cmpRole(a, b)
+      );
+    }
+
     const dir = sortDesc ? 1 : -1;
     let res = 0;
-    if (sortBy === 'PANGKAT') {
-      res = cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpNama(a, b) || cmpRole(a, b);
+    if (sortBy === 'PANGKAT_UTAMA') {
+      res =
+        cmpPangkat(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNrp(a, b) ||
+        cmpNama(a, b) ||
+        cmpRole(a, b) ||
+        cmpStatus(a, b);
+    } else if (sortBy === 'STATUS') {
+      res =
+        cmpStatus(a, b) ||
+        cmpNrp(a, b) ||
+        cmpPangkat(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNama(a, b) ||
+        cmpRole(a, b);
+    } else if (sortBy === 'PANGKAT') {
+      res =
+        cmpPangkat(a, b) ||
+        cmpStatus(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNrp(a, b) ||
+        cmpNama(a, b) ||
+        cmpRole(a, b);
     } else if (sortBy === 'LEVEL_SATKER') {
-      res = cmpLevelSatker(a, b) || cmpPangkat(a, b) || cmpNrp(a, b) || cmpNama(a, b) || cmpRole(a, b);
-    } else if (sortBy === 'NRP') {
-      res = cmpNrp(a, b) || cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNama(a, b) || cmpRole(a, b);
-    } else if (sortBy === 'NAMA') {
-      res = cmpNama(a, b) || cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpRole(a, b);
+      res =
+        cmpLevelSatker(a, b) ||
+        cmpStatus(a, b) ||
+        cmpPangkat(a, b) ||
+        cmpNrp(a, b) ||
+        cmpNama(a, b) ||
+        cmpRole(a, b);
     } else if (sortBy === 'ROLE') {
-      res = cmpRole(a, b) || cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpNama(a, b);
+      res =
+        cmpRole(a, b) ||
+        cmpStatus(a, b) ||
+        cmpPangkat(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNrp(a, b) ||
+        cmpNama(a, b);
     } else {
-      // DEFAULT unified sort across all data: Pangkat -> Level Satker -> NRP -> Nama -> Role
-      res = cmpPangkat(a, b) || cmpLevelSatker(a, b) || cmpNrp(a, b) || cmpNama(a, b) || cmpRole(a, b);
+      // DEFAULT Kombinasi Utama (Menu User + Menu Jabatan):
+      // Status Kedinasan (Aktif -> Purna Tugas -> PTDH -> Almarhum) • Pangkat • Level Satker • NRP • Nama • Role
+      res =
+        cmpStatus(a, b) ||
+        cmpPangkat(a, b) ||
+        cmpLevelSatker(a, b) ||
+        cmpNrp(a, b) ||
+        cmpNama(a, b) ||
+        cmpRole(a, b);
     }
     return res * dir;
   });
@@ -2203,42 +2298,13 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       {activeTab === 'USERS' && (
         <>
           <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
-            {/* Paling Kiri: Sorting Button + Dropdown (Default: Seluruh data diurutkan sekaligus secara Descending) */}
-            <div className="flex items-center bg-white border border-slate-300 rounded-lg overflow-hidden shadow-2xs shrink-0">
-              <div className="pl-2.5 pr-1.5 py-1.5 flex items-center gap-1 text-red-800 bg-red-50/70 border-r border-slate-200">
-                <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
-                <span className="text-[10px] font-extrabold uppercase tracking-wider">Urutkan</span>
-              </div>
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(
-                    e.target.value as 'DEFAULT' | 'PANGKAT' | 'LEVEL_SATKER' | 'NRP' | 'NAMA' | 'ROLE'
-                  )
-                }
-                className="px-2.5 py-1.5 bg-white text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                title="Default: Seluruh data diurutkan sekaligus berdasarkan Pangkat → Level Satker → NRP → Nama → Role secara Descending"
-              >
-                <option value="DEFAULT">Default: Semua (Pangkat • Level Satker • NRP • Nama • Role)</option>
-                <option value="PANGKAT">By Pangkat (Jenderal Polisi → Bharada)</option>
-                <option value="LEVEL_SATKER">By Level Satker (Mabes → Polda → Polres → Polsek)</option>
-                <option value="NRP">By NRP (Angka Kecil → Besar)</option>
-                <option value="NAMA">By Nama (A → Z)</option>
-                <option value="ROLE">By Role (Superadmin → Anggota)</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => setSortDesc((prev) => !prev)}
-                className="px-2.5 py-1.5 border-l border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[11px] transition-colors whitespace-nowrap"
-                title={
-                  sortDesc
-                    ? 'Urutan Default Descending (Tertinggi → Terendah) — Klik untuk balik ke Ascending'
-                    : 'Urutan Ascending (Terbalik) — Klik untuk kembali ke Descending'
-                }
-              >
-                {sortDesc ? '↓ Desc' : '↑ Asc'}
-              </button>
-            </div>
+            {/* Paling Kiri: Sorting Button Trigger -> Membuka Modal Pop-up List dengan Pilihan Ascend / Descend */}
+            <SortTriggerBar
+              sortBy={sortBy}
+              sortDesc={sortDesc}
+              onOpenModal={() => setIsSortModalOpen(true)}
+              onToggleDirection={() => setSortDesc((prev) => !prev)}
+            />
 
             {/* Searchbox di sebelah kanan tombol Sorting */}
             <div className="relative flex-1 min-w-[200px]">
@@ -2280,6 +2346,18 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             </div>
           </div>
 
+          <SortModalPopup
+            isOpen={isSortModalOpen}
+            onClose={() => setIsSortModalOpen(false)}
+            sortBy={sortBy}
+            sortDesc={sortDesc}
+            onSelectSort={(newKey, newDesc) => {
+              setSortBy(newKey);
+              setSortDesc(newDesc);
+            }}
+            contextTitle="Menu User (Daftar Pengguna)"
+          />
+
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
             {loading && users.length === 0 ? (
               <UserTableSkeleton rows={6} />
@@ -2292,6 +2370,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               sortedUsers.map((u) => {
                 const regInfo = registrations.find((r) => r.nrp === u.nrp);
                 const isActive = isUserAccountActive(u, regInfo);
+                const statusDinas = resolveUserStatusKedinasan(u);
                 const secondaryEmail = u.secondaryEmail || regInfo?.secondaryEmail;
                 const cleanSatker = (u.satker || 'Mabes Polri').split(' / ')[0].trim();
                 const dynamicJabatanAngkatan =
@@ -2325,7 +2404,22 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                             {dynamicJabatanAngkatan}
                           </span>
                         )}
-                        {isActive ? (
+                        {statusDinas === 'ALMARHUM' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                            <span>Almarhum</span>
+                          </span>
+                        ) : statusDinas === 'PURNA_TUGAS' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span>Purna Tugas</span>
+                          </span>
+                        ) : statusDinas === 'PTDH' ? (
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-800 border border-red-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            <span>PTDH</span>
+                          </span>
+                        ) : isActive ? (
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 ml-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                             <span>Aktif</span>
