@@ -297,6 +297,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [activeTab, setActiveTab] = useState<'milestone' | 'aset' | 'bukuKas' | 'santunan' | 'pendidikan'>('milestone');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'SEMUA' | 'MASUK' | 'KELUAR'>('SEMUA');
+  const [kasPilarFilter, setKasPilarFilter] = useState<'SEMUA' | 'DANA_SOSIAL' | 'DANA_INVESTASI'>('SEMUA');
   const [showReadOnlyInfo, setShowReadOnlyInfo] = useState(false);
   const [campaignFilter, setCampaignFilter] = useState<'SEMUA' | CampaignCategory>('SEMUA');
 
@@ -952,15 +953,46 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
     return code.replace(/_/g, ' ');
   };
 
-  // Filtered transactions (by period + MASUK/KELUAR + text search)
+  const isInvestmentTransaction = (kategoriCode: string) => {
+    const upper = (kategoriCode || '').toUpperCase();
+    return (
+      upper === 'DANA_INVESTASI_ANGGOTA' ||
+      upper === 'PENCAIRAN_ASET_INVESTASI' ||
+      upper === 'PEMBELIAN_ASET_INVESTASI' ||
+      upper.includes('INVESTASI') ||
+      upper.includes('ASET')
+    );
+  };
+
+  const kasSosialMasuk = periodFilteredTransactions
+    .filter((t) => t.jenis === 'MASUK' && !isInvestmentTransaction(t.kategori))
+    .reduce((s, t) => s + (Number(t.nominal) || 0), 0);
+  const kasSosialKeluar = periodFilteredTransactions
+    .filter((t) => t.jenis === 'KELUAR' && !isInvestmentTransaction(t.kategori))
+    .reduce((s, t) => s + (Number(t.nominal) || 0), 0);
+  const saldoKasSosial = kasSosialMasuk - kasSosialKeluar;
+
+  const kasInvestasiMasuk = periodFilteredTransactions
+    .filter((t) => t.jenis === 'MASUK' && isInvestmentTransaction(t.kategori))
+    .reduce((s, t) => s + (Number(t.nominal) || 0), 0);
+  const kasInvestasiKeluar = periodFilteredTransactions
+    .filter((t) => t.jenis === 'KELUAR' && isInvestmentTransaction(t.kategori))
+    .reduce((s, t) => s + (Number(t.nominal) || 0), 0);
+  const saldoKasInvestasi = kasInvestasiMasuk - kasInvestasiKeluar;
+
+  // Filtered transactions (by period + pilar Dana Sosial/Investasi + MASUK/KELUAR + text search)
   const filteredTransactions = periodFilteredTransactions.filter((t) => {
+    const isInv = isInvestmentTransaction(t.kategori);
+    const matchPilar =
+      kasPilarFilter === 'SEMUA' ||
+      (kasPilarFilter === 'DANA_INVESTASI' ? isInv : !isInv);
     const matchType = selectedFilter === 'SEMUA' || t.jenis === selectedFilter;
     const matchSearch =
       t.keterangan.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.nomorReferensi.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.kategori.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.pihakTerkait && t.pihakTerkait.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchType && matchSearch;
+    return matchPilar && matchType && matchSearch;
   });
 
   // Filtered assets (by period + category)
@@ -1424,17 +1456,17 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-extrabold text-white">
-                Dana Sosial, Milestone &amp; Investasi
+                Dana Sosial &amp; Dana Investasi
               </h2>
               <span
                 className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-help text-[11px] font-bold"
-                title="1. Dana Sosial & Milestone Event (Anak Yatim, Anggota Sakit, Anggota MD, Baksos) • 2. Dana Investasi (Bagi yang Mau Ikut) & Portofolio Aset • 3. Kas Sukarela (Komponen Cadangan)"
+                title="1. Dana Sosial (Milestone Anak Yatim, Anggota Sakit, Anggota MD, Event) • 2. Dana Investasi (Dalam Rupiah untuk Investasi/Aset) • Buku Kas (Terbagi 2: Dana Sosial & Dana Investasi)"
               >
                 <Info className="w-3.5 h-3.5" />
               </span>
             </div>
             <p className="text-[11px] text-emerald-200/80">
-              1. Dana Sosial &amp; Milestone Event &bull; 2. Dana Investasi (Bagi yg Mau Ikut) &amp; Aset &bull; 3. Kas Sukarela Cadangan
+              1. Dana Sosial (Milestone) &bull; 2. Dana Investasi (Rupiah di Instrumen/Aset) &bull; Buku Kas (Sosial &amp; Investasi)
             </p>
           </div>
         </div>
@@ -1447,33 +1479,26 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
               >
                 <PlusCircle className="w-4 h-4" />
-                + Buat Milestone
+                + Milestone Sosial
+              </button>
+              <button
+                onClick={() => setIsAssetModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg transition-all"
+              >
+                <Coins className="w-4 h-4" />
+                + Dana Investasi
               </button>
               <button
                 onClick={() => handleOpenMutasiModal('MASUK')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
               >
                 <PlusCircle className="w-4 h-4" />
-                + Kas / Donasi
-              </button>
-              <button
-                onClick={() => handleOpenInvestModal()}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-lg transition-all"
-              >
-                <Users className="w-4 h-4" />
-                + Investasi
-              </button>
-              <button
-                onClick={() => setIsAssetModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg transition-all"
-              >
-                <Coins className="w-4 h-4" />
-                + Aset
+                + Buku Kas
               </button>
               <button
                 onClick={handleOpenConfigModal}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-xs border border-amber-400/30 transition-all"
-                title="Pengaturan Kategori Kas"
+                title="Pengaturan Kategori Buku Kas"
               >
                 <Settings className="w-4 h-4" />
                 Kategori
@@ -1504,7 +1529,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     <Info className="w-3.5 h-3.5" />
                     Akses Kebendaharaan
                   </div>
-                  Pengelolaan milestone dana sosial, kas sukarela cadangan, dan dana investasi dikelola oleh{' '}
+                  Pengelolaan dana sosial, dana investasi, dan buku kas dikelola oleh{' '}
                   <b className="text-emerald-300">Bendahara</b>.
                 </div>
               )}
@@ -1515,7 +1540,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             <button
               onClick={handleExportFinanceCSV}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs border border-white/25 transition-all"
-              title="Unduh Rekap Kas & Aset Sesuai Periode (CSV)"
+              title="Unduh Rekap Buku Kas & Dana Investasi (CSV)"
             >
               <Download className="w-4 h-4 text-amber-300" />
               CSV
@@ -1524,7 +1549,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         </div>
       </div>
 
-      {/* Filter Periode Kas & Aset Bar */}
+      {/* Filter Periode Kas & Investasi Bar */}
       <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -1533,13 +1558,13 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             </span>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-extrabold text-slate-900">Filter Periode Kas &amp; Aset</span>
+                <span className="text-xs font-extrabold text-slate-900">Filter Periode</span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
                   {activePeriodLabel}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500">
-                Menampilkan <b>{periodFilteredTransactions.length}</b> transaksi kas &amp; <b>{periodFilteredAssets.length}</b> instrumen aset pada periode terpilih
+                Menampilkan <b>{periodFilteredTransactions.length}</b> transaksi buku kas &amp; <b>{periodFilteredAssets.length}</b> instrumen dana investasi
               </p>
             </div>
           </div>
@@ -1661,12 +1686,12 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         )}
       </div>
 
-      {/* Top KPI Cards — Dana Sosial Milestone, Dana Investasi & Kas Cadangan */}
+      {/* Top KPI Cards — 1. Dana Sosial • 2. Dana Investasi • Buku Kas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Dana Sosial & Milestone Event (Kitabisa / Saweria Style) */}
+        {/* 1. Dana Sosial & Milestone */}
         <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/30 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-extrabold text-emerald-950">1. Dana Sosial &amp; Milestone</span>
+            <span className="text-xs font-extrabold text-emerald-950">1. Dana Sosial (Milestone)</span>
             <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-200">
               {milestoneOverallPct}% Tercapai
             </span>
@@ -1688,37 +1713,29 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           </div>
         </div>
 
-        {/* 2. Dana Investasi (Bagi yang Mau Ikut) & Portofolio Aset */}
-        <div className="bg-white p-5 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/40 via-white to-blue-50/30 shadow-sm relative overflow-hidden">
+        {/* 2. Dana Investasi (Simpel dalam Rupiah untuk Investasi/Aset) */}
+        <div className="bg-white p-5 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/40 via-white to-indigo-50/30 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-extrabold text-indigo-950">2. Dana Investasi &amp; Aset</span>
-            <span className="p-1.5 rounded-xl bg-indigo-100 text-indigo-800">
+            <span className="text-xs font-extrabold text-blue-950">2. Dana Investasi</span>
+            <span className="p-1.5 rounded-xl bg-blue-100 text-blue-800">
               <Coins className="w-4 h-4" />
             </span>
           </div>
           <div className="mt-2.5">
-            <span className="text-2xl sm:text-3xl font-black text-indigo-950 block">
-              {formatRupiah(totalDanaInvestasiPartisipan + totalValuasiAset)}
+            <span className="text-2xl sm:text-3xl font-black text-blue-950 block">
+              {formatRupiah(totalValuasiAset)}
             </span>
-            <div className="mt-2 pt-2 border-t border-indigo-100 space-y-1 text-[11px]">
-              <div className="flex justify-between text-slate-600">
-                <span>Investasi Anggota (Yg Ikut):</span>
-                <b className="text-indigo-800">{formatRupiah(totalDanaInvestasiPartisipan)} ({investmentParticipants.length} org)</b>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Portofolio Aset Dimiliki:</span>
-                <b className="text-blue-800">{formatRupiah(totalValuasiAset)} ({periodFilteredAssets.length} unit)</b>
-              </div>
+            <div className="mt-2 pt-2 border-t border-blue-100 flex items-center justify-between text-[11px] text-slate-600">
+              <span>Instrumen / Aset Investasi:</span>
+              <b className="text-blue-800">{periodFilteredAssets.length} Instrumen</b>
             </div>
           </div>
         </div>
 
-        {/* 3. Kas Sukarela (Komponen Cadangan) */}
+        {/* 3. Saldo Buku Kas (Terbagi 2: Kas Sosial & Kas Investasi) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-700">
-              {periodMode === 'SEMUA' ? '3. Kas Sukarela (Cadangan)' : 'Selisih Kas (Periode)'}
-            </span>
+            <span className="text-xs font-extrabold text-slate-700">Saldo Buku Kas</span>
             <span className="p-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
               <Wallet className="w-4 h-4" />
             </span>
@@ -1727,19 +1744,23 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             <span className="text-2xl sm:text-3xl font-black text-slate-900 block">
               {formatRupiah(effectiveSaldoKas)}
             </span>
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-              <span>Total Kas + Investasi + Aset:</span>
-              <span className="font-bold text-slate-800">
-                {formatRupiah(totalKekayaanGabungan)}
-              </span>
+            <div className="mt-2 pt-2 border-t border-slate-100 space-y-0.5 text-[11px] text-slate-500">
+              <div className="flex justify-between">
+                <span>Kas Dana Sosial:</span>
+                <b className="text-emerald-700">{formatRupiah(saldoKasSosial)}</b>
+              </div>
+              <div className="flex justify-between">
+                <span>Kas Dana Investasi:</span>
+                <b className="text-blue-700">{formatRupiah(saldoKasInvestasi)}</b>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 4. Rekapan Arus Kas (Inflow & Outflow) */}
+        {/* 4. Arus Buku Kas (Inflow & Outflow) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50/30 via-white to-red-50/20 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-slate-700">Rekapan Arus Kas</span>
+            <span className="text-xs font-extrabold text-slate-700">Arus Buku Kas</span>
             <div className="flex items-center gap-1">
               <span className="p-1 rounded-lg bg-emerald-100 text-emerald-700" title="Total Kas Masuk">
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1778,19 +1799,19 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <span>🎯</span>
-            1. Dana Sosial &amp; Milestone ({campaigns.length})
+            1. Dana Sosial ({campaigns.length})
           </button>
 
           <button
             onClick={() => setActiveTab('aset')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeTab === 'aset'
-                ? 'bg-indigo-800 text-white shadow-sm'
+                ? 'bg-blue-800 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
-            <Briefcase className="w-4 h-4" />
-            2. Dana Investasi (Yg Ikut) &amp; Aset ({investmentParticipants.length + filteredAssets.length})
+            <Coins className="w-4 h-4" />
+            2. Dana Investasi ({filteredAssets.length})
           </button>
 
           <button
@@ -1802,7 +1823,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            3. Buku Kas Cadangan ({filteredTransactions.length})
+            Buku Kas ({filteredTransactions.length})
           </button>
 
           <button
@@ -2030,10 +2051,94 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* TAB 1: BUKU KAS & RIWAYAT TRANSAKSI                            */}
+        {/* TAB 3: BUKU KAS (TERBAGI 2: DANA SOSIAL & DANA INVESTASI)      */}
         {/* ============================================================== */}
         {activeTab === 'bukuKas' && (
           <div className="p-5 sm:p-6 space-y-4">
+            {/* PILIHAN SUB-BUKU KAS: 1. DANA SOSIAL vs 2. DANA INVESTASI */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setKasPilarFilter('SEMUA')}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  kasPilarFilter === 'SEMUA'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-md'
+                    : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">
+                    Semua Buku Kas
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">
+                    Gabungan
+                  </span>
+                </div>
+                <p className="text-lg font-black mt-1">{formatRupiah(effectiveSaldoKas)}</p>
+                <p className="text-[10px] opacity-75 mt-1">
+                  Masuk: +{formatRupiah(totalKasMasuk)} &bull; Keluar: -{formatRupiah(totalKasKeluar)}
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKasPilarFilter('DANA_SOSIAL')}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  kasPilarFilter === 'DANA_SOSIAL'
+                    ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
+                    : 'bg-emerald-50/60 text-emerald-950 border-emerald-200 hover:bg-emerald-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                    🤲 1. Kas Dana Sosial
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      kasPilarFilter === 'DANA_SOSIAL'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-emerald-200/70 text-emerald-900'
+                    }`}
+                  >
+                    Yatim / Sakit / MD / Event
+                  </span>
+                </div>
+                <p className="text-lg font-black mt-1">{formatRupiah(saldoKasSosial)}</p>
+                <p className="text-[10px] opacity-80 mt-1">
+                  Masuk: +{formatRupiah(kasSosialMasuk)} &bull; Keluar: -{formatRupiah(kasSosialKeluar)}
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKasPilarFilter('DANA_INVESTASI')}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  kasPilarFilter === 'DANA_INVESTASI'
+                    ? 'bg-blue-800 text-white border-blue-800 shadow-md'
+                    : 'bg-blue-50/60 text-blue-950 border-blue-200 hover:bg-blue-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                    📈 2. Kas Dana Investasi
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      kasPilarFilter === 'DANA_INVESTASI'
+                        ? 'bg-white/20 text-white'
+                        : 'bg-blue-200/70 text-blue-900'
+                    }`}
+                  >
+                    Investasi &amp; Aset
+                  </span>
+                </div>
+                <p className="text-lg font-black mt-1">{formatRupiah(saldoKasInvestasi)}</p>
+                <p className="text-[10px] opacity-80 mt-1">
+                  Masuk: +{formatRupiah(kasInvestasiMasuk)} &bull; Keluar: -{formatRupiah(kasInvestasiKeluar)}
+                </p>
+              </button>
+            </div>
+
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="relative w-full sm:w-80">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -2075,7 +2180,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     className="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"
                   >
                     <PlusCircle className="w-3.5 h-3.5" />
-                    Catat Mutasi Kas
+                    Catat Mutasi Buku Kas
                   </button>
                 )}
               </div>
@@ -2086,61 +2191,73 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Tanggal &amp; Ref</th>
-                    <th className="px-4 py-3">Jenis &amp; Sub-Kategori Cashflow</th>
+                    <th className="px-4 py-3">Pilar Buku Kas &amp; Kategori</th>
                     <th className="px-4 py-3">Keterangan &amp; Pihak Terkait</th>
                     <th className="px-4 py-3 text-right">Nominal (IDR)</th>
                     <th className="px-4 py-3">Dicatat Oleh</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredTransactions.map((trx) => (
-                    <tr key={trx.id} className="hover:bg-slate-50/70">
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="font-semibold text-slate-900 block">{trx.tanggal}</span>
-                        <span className="text-[10px] font-mono text-slate-400">{trx.nomorReferensi}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-1.5">
+                  {filteredTransactions.map((trx) => {
+                    const isInvest = isInvestmentTransaction(trx.kategori);
+                    return (
+                      <tr key={trx.id} className="hover:bg-slate-50/70">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-semibold text-slate-900 block">{trx.tanggal}</span>
+                          <span className="text-[10px] font-mono text-slate-400">{trx.nomorReferensi}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                isInvest
+                                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                              }`}
+                            >
+                              {isInvest ? '📈 DANA INVESTASI' : '🤲 DANA SOSIAL'}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                                trx.jenis === 'MASUK'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-red-50 text-red-700 border border-red-200'
+                              }`}
+                            >
+                              {trx.jenis === 'MASUK' ? 'MASUK' : 'KELUAR'}
+                            </span>
+                            <span className="text-slate-800 font-bold text-[11px]">
+                              {getCategoryLabel(trx.kategori)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 max-w-xs">
+                          <span className="font-medium text-slate-900 block">{trx.keterangan}</span>
+                          {trx.pihakTerkait && trx.pihakTerkait !== '-' && (
+                            <span className="text-[11px] text-blue-700 font-semibold">
+                              Terkait: {trx.pihakTerkait} {trx.nrpTerkait ? `(NRP ${trx.nrpTerkait})` : ''}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
                           <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
-                              trx.jenis === 'MASUK'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                : 'bg-red-100 text-red-800 border border-red-200'
+                            className={`font-black text-sm ${
+                              trx.jenis === 'MASUK' ? 'text-emerald-700' : 'text-red-700'
                             }`}
                           >
-                            {trx.jenis === 'MASUK' ? 'SALDO MASUK' : 'SALDO KELUAR'}
+                            {trx.jenis === 'MASUK' ? '+' : '-'} {formatRupiah(trx.nominal)}
                           </span>
-                          <span className="text-slate-800 font-bold text-[11px]">
-                            {getCategoryLabel(trx.kategori)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <span className="font-medium text-slate-900 block">{trx.keterangan}</span>
-                        {trx.pihakTerkait && trx.pihakTerkait !== '-' && (
-                          <span className="text-[11px] text-blue-700 font-semibold">
-                            Terkait: {trx.pihakTerkait} {trx.nrpTerkait ? `(NRP ${trx.nrpTerkait})` : ''}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <span
-                          className={`font-black text-sm ${
-                            trx.jenis === 'MASUK' ? 'text-emerald-700' : 'text-red-700'
-                          }`}
-                        >
-                          {trx.jenis === 'MASUK' ? '+' : '-'} {formatRupiah(trx.nominal)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-[11px]">
-                        {trx.dicatatOleh}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-slate-500 text-[11px]">
+                          {trx.dicatatOleh}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {filteredTransactions.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
-                        Belum ada transaksi kas yang tercatat.
+                        Belum ada transaksi Buku Kas pada filter ini.
                       </td>
                     </tr>
                   )}
@@ -2151,278 +2268,153 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* TAB 2: DANA INVESTASI (BAGI YANG MAU IKUT) & PORTOFOLIO ASET   */}
+        {/* TAB 2: DANA INVESTASI (SIMPLE — RUPIAH UNTUK INVESTASI APA)    */}
         {/* ============================================================== */}
         {activeTab === 'aset' && (
-          <div className="p-5 sm:p-6 space-y-6">
-            {/* SECTION A: REKAPAN DANA INVESTASI (BAGI YANG MAU IKUT) */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-50/80 border border-indigo-200 rounded-xl p-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-indigo-700 text-white text-[10px] font-extrabold uppercase">
-                      Sukarela &bull; Bagi yang Mau Ikut
-                    </span>
-                    <h4 className="text-xs sm:text-sm font-extrabold text-indigo-950">
-                      2A. Rekapan Dana Investasi Anggota (Bagi yang Berminat Ikut Serta)
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-indigo-800 mt-1">
-                    Pencatatan penyertaan modal / investasi bersama khusus bagi rekan-rekan Wira Satya 96 yang ikut serta secara sukarela.
-                  </p>
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-blue-800 text-white text-[10px] font-extrabold uppercase">
+                    Pilar 2 &bull; Dana Investasi
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-extrabold text-blue-950">
+                    Rekapan Dana Investasi (Dalam Rupiah — Investasi di Instrumen / Aset Apa)
+                  </h4>
                 </div>
-                {canInputKas && (
-                  <button
-                    type="button"
-                    onClick={() => handleOpenInvestModal()}
-                    className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
-                  >
-                    <PlusCircle className="w-4 h-4" />
-                    + Catat Partisipan Investasi
-                  </button>
-                )}
+                <p className="text-[11px] text-blue-800 mt-1">
+                  Daftar sederhana penempatan Dana Investasi Wira Satya 96 dalam Rupiah beserta instrumen/asetnya, pengelola, dan valuasi saat ini.
+                </p>
               </div>
-
-              <div className="rounded-xl border border-slate-200 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">Nama Anggota &amp; NRP</th>
-                      <th className="px-4 py-3">Pangkat &amp; Polda/Satker</th>
-                      <th className="px-4 py-3">Program Investasi &amp; Tgl Gabung</th>
-                      <th className="px-4 py-3 text-right">Modal Penyertaan</th>
-                      <th className="px-4 py-3 text-right">Estimasi Nilai Saat Ini</th>
-                      <th className="px-4 py-3 text-center">Status</th>
-                      {canInputKas && <th className="px-4 py-3 text-center">Aksi</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {investmentParticipants.map((inv) => {
-                      const gain = (inv.estimasiNilaiSaatIni || 0) - (inv.nominalPenyertaan || 0);
-                      return (
-                        <tr key={inv.id} className="hover:bg-slate-50/70">
-                          <td className="px-4 py-3">
-                            <span className="font-bold text-slate-900 block">{inv.namaLengkap}</span>
-                            {inv.nrp && inv.nrp !== '-' && (
-                              <span className="text-[10px] font-mono text-slate-400">NRP {inv.nrp}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="font-semibold text-slate-800 block">{inv.pangkat}</span>
-                            <span className="text-[11px] text-slate-500">{inv.polda}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="font-bold text-indigo-950 block">{inv.namaProgram}</span>
-                            <span className="text-[10px] text-slate-400 block">Sejak: {inv.tanggalBergabung}</span>
-                            {inv.catatan && (
-                              <span className="text-[11px] text-slate-500 block mt-0.5">{inv.catatan}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">
-                            {formatRupiah(inv.nominalPenyertaan)}
-                          </td>
-                          <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <span className="font-black text-indigo-900 text-sm block">
-                              {formatRupiah(inv.estimasiNilaiSaatIni)}
-                            </span>
-                            {gain !== 0 && (
-                              <span
-                                className={`text-[10px] font-bold ${
-                                  gain > 0 ? 'text-emerald-600' : 'text-red-600'
-                                }`}
-                              >
-                                {gain > 0 ? '+' : ''}
-                                {formatRupiah(gain)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span
-                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                                inv.statusPartisipasi === 'AKTIF'
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-slate-200 text-slate-700'
-                              }`}
-                            >
-                              {inv.statusPartisipasi}
-                            </span>
-                          </td>
-                          {canInputKas && (
-                            <td className="px-4 py-3 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenInvestModal(inv)}
-                                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-[11px]"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteInvestment(inv.id)}
-                                  className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
-                                  title="Hapus Partisipan"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                    {investmentParticipants.length === 0 && (
-                      <tr>
-                        <td colSpan={canInputKas ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
-                          Belum ada partisipan Dana Investasi yang tercatat. Klik <b>+ Catat Partisipan Investasi</b> bagi anggota yang berminat ikut.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              {canInputKas && (
+                <button
+                  onClick={() => setIsAssetModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm flex-shrink-0 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  + Catat Dana Investasi
+                </button>
+              )}
             </div>
 
-            {/* SECTION B: PORTOFOLIO ASET YANG DIMILIKI */}
-            <div className="space-y-4 pt-4 border-t border-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-3.5">
-                <div>
-                  <h4 className="text-xs sm:text-sm font-extrabold text-blue-950">
-                    2B. Portofolio Aset yang Dimiliki (SBN / Deposito / Valas / Crypto / Emas)
-                  </h4>
-                  <p className="text-[11px] text-blue-800 mt-0.5">
-                    Inventaris instrumen aset berharga dan penempatan dana investasi Wira Satya 96.
-                  </p>
-                </div>
-                {canInputKas && (
-                  <button
-                    onClick={() => setIsAssetModalOpen(true)}
-                    className="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm flex-shrink-0"
-                  >
-                    <PlusCircle className="w-4 h-4" />
-                    + Catat Aset Baru
-                  </button>
-                )}
-              </div>
-
-              {/* Category Filter Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                onClick={() => setAssetCategoryFilter('SEMUA')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
+                  assetCategoryFilter === 'SEMUA'
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Semua Dana Investasi ({localAssets.length})
+              </button>
+              {(['SURAT_BERHARGA', 'VALUTA_ASING', 'CRYPTO', 'LOGAM_MULIA_ASET'] as AssetCategory[]).map((cat) => (
                 <button
-                  onClick={() => setAssetCategoryFilter('SEMUA')}
+                  key={cat}
+                  onClick={() => setAssetCategoryFilter(cat)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
-                    assetCategoryFilter === 'SEMUA'
-                      ? 'bg-slate-900 text-white border-slate-900'
+                    assetCategoryFilter === cat
+                      ? 'bg-blue-800 text-white border-blue-800'
                       : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
-                  Semua Aset ({localAssets.length})
+                  {ASSET_CATEGORY_LABELS[cat].label} ({localAssets.filter((a) => a.kategori === cat).length})
                 </button>
-                {(['SURAT_BERHARGA', 'VALUTA_ASING', 'CRYPTO', 'LOGAM_MULIA_ASET'] as AssetCategory[]).map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setAssetCategoryFilter(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
-                      assetCategoryFilter === cat
-                        ? 'bg-blue-800 text-white border-blue-800'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {ASSET_CATEGORY_LABELS[cat].label} ({localAssets.filter((a) => a.kategori === cat).length})
-                  </button>
-                ))}
-              </div>
+              ))}
+            </div>
 
-              {/* Asset Table */}
-              <div className="rounded-xl border border-slate-200 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3">Kode &amp; Tanggal</th>
-                      <th className="px-4 py-3">Nama Instrumen &amp; Kategori</th>
-                      <th className="px-4 py-3">Kuantitas / Unit</th>
-                      <th className="px-4 py-3">Kustodian / Wallet / Lokasi</th>
-                      <th className="px-4 py-3 text-right">Nilai Perolehan (IDR)</th>
-                      <th className="px-4 py-3 text-right">Estimasi Valuasi (IDR)</th>
-                      {canInputKas && <th className="px-4 py-3 text-center">Aksi</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredAssets.map((ast) => {
-                      const selisih = (ast.estimasiNilaiIdr || 0) - (ast.nilaiPerolehanIdr || 0);
-                      return (
-                        <tr key={ast.id} className="hover:bg-slate-50/70">
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="font-mono font-bold text-slate-900 block">{ast.kodeAset}</span>
-                            <span className="text-[10px] text-slate-400">{ast.tanggalPerolehan}</span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="font-bold text-slate-900 block">{ast.namaAset}</span>
+            {/* Unified Simple Dana Investasi Table */}
+            <div className="rounded-xl border border-slate-200 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3">Tanggal &amp; Kode</th>
+                    <th className="px-4 py-3">Investasi di Apa / Instrumen Aset</th>
+                    <th className="px-4 py-3">Pengelola / Kustodian / Keterangan</th>
+                    <th className="px-4 py-3 text-right">Dana Investasi Awal (Rp)</th>
+                    <th className="px-4 py-3 text-right">Nilai Saat Ini (Rp)</th>
+                    {canInputKas && <th className="px-4 py-3 text-center">Aksi</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredAssets.map((ast) => {
+                    const selisih = (ast.estimasiNilaiIdr || 0) - (ast.nilaiPerolehanIdr || 0);
+                    return (
+                      <tr key={ast.id} className="hover:bg-slate-50/70">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="font-mono font-bold text-slate-900 block">{ast.kodeAset}</span>
+                          <span className="text-[10px] text-slate-400">{ast.tanggalPerolehan}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-bold text-slate-900 block text-xs sm:text-sm">{ast.namaAset}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
                             <span
-                              className={`inline-block mt-1 px-2 py-0.5 rounded border text-[10px] font-bold ${
+                              className={`inline-block px-2 py-0.5 rounded border text-[10px] font-bold ${
                                 ASSET_CATEGORY_LABELS[ast.kategori]?.badge || 'bg-slate-100 text-slate-700'
                               }`}
                             >
                               {ASSET_CATEGORY_LABELS[ast.kategori]?.label || ast.kategori}
                             </span>
-                            {ast.keterangan && (
-                              <span className="block text-[11px] text-slate-500 mt-0.5">{ast.keterangan}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className="font-black text-slate-900 text-sm">
-                              {ast.jumlahUnit} {ast.satuan}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="font-semibold text-slate-800 block">{ast.kustodianLokasi}</span>
-                            {ast.nomorSeriAtauWallet && ast.nomorSeriAtauWallet !== '-' && (
-                              <span className="font-mono text-[10px] text-slate-500 block">
-                                Ref/Wallet: {ast.nomorSeriAtauWallet}
+                            {ast.jumlahUnit > 0 && (
+                              <span className="text-[11px] font-bold text-slate-600">
+                                ({ast.jumlahUnit} {ast.satuan})
                               </span>
                             )}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-slate-600">
-                            {formatRupiah(ast.nilaiPerolehanIdr)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right">
-                            <span className="font-black text-blue-900 text-sm block">
-                              {formatRupiah(ast.estimasiNilaiIdr)}
-                            </span>
-                            {selisih !== 0 && (
-                              <span
-                                className={`text-[10px] font-bold ${
-                                  selisih > 0 ? 'text-emerald-600' : 'text-red-600'
-                                }`}
-                              >
-                                {selisih > 0 ? '+' : ''}
-                                {formatRupiah(selisih)}
-                              </span>
-                            )}
-                          </td>
-                          {canInputKas && (
-                            <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => handleRemoveAsset(ast.id)}
-                                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                                title="Hapus Aset (Bendahara / Superadmin)"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                    {filteredAssets.length === 0 && (
-                      <tr>
-                        <td colSpan={canInputKas ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
-                          Belum ada aset Surat Berharga, Valas, atau Crypto yang tercatat.
+                          </div>
                         </td>
+                        <td className="px-4 py-3">
+                          <span className="font-semibold text-slate-800 block">{ast.kustodianLokasi}</span>
+                          {ast.keterangan && (
+                            <span className="block text-[11px] text-slate-500 mt-0.5">{ast.keterangan}</span>
+                          )}
+                          {ast.nomorSeriAtauWallet && ast.nomorSeriAtauWallet !== '-' && (
+                            <span className="font-mono text-[10px] text-slate-400 block mt-0.5">
+                              Ref: {ast.nomorSeriAtauWallet}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-slate-700">
+                          {formatRupiah(ast.nilaiPerolehanIdr)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <span className="font-black text-blue-900 text-sm block">
+                            {formatRupiah(ast.estimasiNilaiIdr)}
+                          </span>
+                          {selisih !== 0 && (
+                            <span
+                              className={`text-[10px] font-bold ${
+                                selisih > 0 ? 'text-emerald-600' : 'text-red-600'
+                              }`}
+                            >
+                              {selisih > 0 ? '+' : ''}
+                              {formatRupiah(selisih)}
+                            </span>
+                          )}
+                        </td>
+                        {canInputKas && (
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => handleRemoveAsset(ast.id)}
+                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                              title="Hapus Item Dana Investasi"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        )}
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    );
+                  })}
+                  {filteredAssets.length === 0 && (
+                    <tr>
+                      <td colSpan={canInputKas ? 6 : 5} className="px-4 py-8 text-center text-slate-400">
+                        Belum ada item Dana Investasi yang tercatat.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -2903,7 +2895,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL 2: CATAT PORTOFOLIO ASET BARU (BENDAHARA & SUPERADMIN)   */}
+      {/* MODAL 2: CATAT DANA INVESTASI BARU (BENDAHARA & SUPERADMIN)    */}
       {/* ============================================================== */}
       {isAssetModalOpen && canInputKas && (
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
@@ -2911,7 +2903,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             <div className="bg-blue-900 p-4 text-white flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Coins className="w-4 h-4 text-amber-300" />
-                Catat Aset Baru (Surat Berharga / Valas / Crypto)
+                Catat Dana Investasi (Rupiah — Investasi di Apa / Aset Apa)
               </h3>
               <button onClick={() => setIsAssetModalOpen(false)} className="text-slate-300 hover:text-white">
                 <X className="w-5 h-5" />
@@ -2921,7 +2913,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             <form onSubmit={handleSaveAsset} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Kategori Aset</label>
+                  <label className="block font-bold text-slate-700 mb-1">Jenis Instrumen / Aset</label>
                   <select
                     value={astKategori}
                     onChange={(e) => {
@@ -2931,15 +2923,15 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     }}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold text-blue-950"
                   >
-                    <option value="SURAT_BERHARGA">Surat Berharga / Deposito</option>
+                    <option value="SURAT_BERHARGA">Deposito / SBN / Usaha Bersama</option>
+                    <option value="LOGAM_MULIA_ASET">Logam Mulia / Emas / Aset Riil</option>
                     <option value="VALUTA_ASING">Valuta Asing (USD / SGD / EUR)</option>
                     <option value="CRYPTO">Aset Digital / Crypto (BTC / USDT)</option>
-                    <option value="LOGAM_MULIA_ASET">Logam Mulia / Aset Lainnya</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mata Uang / Satuan Unit</label>
+                  <label className="block font-bold text-slate-700 mb-1">Satuan Unit (Opsional)</label>
                   <select
                     value={astSatuan}
                     onChange={(e) => setAstSatuan(e.target.value)}
@@ -2955,7 +2947,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nama Aset / Instrumen</label>
+                <label className="block font-bold text-slate-700 mb-1">Investasi di Apa / Nama Aset</label>
                 <input
                   type="text"
                   required
@@ -2981,7 +2973,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nilai Beli (IDR)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Dana Investasi Awal (Rp)</label>
                   <input
                     type="number"
                     required
@@ -2994,7 +2986,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Valuasi Saat Ini (IDR)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nilai Saat Ini (Rp)</label>
                   <input
                     type="number"
                     required
@@ -3009,7 +3001,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Kustodian / Bank / Platform</label>
+                  <label className="block font-bold text-slate-700 mb-1">Pengelola / Bank / Kustodian</label>
                   <input
                     type="text"
                     required
@@ -3021,10 +3013,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">No. Bilyet / Wallet Address</label>
+                  <label className="block font-bold text-slate-700 mb-1">No. Bilyet / Ref (Opsional)</label>
                   <input
                     type="text"
-                    placeholder="Opsional (No. Seri / Wallet)"
+                    placeholder="Opsional (No. Seri / Ref)"
                     value={astNomorSeri}
                     onChange={(e) => setAstNomorSeri(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono"
@@ -3033,10 +3025,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Keterangan Tambahan (Opsional)</label>
+                <label className="block font-bold text-slate-700 mb-1">Keterangan / Anggota yang Ikut (Opsional)</label>
                 <input
                   type="text"
-                  placeholder="Contoh: Jatuh tempo Oktober 2027 / Kupon 6.25% p.a."
+                  placeholder="Contoh: Jatuh tempo Oktober 2027 / Kupon 6.25% p.a. / Peserta sukarela"
                   value={astKeterangan}
                   onChange={(e) => setAstKeterangan(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-300"
@@ -3055,7 +3047,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                   type="submit"
                   className="px-5 py-2 rounded-lg bg-blue-800 hover:bg-blue-900 text-white font-bold shadow-md transition-colors"
                 >
-                  Simpan ke Portofolio Aset
+                  Simpan Dana Investasi
                 </button>
               </div>
             </form>
