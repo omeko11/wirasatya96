@@ -195,4 +195,4 @@ flowchart TB
 
 - **Eko Agung** - [GitHub (`@omeko42`)](https://github.com/omeko42) &nbsp;|&nbsp; [LinkedIn (`in/omeko42`)](https://www.linkedin.com/in/omeko42/)  
   *Full-Stack Engineer & System Architect*  
-  *Pengembang Utama **Wira Satya 96 (WS96)** & **Big Data Binops (BDB)***
+  *Pengembang Utama **Wira Satya 96 (WS96) — Paguyuban Alumni Akpol 1996***
