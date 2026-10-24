@@ -40,6 +40,8 @@ import {
   PlusCircle,
   Award,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   ExternalLink,
   MessageSquare,
@@ -171,6 +173,9 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
   const [isSortModalOpen, setIsSortModalOpen] = useState<boolean>(false);
   const [showJabatanHeaderInfo, setShowJabatanHeaderInfo] = useState<boolean>(false);
   const [showTodInfo, setShowTodInfo] = useState<boolean>(false);
+  const [mobileOpenProfile, setMobileOpenProfile] = useState<boolean>(false);
+  const [mobileOpenTod, setMobileOpenTod] = useState<boolean>(false);
+  const [mobileOpenKategori, setMobileOpenKategori] = useState<boolean>(false);
   const myProfile = useMemo(() => getOrBuildUserProfile(currentUser, members), [currentUser, members]);
   const myAvatarUrl = resolveAvatarUrl(myProfile.fotoUrl, currentUser.fotoUrl);
 
@@ -477,53 +482,94 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
         {/* ============================================================ */}
         {/* LEFT RAIL (lg:col-span-4): PROFIL & STATISTIK PENUGASAN     */}
         {/* ============================================================ */}
-        <div className="lg:col-span-4 space-y-4">
-          
-          {/* User Career Card */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            {/* Polri Cover Header synced with Profile */}
-            <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
-              {(myProfile.coverUrl || currentUser.coverUrl) !== 'none' && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={myProfile.coverUrl || currentUser.coverUrl || '/default-cover.jpg'}
-                  alt="Sampul Polri"
-                  className="w-full h-full object-cover object-center"
-                />
-              )}
-            </div>
-
-            <div className="px-5 pb-5 relative">
-              <div 
-                onClick={() => onSelectMember && onSelectMember(myProfile)}
-                className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer"
-              >
+        <div className="lg:col-span-4 space-y-3 sm:space-y-4">
+          {/* User Career Card (Collapsible Header di HP) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Mobile Compact Header */}
+            <div
+              onClick={() => setMobileOpenProfile((prev) => !prev)}
+              className="lg:hidden flex items-center justify-between gap-2.5 p-3.5 cursor-pointer select-none hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={myAvatarUrl}
                   alt={myProfile.namaLengkap || currentUser.nama}
-                  className="w-full h-full object-cover"
+                  className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0 bg-white"
                 />
+                <div className="min-w-0 text-left">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1 truncate">
+                    <span className="truncate">
+                      {(myProfile.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}
+                    </span>
+                    <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {myProfile.pangkat || currentUser.pangkat} &bull; {myProfile.polda || 'MABES POLRI'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                  Karier
+                </span>
+                {mobileOpenProfile ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Desktop Cover & Avatar */}
+            <div className="hidden lg:block text-center">
+              <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
+                {(myProfile.coverUrl || currentUser.coverUrl) !== 'none' && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={myProfile.coverUrl || currentUser.coverUrl || '/default-cover.jpg'}
+                    alt="Sampul Polri"
+                    className="w-full h-full object-cover object-center"
+                  />
+                )}
               </div>
 
-              <h3 
-                onClick={() => onSelectMember && onSelectMember(myProfile)}
-                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight flex items-center justify-center gap-1"
-              >
-                <span className="truncate">{(myProfile.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}</span>
-                <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
-              </h3>
-              <p className="text-xs font-semibold text-red-800 mt-0.5 truncate" title={`${myProfile.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(myProfile.jabatanTerakhir, myProfile.satuanKerja || currentUser.satker)}`}>
-                {myProfile.pangkat || currentUser.pangkat} &bull; {formatJabatanWithSatker(myProfile.jabatanTerakhir, myProfile.satuanKerja || currentUser.satker)}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                {myProfile.polda || 'MABES POLRI'}
-              </p>
+              <div className="px-5 relative">
+                <div
+                  onClick={() => onSelectMember && onSelectMember(myProfile)}
+                  className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={myAvatarUrl}
+                    alt={myProfile.namaLengkap || currentUser.nama}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
 
-              {/* Action: Tambah Jabatan Baru */}
+                <h3
+                  onClick={() => onSelectMember && onSelectMember(myProfile)}
+                  className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight flex items-center justify-center gap-1"
+                >
+                  <span className="truncate">{(myProfile.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}</span>
+                  <MetaVerifiedBadge role={currentUser.role} nrp={currentUser.nrp} size="sm" />
+                </h3>
+                <p
+                  className="text-xs font-semibold text-red-800 mt-0.5 truncate"
+                  title={`${myProfile.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(myProfile.jabatanTerakhir, myProfile.satuanKerja || currentUser.satker)}`}
+                >
+                  {myProfile.pangkat || currentUser.pangkat} &bull; {formatJabatanWithSatker(myProfile.jabatanTerakhir, myProfile.satuanKerja || currentUser.satker)}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                  {myProfile.polda || 'MABES POLRI'}
+                </p>
+              </div>
+            </div>
+
+            <div className={`${mobileOpenProfile ? 'block' : 'hidden'} lg:block px-4 lg:px-5 pb-4 lg:pb-5 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100`}>
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="w-full mt-4 py-2 px-3 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                className="w-full lg:mt-4 py-2 px-3 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Tambah Jabatan</span>
@@ -538,130 +584,162 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             </div>
           </div>
 
-          {/* Statistik Tour of Duty (Dynamic from Real Data & Synced with 23 Fungsi Filter) */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between gap-1.5 pb-2 border-b border-slate-100">
+          {/* Statistik Tour of Duty (Collapsible Header di HP) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4">
+            <div
+              onClick={() => setMobileOpenTod((prev) => !prev)}
+              className="flex items-center justify-between gap-1.5 cursor-pointer lg:cursor-default select-none"
+            >
               <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
                 <Building2 className="w-4 h-4 text-red-800 flex-shrink-0" />
-                <span className="sm:hidden">TOD</span>
-                <span className="hidden sm:inline">Tour of Duty</span>
-              </h4>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {selectedFungsi !== 'SEMUA' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFungsi('SEMUA')}
-                    className="text-[10px] font-bold text-red-700 hover:underline"
-                  >
-                    Reset
-                  </button>
-                )}
+                <span>Tour of Duty</span>
                 <button
                   type="button"
-                  onClick={() => setShowTodInfo((prev) => !prev)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTodInfo((prev) => !prev);
+                  }}
                   title="Statistik penempatan dan riwayat jabatan personel per fungsi Polri (Klik untuk memfilter)"
                   className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none"
                 >
                   <Info className="w-3.5 h-3.5" />
                 </button>
+              </h4>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {selectedFungsi !== 'SEMUA' && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedFungsi('SEMUA');
+                    }}
+                    className="text-[10px] font-bold text-red-700 hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+                <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
+                  {jabatanList.length}
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileOpenTod ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
               </div>
             </div>
             {showTodInfo && (
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+              <div className="mt-2.5 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
                 Statistik penempatan &amp; riwayat jabatan personel per fungsi Polri. Ketuk baris fungsi untuk memfilter.
               </div>
             )}
 
-            <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5 text-xs">
-              {[
-                {
-                  key: 'SEMUA',
-                  label: 'Semua',
-                  count: jabatanList.length,
-                },
-                ...DAFTAR_FUNGSI_POLRI.map((f) => ({
-                  key: f.key,
-                  label: f.label,
-                  count: jabatanList.filter((j) => j.fungsiPolri === f.key).length,
-                })),
-              ].map((row) => {
-                const isSelected = selectedFungsi === row.key;
-                return (
-                  <button
-                    key={row.key}
-                    type="button"
-                    onClick={() =>
-                      setSelectedFungsi(isSelected && row.key !== 'SEMUA' ? 'SEMUA' : row.key)
-                    }
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-red-800 text-white font-bold shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <span className={`truncate pr-2 ${isSelected ? 'text-white font-bold' : 'text-slate-700 font-medium'}`}>
-                      {row.label}
-                    </span>
-                    <span
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
+            <div className={`${mobileOpenTod ? 'block' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100 space-y-2.5`}>
+              <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5 text-xs">
+                {[
+                  {
+                    key: 'SEMUA',
+                    label: 'Semua',
+                    count: jabatanList.length,
+                  },
+                  ...DAFTAR_FUNGSI_POLRI.map((f) => ({
+                    key: f.key,
+                    label: f.label,
+                    count: jabatanList.filter((j) => j.fungsiPolri === f.key).length,
+                  })),
+                ].map((row) => {
+                  const isSelected = selectedFungsi === row.key;
+                  return (
+                    <button
+                      key={row.key}
+                      type="button"
+                      onClick={() =>
+                        setSelectedFungsi(isSelected && row.key !== 'SEMUA' ? 'SEMUA' : row.key)
+                      }
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-red-800 text-white font-bold shadow-xs'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {row.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                      <span className={`truncate pr-2 ${isSelected ? 'text-white font-bold' : 'text-slate-700 font-medium'}`}>
+                        {row.label}
+                      </span>
+                      <span
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        {row.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
-              Sumber: TR Mutasi &amp; Data Mandiri
+              <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 truncate">
+                Sumber: TR Mutasi &amp; Data Mandiri
+              </div>
             </div>
           </div>
 
-          {/* Rekapitulasi Hitungan Kategori Jabatan Organisasi Polri */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2.5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          {/* Rekapitulasi Hitungan Kategori Jabatan Organisasi Polri (Collapsible Header di HP) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4">
+            <div
+              onClick={() => setMobileOpenKategori((prev) => !prev)}
+              className="flex items-center justify-between cursor-pointer lg:cursor-default select-none"
+            >
               <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
                 <Award className="w-4 h-4 text-amber-600 flex-shrink-0" />
                 <span className="truncate">Kategori Jabatan</span>
               </h4>
-              {selectedKategoriJabatan !== 'SEMUA' && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedKategoriJabatan('SEMUA')}
-                  className="text-[10px] font-bold text-red-700 hover:underline"
-                >
-                  Reset
-                </button>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                {selectedKategoriJabatan !== 'SEMUA' && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedKategoriJabatan('SEMUA');
+                    }}
+                    className="text-[10px] font-bold text-red-700 hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  {jabatanCategoryStats.length} Kategori
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileOpenKategori ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5 text-xs">
-              {jabatanCategoryStats.map(([cat, count]) => {
-                const isSelected = selectedKategoriJabatan === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedKategoriJabatan(isSelected ? 'SEMUA' : cat)}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
-                      isSelected
-                        ? 'bg-red-800 text-white font-bold'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <span className="truncate pr-2 text-[11px]">{cat}</span>
-                    <span
-                      className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
-                        isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
+            <div className={`${mobileOpenKategori ? 'block' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100`}>
+              <div className="space-y-1.5 max-h-60 overflow-y-auto pr-0.5 text-xs">
+                {jabatanCategoryStats.map(([cat, count]) => {
+                  const isSelected = selectedKategoriJabatan === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedKategoriJabatan(isSelected ? 'SEMUA' : cat)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors ${
+                        isSelected
+                          ? 'bg-red-800 text-white font-bold'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span className="truncate pr-2 text-[11px]">{cat}</span>
+                      <span
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

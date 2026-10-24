@@ -1745,6 +1745,9 @@ export default function Home() {
                 onNavigateToJabatan={() => setActiveTab('purnaTugas')}
                 onNavigateToBendahara={() => setActiveTab('bendahara')}
                 onNavigateToUsers={() => setActiveTab('users')}
+                onNavigateToHealth={() =>
+                  setActiveTab(currentUser.role !== 'ANGGOTA' ? 'dashboard' : 'notifikasi')
+                }
                 financeSummary={financeSummary}
                 transactions={transactions}
                 iuranList={iuranList}

@@ -28,6 +28,8 @@ import {
   Briefcase,
   Search,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Info,
 } from 'lucide-react';
 
@@ -40,6 +42,7 @@ interface BukuSakuProps {
   onNavigateToJabatan?: () => void;
   onNavigateToBendahara?: () => void;
   onNavigateToUsers?: () => void;
+  onNavigateToHealth?: () => void;
   financeSummary?: FinanceSummary;
   transactions?: KasTransaction[];
   iuranList?: IuranAnggota[];
@@ -58,6 +61,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   onOpenChat,
   onNavigateToJabatan,
   onNavigateToBendahara,
+  onNavigateToHealth,
   financeSummary,
   transactions = [],
   iuranList = [],
@@ -119,6 +123,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   const [widgetInvestCount, setWidgetInvestCount] = useState<number>(0);
   const [showTodWidgetInfo, setShowTodWidgetInfo] = useState<boolean>(false);
   const [showDanaWidgetInfo, setShowDanaWidgetInfo] = useState<boolean>(false);
+
+  // Mobile (< lg) collapsible card states: Header-only by default on HP, expand downward on click
+  const [mobileOpenProfile, setMobileOpenProfile] = useState<boolean>(false);
+  const [mobileOpenTod, setMobileOpenTod] = useState<boolean>(false);
+  const [mobileOpenHealth, setMobileOpenHealth] = useState<boolean>(false);
+  const [mobileOpenDana, setMobileOpenDana] = useState<boolean>(false);
+
+  // Infinite feed scroll state so scrolling inside the feed container continuously loads more posts
+  const [feedRepeatCount, setFeedRepeatCount] = useState<number>(1);
 
   useEffect(() => {
     let mounted = true;
@@ -697,6 +710,39 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     return [...list].sort((a, b) => (b.isPinned || b.pinned ? 1 : 0) - (a.isPinned || a.pinned ? 1 : 0));
   }, [posts, feedCategoryFilter]);
 
+  const infiniteFeedPosts = useMemo(() => {
+    if (filteredPosts.length === 0) return [];
+    const result: Array<{ post: FeedPost; renderKey: string }> = [];
+    for (let cycle = 0; cycle < feedRepeatCount; cycle++) {
+      for (const p of filteredPosts) {
+        result.push({
+          post: cycle === 0 ? p : { ...p, isPinned: false, pinned: false },
+          renderKey: `${p.id}-cycle-${cycle}`,
+        });
+      }
+    }
+    return result;
+  }, [filteredPosts, feedRepeatCount]);
+
+  const handleFeedScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 180) {
+      setFeedRepeatCount((prev) => Math.min(prev + 1, 25));
+    }
+  };
+
+  const todSummary = useMemo(() => {
+    let mabes = 0;
+    let polda = 0;
+    let luar = 0;
+    for (const m of publicMembers) {
+      if (m.tipeSatker === 'KEMEN/LEMBAGA' || m.polda === 'LUAR STRUKTUR POLRI') luar++;
+      else if (m.polda === 'MABES POLRI' || m.tipeSatker === 'MABES') mabes++;
+      else polda++;
+    }
+    return { mabes, polda, luar };
+  }, [publicMembers]);
+
   // Quick search results when user types in top navbar search
   const quickSearchResults = useMemo(() => {
     const q = externalSearch.trim().toLowerCase();
@@ -802,53 +848,94 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     <div className="font-sans text-slate-900 pb-20">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* ============================================================ */}
-        {/* 1. LEFT RAIL (lg:col-span-3): PROFILE SNAPSHOT               */}
+        {/* 1. LEFT RAIL (lg:col-span-3): PROFIL SAYA & TOUR OF DUTY     */}
         {/* ============================================================ */}
-        <div className="order-1 lg:order-1 lg:col-span-3 space-y-4">
-          {/* User Mini Profile Card */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden text-center">
-            <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
-              {miniCardCoverUrl !== 'none' && (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={miniCardCoverUrl || '/default-cover.jpg'}
-                  alt="Sampul Polri"
-                  className="w-full h-full object-cover object-center"
-                />
-              )}
-            </div>
-
-            <div className="px-4 pb-4 relative">
-              <div
-                onClick={() => setSelectedMember(currentMemberObj)}
-                className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer group"
-              >
+        <div className="order-1 lg:order-1 lg:col-span-3 space-y-3 sm:space-y-4">
+          {/* Card 1: Profil Saya (Kiri Atas) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Mobile Compact Header (muncul Header doang di HP, klik muncul detail & navigasi ke bawah) */}
+            <div
+              onClick={() => setMobileOpenProfile((prev) => !prev)}
+              className="lg:hidden flex items-center justify-between gap-2.5 p-3.5 cursor-pointer select-none hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={myResolvedAvatarUrl}
                   alt={currentUser.nama}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0 bg-white"
                 />
+                <div className="min-w-0 text-left">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1 truncate">
+                    <span className="truncate">
+                      {(currentMemberObj?.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}
+                    </span>
+                    <MetaVerifiedBadge role={currentUser?.role} nrp={currentUser?.nrp} size="sm" />
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {currentMemberObj?.pangkat || currentUser.pangkat} &bull; Profil Saya
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                  Profil
+                </span>
+                {mobileOpenProfile ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Desktop Cover & Avatar Header */}
+            <div className="hidden lg:block text-center">
+              <div className="h-16 bg-gradient-to-r from-red-950 via-slate-900 to-red-900 relative overflow-hidden">
+                {miniCardCoverUrl !== 'none' && (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={miniCardCoverUrl || '/default-cover.jpg'}
+                    alt="Sampul Polri"
+                    className="w-full h-full object-cover object-center"
+                  />
+                )}
               </div>
 
-              <h3
-                onClick={() => setSelectedMember(currentMemberObj)}
-                className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight flex items-center justify-center gap-1"
-              >
-                <span className="truncate">
-                  {(currentMemberObj?.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}
-                </span>
-                <MetaVerifiedBadge role={currentUser?.role} nrp={currentUser?.nrp} size="md" />
-              </h3>
-              <p
-                className="text-[11px] text-slate-500 mt-0.5 line-clamp-2"
-                title={`${currentMemberObj?.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(currentMemberObj?.jabatanTerakhir, currentMemberObj?.satuanKerja || currentUser.satker)}`}
-              >
-                {`${currentMemberObj?.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(currentMemberObj?.jabatanTerakhir, currentMemberObj?.satuanKerja || currentUser.satker)}`}
-              </p>
+              <div className="px-4 relative">
+                <div
+                  onClick={() => setSelectedMember(currentMemberObj)}
+                  className="w-16 h-16 rounded-full border-2 border-white shadow-md mx-auto -mt-8 overflow-hidden bg-white cursor-pointer group"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={myResolvedAvatarUrl}
+                    alt={currentUser.nama}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                </div>
 
-              {/* Metrics */}
-              <div className="mt-3 pt-3 border-t border-slate-100 text-left space-y-1.5 text-xs">
+                <h3
+                  onClick={() => setSelectedMember(currentMemberObj)}
+                  className="text-sm font-bold text-slate-900 hover:text-red-900 cursor-pointer mt-2 leading-tight flex items-center justify-center gap-1"
+                >
+                  <span className="truncate">
+                    {(currentMemberObj?.namaLengkap || currentUser.nama).replace(/\(.*?\)/g, '').trim()}
+                  </span>
+                  <MetaVerifiedBadge role={currentUser?.role} nrp={currentUser?.nrp} size="md" />
+                </h3>
+                <p
+                  className="text-[11px] text-slate-500 mt-0.5 line-clamp-2"
+                  title={`${currentMemberObj?.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(currentMemberObj?.jabatanTerakhir, currentMemberObj?.satuanKerja || currentUser.satker)}`}
+                >
+                  {`${currentMemberObj?.pangkat || currentUser.pangkat} • ${formatJabatanWithSatker(currentMemberObj?.jabatanTerakhir, currentMemberObj?.satuanKerja || currentUser.satker)}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Expandable Details & Navigation (Terbuka saat di-klik di HP, selalu tampil di Desktop) */}
+            <div className={`${mobileOpenProfile ? 'block' : 'hidden'} lg:block px-4 pb-4`}>
+              <div className="pt-3 border-t border-slate-100 lg:mt-3 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>NRP:</span>
                   <span className="font-mono font-bold text-slate-800">{currentUser.nrp}</span>
@@ -864,7 +951,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </div>
                 <div className="flex items-center justify-between gap-2 text-slate-500">
                   <span className="shrink-0">Satker / Wilayah:</span>
-                  <span className="font-bold text-slate-700 truncate text-right" title={currentMemberObj?.satuanKerja || currentUser.polda || 'MABES POLRI'}>
+                  <span
+                    className="font-bold text-slate-700 truncate text-right"
+                    title={currentMemberObj?.satuanKerja || currentUser.polda || 'MABES POLRI'}
+                  >
                     {currentMemberObj?.satuanKerja || currentUser.polda || 'MABES POLRI'}
                   </span>
                 </div>
@@ -894,61 +984,318 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 onClick={() => setSelectedMember(currentMemberObj)}
                 className="w-full mt-3 py-1.5 px-3 rounded-lg border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
-                Profil Saya
+                Buka Profil Saya →
               </button>
             </div>
           </div>
 
-          {/* Widget Tour of Duty (TOD) Ringkas — Dipindahkan ke bawah Kartu Profil Kiri */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2.5 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          {/* Card 2: Tour of Duty / TOD (Kiri Bawah) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4 text-xs">
+            <div
+              onClick={() => setMobileOpenTod((prev) => !prev)}
+              className="flex items-center justify-between cursor-pointer lg:cursor-default select-none"
+            >
               <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-red-800" />
-                <span className="sm:hidden">TOD</span>
-                <span className="hidden sm:inline">Tour of Duty</span>
+                <Briefcase className="w-3.5 h-3.5 text-red-800 shrink-0" />
+                <span>Tour of Duty</span>
                 <button
                   type="button"
-                  onClick={() => setShowTodWidgetInfo((prev) => !prev)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowTodWidgetInfo((prev) => !prev);
+                  }}
                   title="Sebaran penempatan personel aktif di Mabes Polri, 38 Polda, dan Luar Struktur"
                   className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none"
                 >
                   <Info className="w-3.5 h-3.5" />
                 </button>
               </span>
-              <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
-                {publicMembers.length} Personel
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
+                  {publicMembers.length} Personel
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileOpenTod ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </div>
             </div>
+
             {showTodWidgetInfo && (
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+              <div className="mt-2.5 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
                 Sebaran penempatan personel aktif di Mabes Polri, 38 Polda, dan Luar Struktur.
               </div>
             )}
-            {onNavigateToJabatan && (
-              <button
-                onClick={onNavigateToJabatan}
-                className="w-full py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs transition-colors"
-              >
-                Lihat Direktori →
-              </button>
-            )}
-          </div>
 
-          {/* Slogan Banner */}
-          <div className="p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
-            <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
-              #SELALUBAHAGIA
-            </span>
-            <p className="text-[10px] text-amber-800 mt-0.5">
-              Guyub, Peduli, &amp; Mengabdi Sejak 1996
-            </p>
+            <div className={`${mobileOpenTod ? 'block' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100 space-y-2.5`}>
+              <div className="grid grid-cols-3 gap-1.5 text-center">
+                <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="text-xs font-extrabold text-slate-900">{todSummary.mabes}</div>
+                  <div className="text-[10px] text-slate-500">Mabes</div>
+                </div>
+                <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="text-xs font-extrabold text-slate-900">{todSummary.polda}</div>
+                  <div className="text-[10px] text-slate-500">38 Polda</div>
+                </div>
+                <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                  <div className="text-xs font-extrabold text-slate-900">{todSummary.luar}</div>
+                  <div className="text-[10px] text-slate-500">Luar Struktur</div>
+                </div>
+              </div>
+
+              {onNavigateToJabatan && (
+                <button
+                  onClick={onNavigateToJabatan}
+                  className="w-full py-1.5 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs transition-colors"
+                >
+                  Lihat Direktori →
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* ============================================================ */}
-        {/* 2. CENTER FEED (lg:col-span-6): MURNI FEED BERANDA           */}
+        {/* 2. RIGHT RAIL (lg:col-span-3, order-2 di HP): ATENSI & DANA  */}
         {/* ============================================================ */}
-        <div className="order-2 lg:order-2 lg:col-span-6 space-y-4 scroll-mt-20">
+        <div className="order-2 lg:order-3 lg:col-span-3 space-y-3 sm:space-y-4">
+          {/* Card 3: Atensi Kesehatan (Kanan Atas) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4">
+            <div
+              onClick={() => setMobileOpenHealth((prev) => !prev)}
+              className="flex items-center justify-between cursor-pointer lg:cursor-default select-none"
+            >
+              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span>Atensi Kesehatan</span>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-extrabold border border-red-200">
+                  {healthAttentionMembers.filter(
+                    (m) => m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT'
+                  ).length || healthAttentionMembers.length}{' '}
+                  Prioritas
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileOpenHealth ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </div>
+            </div>
+
+            <div className={`${mobileOpenHealth ? 'block' : 'hidden'} lg:block pt-3 mt-2.5 border-t border-slate-100 space-y-2.5`}>
+              {healthAttentionMembers.length > 0 ? (
+                <div className="space-y-2.5">
+                  {healthAttentionMembers.map((m) => {
+                    const isUrgent =
+                      m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT';
+                    return (
+                      <div
+                        key={m.id}
+                        className={`p-3 rounded-xl border transition-all ${
+                          isUrgent ? 'bg-red-50/70 border-red-200/90 shadow-sm' : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span
+                            onClick={() => setSelectedMember(m)}
+                            className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px] flex items-center gap-1"
+                            title={m.namaLengkap}
+                          >
+                            <span className="truncate">{m.namaLengkap.split(',')[0]}</span>
+                            <MetaVerifiedBadge nrp={m.nrp} size="xs" />
+                          </span>
+                          <span
+                            className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 ${
+                              isUrgent ? 'bg-red-600 text-white shadow-sm' : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                            {isUrgent ? 'ATENSI' : 'TERPANTAU'}
+                          </span>
+                        </div>
+
+                        <div className="text-[10px] text-slate-600 line-clamp-2">
+                          <span className="text-slate-500 font-semibold">Diagnosa: </span>
+                          <b>{(m.daftarPenyakit || []).join(', ') || 'Dalam Pemulihan'}</b>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200/60">
+                          <a
+                            href={formatWaUrl(m.noHp)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
+                          >
+                            <Phone className="w-3 h-3" /> Kirim Doa
+                          </a>
+                          <button
+                            onClick={() => setSelectedMember(m)}
+                            className="text-[10px] font-bold text-red-900 hover:underline"
+                          >
+                            Detail →
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs">
+                  Tidak ada personel yang membutuhkan atensi medis khusus.
+                </div>
+              )}
+
+              {onNavigateToHealth && (
+                <button
+                  onClick={onNavigateToHealth}
+                  className="w-full py-1.5 px-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-900 border border-red-200 font-bold text-xs transition-colors"
+                >
+                  Buka Menu Kesehatan →
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Card 4: Dana Sosial & Investasi (Kanan Bawah) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4 text-xs">
+            <div
+              onClick={() => setMobileOpenDana((prev) => !prev)}
+              className="flex items-center justify-between cursor-pointer lg:cursor-default select-none"
+            >
+              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Dana Sosial &amp; Investasi</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDanaWidgetInfo((prev) => !prev);
+                  }}
+                  title="Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Dana Duka, Event), Dana Investasi, dan Buku Kas"
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                </button>
+              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                  Sukarela
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileOpenDana ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </div>
+            </div>
+
+            {showDanaWidgetInfo && (
+              <div className="mt-2.5 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Dana Duka, Event), Dana Investasi, dan Buku Kas.
+              </div>
+            )}
+
+            <div className={`${mobileOpenDana ? 'block' : 'hidden'} lg:block pt-3 mt-2.5 border-t border-slate-100 space-y-3`}>
+              {/* Active Milestone Programs (Kitabisa / Saweria style) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                    1. Milestone Dana Sosial
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-700">
+                    {widgetCampaigns.filter((c) => c.status !== 'SELESAI').length} Program
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {widgetCampaigns.slice(0, 3).map((cmp) => {
+                    const pct =
+                      cmp.targetAmount > 0
+                        ? Math.min(100, Math.round((Number(cmp.collectedAmount || 0) / cmp.targetAmount) * 100))
+                        : 0;
+                    const icon =
+                      cmp.category === 'ANAK_YATIM'
+                        ? '🤲'
+                        : cmp.category === 'ANGGOTA_SAKIT'
+                        ? '🏥'
+                        : cmp.category === 'ANGGOTA_MD'
+                        ? '🕊️'
+                        : '🤝';
+                    return (
+                      <div
+                        key={cmp.id}
+                        onClick={() => onNavigateToBendahara && onNavigateToBendahara()}
+                        className="p-2 rounded-lg bg-slate-50 hover:bg-emerald-50/50 border border-slate-200/80 cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-1.5 mb-1">
+                          <span className="font-bold text-slate-800 truncate text-[11px]">
+                            {icon} {cmp.title}
+                          </span>
+                          <span className="text-[10px] font-extrabold text-emerald-700 shrink-0">{pct}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all"
+                            style={{ width: `${Math.max(pct, cmp.collectedAmount > 0 ? 4 : 0)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-500">
+                          <span>
+                            Terkumpul: <strong className="text-slate-800">{formatRupiah(cmp.collectedAmount || 0)}</strong>
+                          </span>
+                          <span>Target: {formatRupiah(cmp.targetAmount || 0)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Dana Investasi & Buku Kas */}
+              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
+                  2. Dana Investasi &amp; Buku Kas
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Dana Investasi / Aset:</span>
+                  <span className="font-bold text-indigo-700">
+                    {formatRupiah(displayNilaiAset + widgetInvestTotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Saldo Buku Kas:</span>
+                  <span className="font-bold text-slate-900">{formatRupiah(displaySaldoKas)}</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-100">
+                  <span className="text-emerald-700 font-semibold">+ {formatRupiah(computedKasMasuk)}</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-red-700 font-semibold">- {formatRupiah(computedKasKeluar)}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                {onNavigateToBendahara && (
+                  <button
+                    onClick={onNavigateToBendahara}
+                    className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
+                  >
+                    Buka Bendahara →
+                  </button>
+                )}
+                <span
+                  className="text-[11px] text-slate-400 flex items-center justify-center gap-1"
+                  title="Penggalangan dana sosial (milestone), dana investasi, dan buku kas dikelola oleh Bendahara."
+                >
+                  <span>Dikelola oleh Bendahara</span>
+                  <Info className="w-3 h-3 text-slate-400 inline" />
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* 3. CENTER FEED (lg:col-span-6, order-3 di HP):               */}
+        {/*    Card Posting -> Linimasa -> Feed Scroll -> #SELALUBAHAGIA */}
+        {/*    -> BATALYON WIRA SATYA 1996 (Paling Bawah)                */}
+        {/* ============================================================ */}
+        <div className="order-3 lg:order-2 lg:col-span-6 space-y-4 scroll-mt-20">
           {/* Quick Search Results if user typed in Navbar Search */}
           {externalSearch.trim() !== '' && (
             <div className="bg-white rounded-xl border border-red-200 shadow-sm p-3.5 sm:p-4 space-y-2.5">
@@ -1009,7 +1356,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </div>
           )}
 
-          {/* Post/Update Box */}
+          {/* Card untuk Posting */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4 space-y-3 scroll-mt-20">
             <div className="flex items-center gap-2.5 sm:gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1063,7 +1410,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </div>
           </div>
 
-          {/* Feed Header & Category Filter Chips */}
+          {/* Linimasa & Filter Kategori */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white px-3.5 sm:px-4 py-2.5 rounded-xl border border-slate-200 shadow-sm">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-900 shrink-0">
@@ -1080,7 +1427,10 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 ].map((cat) => (
                   <button
                     key={cat.key}
-                    onClick={() => setFeedCategoryFilter(cat.key)}
+                    onClick={() => {
+                      setFeedCategoryFilter(cat.key);
+                      setFeedRepeatCount(1);
+                    }}
                     className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${
                       feedCategoryFilter === cat.key
                         ? 'bg-red-800 text-white shadow-xs'
@@ -1093,17 +1443,20 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             </div>
 
-            {/* Feed Posts List */}
+            {/* Feed-feed yg kalo digulir nambah terus tanpa menghilangkan posisi paling bawah */}
             {members.length === 0 ? (
               <div className="space-y-4">
                 <FeedPostSkeleton count={2} />
                 <DirectoryCardSkeleton count={3} />
               </div>
-            ) : filteredPosts.length > 0 ? (
-              <div className="space-y-4">
-                {filteredPosts.map((post) => (
+            ) : infiniteFeedPosts.length > 0 ? (
+              <div
+                onScroll={handleFeedScroll}
+                className="max-h-[68vh] sm:max-h-[75vh] overflow-y-auto pr-1 space-y-4 overscroll-contain rounded-xl"
+              >
+                {infiniteFeedPosts.map(({ post, renderKey }) => (
                   <LinkedInPostCard
-                    key={post.id}
+                    key={renderKey}
                     post={post}
                     currentUser={currentUser}
                     onLikeToggle={handleLikeToggle}
@@ -1133,211 +1486,18 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             )}
           </div>
-        </div>
 
-        {/* ============================================================ */}
-        {/* 3. RIGHT RAIL (lg:col-span-3): ATENSI KESEHATAN & TREASURY   */}
-        {/* ============================================================ */}
-        <div className="order-3 lg:order-3 lg:col-span-3 space-y-4">
-          {/* Widget 1: Atensi Rekan Sakit */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 text-red-500" />
-                Atensi Kesehatan
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-extrabold border border-red-200">
-                {healthAttentionMembers.filter(
-                  (m) => m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT'
-                ).length || healthAttentionMembers.length}{' '}
-                Prioritas
-              </span>
-            </div>
-
-            {healthAttentionMembers.length > 0 ? (
-              <div className="space-y-2.5">
-                {healthAttentionMembers.map((m) => {
-                  const isUrgent =
-                    m.kondisiKesehatan === 'PERLU PERHATIAN KHUSUS' || m.kondisiKesehatan === 'SAKIT';
-                  return (
-                    <div
-                      key={m.id}
-                      className={`p-3 rounded-xl border transition-all ${
-                        isUrgent ? 'bg-red-50/70 border-red-200/90 shadow-sm' : 'bg-slate-50 border-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span
-                          onClick={() => setSelectedMember(m)}
-                          className="text-xs font-bold text-slate-900 hover:text-red-900 cursor-pointer truncate max-w-[140px] flex items-center gap-1"
-                          title={m.namaLengkap}
-                        >
-                          <span className="truncate">{m.namaLengkap.split(',')[0]}</span>
-                          <MetaVerifiedBadge nrp={m.nrp} size="xs" />
-                        </span>
-                        <span
-                          className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 ${
-                            isUrgent ? 'bg-red-600 text-white shadow-sm' : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                          {isUrgent ? 'ATENSI' : 'TERPANTAU'}
-                        </span>
-                      </div>
-
-                      <div className="text-[10px] text-slate-600 line-clamp-2">
-                        <span className="text-slate-500 font-semibold">Diagnosa: </span>
-                        <b>{(m.daftarPenyakit || []).join(', ') || 'Dalam Pemulihan'}</b>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200/60">
-                        <a
-                          href={formatWaUrl(m.noHp)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
-                        >
-                          <Phone className="w-3 h-3" /> Kirim Doa
-                        </a>
-                        <button
-                          onClick={() => setSelectedMember(m)}
-                          className="text-[10px] font-bold text-red-900 hover:underline"
-                        >
-                          Detail →
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs">
-                Tidak ada personel yang membutuhkan atensi medis khusus.
-              </div>
-            )}
+          {/* Di atas tulisan paling bawah: Card #SELALUBAHAGIA */}
+          <div className="p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
+            <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
+              #SELALUBAHAGIA
+            </span>
+            <p className="text-[10px] text-amber-800 mt-0.5">
+              Guyub, Peduli, &amp; Mengabdi Sejak 1996
+            </p>
           </div>
 
-          {/* Widget 2: Dana Sosial, Milestone & Investasi */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3 text-xs">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="font-bold text-slate-900 flex items-center gap-1.5">
-                <Wallet className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Dana Sosial &amp; Investasi</span>
-                <button
-                  type="button"
-                  onClick={() => setShowDanaWidgetInfo((prev) => !prev)}
-                  title="Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Dana Duka, Event), Dana Investasi, dan Buku Kas"
-                  className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none"
-                >
-                  <Info className="w-3.5 h-3.5" />
-                </button>
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                Sukarela
-              </span>
-            </div>
-            {showDanaWidgetInfo && (
-              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
-                Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Dana Duka, Event), Dana Investasi, dan Buku Kas.
-              </div>
-            )}
-
-            {/* Active Milestone Programs (Kitabisa / Saweria style) */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
-                  1. Milestone Dana Sosial
-                </span>
-                <span className="text-[10px] font-bold text-emerald-700">
-                  {widgetCampaigns.filter((c) => c.status !== 'SELESAI').length} Program
-                </span>
-              </div>
-              <div className="space-y-2">
-                {widgetCampaigns.slice(0, 3).map((cmp) => {
-                  const pct =
-                    cmp.targetAmount > 0
-                      ? Math.min(100, Math.round((Number(cmp.collectedAmount || 0) / cmp.targetAmount) * 100))
-                      : 0;
-                  const icon =
-                    cmp.category === 'ANAK_YATIM'
-                      ? '🤲'
-                      : cmp.category === 'ANGGOTA_SAKIT'
-                      ? '🏥'
-                      : cmp.category === 'ANGGOTA_MD'
-                      ? '🕊️'
-                      : '🤝';
-                  return (
-                    <div
-                      key={cmp.id}
-                      onClick={() => onNavigateToBendahara && onNavigateToBendahara()}
-                      className="p-2 rounded-lg bg-slate-50 hover:bg-emerald-50/50 border border-slate-200/80 cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-1.5 mb-1">
-                        <span className="font-bold text-slate-800 truncate text-[11px]">
-                          {icon} {cmp.title}
-                        </span>
-                        <span className="text-[10px] font-extrabold text-emerald-700 shrink-0">{pct}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1">
-                        <div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all"
-                          style={{ width: `${Math.max(pct, cmp.collectedAmount > 0 ? 4 : 0)}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-slate-500">
-                        <span>
-                          Terkumpul: <strong className="text-slate-800">{formatRupiah(cmp.collectedAmount || 0)}</strong>
-                        </span>
-                        <span>Target: {formatRupiah(cmp.targetAmount || 0)}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 2. Dana Investasi & Buku Kas */}
-            <div className="pt-2 border-t border-slate-100 space-y-1.5">
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1">
-                2. Dana Investasi &amp; Buku Kas
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Dana Investasi / Aset:</span>
-                <span className="font-bold text-indigo-700">
-                  {formatRupiah(displayNilaiAset + widgetInvestTotal)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Saldo Buku Kas:</span>
-                <span className="font-bold text-slate-900">{formatRupiah(displaySaldoKas)}</span>
-              </div>
-              <div className="flex justify-between items-center text-[11px] pt-1 border-t border-slate-100">
-                <span className="text-emerald-700 font-semibold">+ {formatRupiah(computedKasMasuk)}</span>
-                <span className="text-slate-300">|</span>
-                <span className="text-red-700 font-semibold">- {formatRupiah(computedKasKeluar)}</span>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 space-y-1.5">
-              {onNavigateToBendahara && (
-                <button
-                  onClick={onNavigateToBendahara}
-                  className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
-                >
-                  Buka Bendahara →
-                </button>
-              )}
-              <span
-                className="text-[11px] text-slate-400 flex items-center justify-center gap-1"
-                title="Penggalangan dana sosial (milestone), dana investasi, dan buku kas dikelola oleh Bendahara."
-              >
-                <span>Dikelola oleh Bendahara</span>
-                <Info className="w-3 h-3 text-slate-400 inline" />
-              </span>
-            </div>
-          </div>
-
-          {/* Widget 3: Info Footer */}
+          {/* Paling Bawah: Tulisan BATALYON WIRA SATYA 1996 */}
           <div className="text-center text-[10px] text-slate-400 space-y-0.5 py-2">
             <p className="font-extrabold text-slate-500 tracking-wide">BATALYON WIRA SATYA 1996</p>
             <p>Akademi Kepolisian Negara Republik Indonesia</p>
