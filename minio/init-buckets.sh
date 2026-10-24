@@ -5,7 +5,7 @@
 # ==============================================================================
 
 echo "Menghubungkan ke MinIO S3 Server..."
-/usr/bin/mc alias set myminio http://minio:9000 minioadmin minioadmin_ws96_secure
+/usr/bin/mc alias set myminio http://minio:9000 "${MINIO_ACCESS_KEY:-minioadmin}" "${MINIO_SECRET_KEY:-change_me_minio_password}"
 
 echo "Membuat bucket-bucket penyimpanan Wira Satya 96..."
 /usr/bin/mc mb --ignore-existing myminio/wirasatya-avatars

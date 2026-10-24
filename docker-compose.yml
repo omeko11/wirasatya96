@@ -34,18 +34,18 @@ services:
     environment:
       - PORT=5000
       - NODE_ENV=production
-      - JWT_SECRET=wirasatya96_super_secret_jwt_key_polri_2026
+      - JWT_SECRET=${JWT_SECRET:-change_me_jwt_secret}
       # Database Connection
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres_ws96_secure
-      - DB_NAME=wirasatya96
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-change_me_db_password}
+      - DB_NAME=${DB_NAME:-wirasatya96}
       # MinIO Object Storage Connection
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_REGION=us-east-1
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin_ws96_secure
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-change_me_minio_password}
       - MINIO_PUBLIC_URL=http://localhost:9000
       - BUCKET_AVATARS=wirasatya-avatars
       - BUCKET_POSTS=wirasatya-posts
@@ -68,9 +68,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres_ws96_secure
-      - POSTGRES_DB=wirasatya96
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-change_me_db_password}
+      - POSTGRES_DB=${DB_NAME:-wirasatya96}
     volumes:
       - ./data_aplikasi/postgres:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -95,8 +95,8 @@ services:
       - "9000:9000"   # S3 API Port
       - "9001:9001"   # Web Console Port
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin_ws96_secure
+      - MINIO_ROOT_USER=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_SECRET_KEY:-change_me_minio_password}
     volumes:
       - ./data_aplikasi/minio:/data
     healthcheck:
@@ -118,7 +118,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc alias set localminio http://minio:9000 minioadmin minioadmin_ws96_secure;
+      /usr/bin/mc alias set localminio http://minio:9000 $${MINIO_ACCESS_KEY:-minioadmin} $${MINIO_SECRET_KEY:-change_me_minio_password};
       /usr/bin/mc mb --ignore-existing localminio/wirasatya-avatars;
       /usr/bin/mc mb --ignore-existing localminio/wirasatya-posts;
       /usr/bin/mc mb --ignore-existing localminio/wirasatya-documents;

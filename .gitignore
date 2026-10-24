@@ -57,6 +57,11 @@ lerna-debug.log*
 /data_aplikasi/backups/*
 !/data_aplikasi/backups/.gitkeep
 
+# Internal Presentations & Local Exports (Do not publish to public repo)
+Paparan_*.pdf
+Paparan_*.pptx
+*.dump
+
 # Operating System Files
 .DS_Store
 .DS_Store?

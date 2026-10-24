@@ -1,7 +1,10 @@
 <div align="center">
 
 # 🏛️ SISTEM INFORMASI BATALYON WIRA SATYA AKPOL 1996
-### Platform Terpadu Buku Saku Digital, Linimasa Silaturahmi, & Sistem Kesejahteraan Alumni Akpol 1996
+### *Wira Satya 1996 Alumni Information System — Digital Directory, Tour of Duty, Social Feed, & Treasury Portal*
+
+[![Bahasa Indonesia](https://img.shields.io/badge/🇮🇩_Bahasa_Indonesia-Baca_Di_Bawah_/_File_ID-8B0000?style=for-the-badge)](./README.id.md)
+[![English Version](https://img.shields.io/badge/🇬🇧_English_Version-Read_Below_/_EN_File-1E3A8A?style=for-the-badge)](./README.en.md)
 
 [![Next.js 14](https://img.shields.io/badge/Next.js-14.2-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -9,238 +12,210 @@
 [![Docker](https://img.shields.io/badge/Docker_Compose-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16_Alpine-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![MinIO](https://img.shields.io/badge/MinIO-S3_Storage-C72C48?style=for-the-badge&logo=minio&logoColor=white)](https://min.io/)
-[![Theme](https://img.shields.io/badge/Theme-Bareskrim_Crimson_Red-8B0000?style=for-the-badge)](#-identitas-visual--desain-sistem)
 
 <br/>
 
-**[🌐 Buka Live Production Portal (Vercel)](https://wirasatya96.vercel.app)** · **[📖 Baca Spesifikasi Arsitektur](./ARCHITECTURE.md)** · **[🛡️ Kebijakan Keamanan](./SECURITY.md)** · **[🤝 Panduan Kontribusi](./CONTRIBUTING.md)**
+**[🇮🇩 Lompat ke Bahasa Indonesia](#-versi-bahasa-indonesia)** · **[🇬🇧 Jump to English Version](#-english-version)**  
+**[🌐 Live Portal](https://wirasatya96.vercel.app)** · **[📖 Architecture (ID/EN)](./ARCHITECTURE.md)** · **[🛡️ Security Policy (ID/EN)](./SECURITY.md)** · **[🤝 Contributing (ID/EN)](./CONTRIBUTING.md)**
 
 </div>
 
 ---
 
+<a id="-versi-bahasa-indonesia"></a>
+
+# 🇮🇩 VERSI BAHASA INDONESIA
+*(Tersedia juga di berkas mandiri: [README.id.md](./README.id.md))*
+
 > [!NOTE]
 > **Batalyon Wira Satya 1996 — #SelaluBahagia**
-> Aplikasi internal paguyuban perwira alumni Akademi Kepolisian 1996. Mengintegrasikan direktori penempatan tugas SIPP Polri (Mabes Polri, 38 Polda, Polres/Polrestabes/Metro, dan Penugasan Luar Struktur Kemen/Lembaga), linimasa silaturahmi leting dengan multi-reaksi, pelaporan mutasi jabatan (TR), transparansi perbendaharaan kas, serta pemetaan kesiapan purna tugas dan atensi kesehatan khusus keluarga besar leting 1996.
+> Platform informasi internal paguyuban perwira alumni Akademi Kepolisian 1996 (*Guyub, Peduli, & Mengabdi Sejak 1996*). Mengintegrasikan direktori penempatan tugas SOTK Polri (Mabes Polri, 38 Polda, Polres/Polrestabes/Metro, dan Penugasan Luar Struktur Kemen/Lembaga), pemetaan **28 fungsi kepolisian (*Tour of Duty*)**, linimasa silaturahmi leting, sistem **Buku Kas** (**Dana Sosial** & **Dana Investasi**) beserta kampanye **Penggalangan Dana (*Crowdfunding Milestone*)**, hingga pemetaan kesiapan purna tugas dan atensi kesehatan keluarga besar.
+
+> [!IMPORTANT]
+> **Kebijakan Privasi & Keamanan Data Publik (*Zero Data Leak*)**:
+> Repositori ini dikonfigurasi aman untuk publik. Seluruh kredensial autentikasi, kunci enkripsi (`JWT_SECRET`), koneksi basis data produksi, serta data sensitif personel diisolasi menggunakan variabel lingkungan (`.env`) dan kebijakan kontrol akses berjenjang (*Role-Based Access Control*). Tidak ada kata sandi, kunci rahasia, atau data pribadi sensitif yang disertakan dalam kode sumber publik.
 
 ---
 
-## 📑 Daftar Isi (Table of Contents)
-
-1. [Ringkasan Eksekutif & Arsitektur 4-Tier](#-ringkasan-eksekutif--arsitektur-4-tier)
-2. [Fitur-Fitur Utama Platform](#-fitur-fitur-utama-platform)
-3. [Identitas Visual & Desain Sistem](#-identitas-visual--desain-sistem)
-4. [Struktur Organisasi & Tata Kerja (SOTK) Polri](#-struktur-organisasi--tata-kerja-sotk-polri)
-5. [Struktur Direktori Repositori](#-struktur-direktori-repositori)
-6. [Panduan Memulai Cepat (Getting Started via Docker)](#-panduan-memulai-cepat-getting-started-via-docker)
-7. [Menjalankan Proyek Secara Standalone (Development Mode)](#-menjalankan-proyek-secara-standalone-development-mode)
-8. [Variabel Lingkungan (Environment Variables)](#-variabel-lingkungan-environment-variables)
-9. [Hak Akses Berbasis Peran (Multi-Role RBAC)](#-hak-akses-berbasis-peran-multi-role-rbac)
-10. [Lisensi & Kebijakan Keamanan](#-lisensi--kebijakan-keamanan)
-
----
-
-## 🏛️ Ringkasan Eksekutif & Arsitektur 4-Tier
-
-Sistem dibangun menggunakan paradigma **4-Tier Decoupled Architecture** untuk performa tinggi, keandalan maksimal, dan kemudahan deployment:
+## 🏛️ Arsitektur Sistem (4-Tier Decoupled & Cloud-Synced)
 
 ```mermaid
 graph LR
-    FE["1️⃣ Frontend (Next.js 14)<br/>Port 3000 | SSR & Client"] -->|REST API JSON| BE["2️⃣ Backend (Express TS)<br/>Port 5000 | Auth & SIPP API"]
-    BE -->|SQL TCP :5432| DB[("3️⃣ Database (PostgreSQL 16)<br/>Relational Tables & Seeds")]
-    BE -->|S3 Protocol :9000| MinIO["4️⃣ Object Storage (MinIO S3)<br/>Avatars, Posts & TR Docs"]
+    FE["1️⃣ Frontend (Next.js 14)<br/>SSR, App Router & Offline Sync"] -->|REST API / JSON| BE["2️⃣ Backend & API Layer<br/>Auth, RBAC & Audit Log"]
+    BE -->|SQL / Multi-Table Sync| DB[("3️⃣ Database (PostgreSQL 16)<br/>9 Tabel Terstruktur")]
+    BE -->|S3 Protocol| MinIO["4️⃣ Object Storage (MinIO S3)<br/>Avatars, Media & Dokumen"]
 ```
 
-- **Tier 1 (Presentation)**: Next.js 14 App Router dengan antarmuka profesional bernuansa *Bareskrim Crimson Red*, responsif di desktop maupun smartphone, mendukung autentikasi biometrik FIDO2 (Touch ID / Face ID / Windows Hello).
-- **Tier 2 (Application API)**: Express.js & TypeScript microservice dengan validasi skema ketat, otorisasi berbasis peran (RBAC), dan generator MinIO presigned URL.
-- **Tier 3 (Data Persistence)**: PostgreSQL 16 Alpine dengan integritas relasional, skema tabel terindeks, dan audit pencatatan otomatis.
-- **Tier 4 (Object Storage)**: MinIO S3 Server berkecepatan tinggi dengan 3 bucket terpisah (`wirasatya-avatars`, `wirasatya-posts`, `wirasatya-documents`).
-
-*Untuk diagram data flow lengkap dan rincian jaringan antar kontainer, silakan pelajari [ARCHITECTURE.md](./ARCHITECTURE.md).*
+- **Tier 1 — Presentation & Responsive UI**: Next.js 14 App Router dengan tema resmi *Bareskrim Crimson Red* (`#8B0000`) & *Gold Kehormatan* (`#D97706`), mendukung autentikasi multi-faktor (PIN & Biometrik FIDO2/WebAuthn) serta *Offline Sync Engine*.
+- **Tier 2 — Application & Security API**: Layanan API terukur dengan validasi skema, otorisasi berbasis peran (*Multi-Role RBAC*), dukungan delegasi Ajudan (*ADC Mode*), dan pencatatan log audit otomatis.
+- **Tier 3 — Relational Persistence**: PostgreSQL 16 (mendukung skema 9 tabel terpisah untuk sinkronisasi cloud multi-input tanpa konflik data).
+- **Tier 4 — Object Storage**: MinIO S3 Server dengan pemisahan bucket publik dan privat (`wirasatya-avatars`, `wirasatya-posts`, `wirasatya-documents`).
 
 ---
 
 ## 🌟 Fitur-Fitur Utama Platform
 
-| Modul | Ikon | Deskripsi & Fungsionalitas | Pengguna Sasaran |
-|---|:---:|---|---|
-| **Buku Saku Digital** | 📖 | Direktori perwira alumni Akpol 1996 lengkap dengan filter penempatan wilayah (Mabes Polri, 38 Polda, Kewilayahan, Luar Struktur), pencarian cepat, serta kontak *One-Click WhatsApp* perwira & Ajudan (ADC). | Seluruh Alumni & Pengurus |
-| **Linimasa Silaturahmi (Feed)** | 💬 | Feed publikasi kegiatan leting yang responsif di HP & Desktop dengan multi-reaksi, komentar bersarang, dan unggah foto media. | Seluruh Alumni |
-| **Riwayat Jabatan & Tour of Duty** | 🎖️ | Rekapitulasi penempatan dan riwayat jabatan personel berdasarkan TR Kapolri, filter fungsi kepolisian, serta status kedinasan. | Seluruh Alumni & SDM |
-| **Anev Leting & Kesehatan** | 🩺 | Panel monitoring atensi rekan atau keluarga yang membutuhkan pendampingan medis dan informasi fasilitas rujukan kesehatan. | Bidang Kesejahteraan & Pimpinan |
-| **Bendahara Portal** | 💰 | Sistem transparansi kas paguyuban: ringkasan saldo kas, mutasi pemasukan & pengeluaran, rekapitulasi iuran tahunan anggota aktif, serta laporan perbendaharaan. | Bendahara & Seluruh Alumni |
-| **Kesiapan Purna Tugas** | 👔 | Analisis masa purna bhakti, direktori unit usaha mandiri rekan leting, dan fasilitas sinergi pasca dinas aktif. | Pamen/Pati & Bhayangkara Purna |
-| **Executive Dashboard** | 📊 | Dashboard analitik bagi pengurus: sebaran penugasan wilayah, ringkasan fungsi kepolisian, dan manajemen verifikasi anggota. | Pengurus & Administrator |
+| Modul | Ikon | Deskripsi & Fungsionalitas Utama | Pengguna Sasaran |
+| :--- | :---: | :--- | :--- |
+| **Beranda & Linimasa Silaturahmi** | 💬 | Feed publikasi giat leting dengan *infinite scroll*, 6 reaksi khas (*Siap, Mantap, Hormat, Peduli, Semangat, Terharu*), komentar bersarang, serta ringkasan cepat *Tour of Duty*, *Atensi Kesehatan*, dan *Dana Sosial & Investasi*. | Seluruh Alumni |
+| **Jejaring & Buku Saku Digital** | 📖 | Direktori perwira alumni dengan filter wilayah (Mabes Polri, 38 Polda, Luar Struktur), pengurutan cerdas (`Aktif → Purna → PTDH → Almarhum`), serta kontak cepat WhatsApp Perwira & Ajudan (ADC). | Seluruh Alumni & Pengurus |
+| **Jabatan & Tour of Duty** | 🎖️ | Pemetaan penugasan personel berdasarkan TR Kapolri dan **28 Fungsi Kepolisian**, dilengkapi pencarian riwayat jabatan dan pencatatan prestasi operasional/inovasi. | Seluruh Alumni & SDM |
+| **Buku Kas (Dana Sosial & Investasi)** | 💰 | Transparansi perbendaharaan angkatan yang terbagi menjadi **Dana Sosial** (iuran wajib, sukarela, santunan sakit, dana duka) & **Dana Investasi** (deposito, obligasi/SBN, emas/logam mulia, unit usaha, properti), dilengkapi fitur **Penggalangan Dana (*Crowdfunding Milestone*)** yang dapat diedit oleh pengurus. | Bendahara, Pengurus & Alumni |
+| **Anev Leting & Kesehatan** | 🩺 | Panel monitoring rekan atau keluarga yang membutuhkan pendampingan medis/rawat inap beserta koordinasi dukungan doa & bantuan sosial. | Bidang Kesejahteraan & Pimpinan |
+| **Kesiapan Purna Tugas & Usaha** | 👔 | Pemetaan masa purna bhakti (BUP 58 tahun), sebaran domisili/hunian pasca-dinas, serta katalog unit usaha mandiri rekan leting. | Seluruh Alumni |
+| **Manajemen Pengguna & Log Audit** | 🛡️ | Panel verifikasi pendaftar baru, pengelolaan akun berjenjang, delegasi akun Ajudan (ADC), fitur pemulihan akun terhapus (*Restore User*), serta rekam jejak audit (*Audit Log*). | Superadmin, Ketua & Sekretaris |
 
 ---
 
-## 🎨 Identitas Visual & Desain Sistem
+## 📱 Desain Responsif Adaptif (Desktop PC vs Smartphone HP)
 
-Platform ini menerapkan tema resmi **Bareskrim Crimson Red**:
-- **Warna Utama**: Deep Crimson Red (`#8B0000` / `#991B1B`), dipadukan dengan aksen Emas Kehormatan Perwira Polri (`#D97706`).
-- **Logo Resmi WS 1996**: Desain *squircle* 3D dengan gradasi merah elegan, teks **"WS"** menggunakan tipografi tegas **Arial Black**, dan **"1996"** menggunakan font geometris modern **Bierstadt** (fallback: *Aptos*).
-- **Favicon & Web App Icon**: Terintegrasi otomatis dalam format SVG vektor beresolusi tinggi di [src/app/icon.svg](file:///d:/Project/KAP%20IDAH/wirasatya96/src/app/icon.svg).
-- **Desain Responsif**: Tata letak adaptif untuk layar *smartphone* maupun Desktop.
-
----
-
-## 👮 Struktur Organisasi & Tata Kerja (SOTK) Polri
-
-Sistem informasi ini mendukung pemetaan penugasan berdasarkan SOTK Polri terkini:
-1. **MABES POLRI**: Unsur Pimpinan, Unsur Pengawas dan Pembantu Pimpinan, Unsur Pelaksana Tugas Pokok, serta Unsur Pendukung dan Pelayanan.
-2. **POLDA (38 Wilayah Hukum) & KEWILAYAHAN**: Seluruh Polda di Indonesia beserta satuan kerja kewilayahan jajaran.
-3. **KEMENTERIAN / LEMBAGA (Penugasan Luar Struktur)**: Penugasan perwira Polri pada kementerian, badan, dan lembaga negara terkait.
-4. **STATUS KEDINASAN**: Klasifikasi status personel aktif maupun non-aktif (Purna Tugas, PTDH, dan Almarhum/Gugur).
+- **Tampilan Desktop / PC (`lg:`)**:
+  - Menampilkan tata letak 3 kolom utuh di Beranda (Kolom Kiri: *Profil Saya*, *Tour of Duty*, & kartu `#SELALUBAHAGIA`; Kolom Tengah: *Buat Postingan*, *Filter Linimasa*, & *Feed*; Kolom Kanan: *Atensi Kesehatan*, *Dana Sosial & Investasi*, & identitas *Batalyon Wira Satya 1996*).
+  - Menampilkan teks tombol dan label informasi secara lengkap dan deskriptif.
+- **Tampilan Smartphone / HP (`< lg`)**:
+  - **Header Kartu Buka-Tutup (*Collapsible Cards*)**: Kartu ringkasan (*Profil Saya*, *Tour of Duty*, *Atensi Kesehatan*, *Dana Sosial & Investasi*) tampil ringkas hanya bagian *header* dan dapat diklik untuk membuka detail serta tombol navigasi menu.
+  - **Infinite Scroll Feed Terjaga**: Daftar postingan di Beranda HP memiliki kontainer gulir mandiri sehingga saat digulir terus-menerus tidak menenggelamkan kartu `#SELALUBAHAGIA` dan identitas `BATALYON WIRA SATYA 1996` di bagian paling bawah.
+  - **Efisiensi Kata & Tooltip `(i)`**: Label tombol diringkas khusus pada layar HP agar tidak turun baris, dilengkapi *tooltip* informasi ramah layar sentuh.
 
 ---
 
-## 📁 Struktur Direktori Repositori
+## 🚀 Panduan Memulai Cepat ( Bahasa Indonesia )
 
-```
-wirasatya96/
-├── backend/                       # [Tier 2] Dedicated Express REST API & TypeScript
-│   ├── src/
-│   │   ├── config/                # Database Pool & MinIO Client Config
-│   │   ├── routes/                # Modular REST Endpoints (Auth, Members, Posts, Kas)
-│   │   └── index.ts               # Express Entrypoint & Server Setup
-│   ├── backend.Dockerfile         # Container Dockerfile Backend
-│   └── package.json
-├── database/                      # [Tier 3] Database Scripts & Initialization
-│   └── init.sql                   # Skema DDL Relasional, Indeks & Data Awal
-├── minio/                         # [Tier 4] Object Storage Configuration
-│   ├── init-buckets.sh            # Inisialisasi Otomatis Bucket & Kebijakan ACL (Docker)
-│   └── setup-buckets.bat          # Skrip Inisialisasi Lokal (Windows)
-├── src/                           # [Tier 1] Next.js 14 Frontend Web Portal
-│   ├── app/                       # Next.js App Router (Layout, Page, Icon SVG, Login)
-│   ├── components/                # Komponen UI (WSLogo, Navbar, FormWizard, Feed, Kas)
-│   ├── data/                      # SOTK Polri, Daftar Polda, Mock Data & Typings
-│   └── types/                     # TypeScript Interfaces (AnggotaWiraSatya, SIPP Models)
-├── docker-compose.yml             # Orkestrasi 4 Layanan Sekaligus
-├── frontend.Dockerfile            # Container Dockerfile Frontend
-├── ARCHITECTURE.md                # Dokumentasi Spesifikasi Arsitektur Lengkap
-├── CONTRIBUTING.md                # Panduan Kontribusi & Konvensi Commit
-├── SECURITY.md                    # Kebijakan Keamanan & Prosedur Pelaporan Celah
-└── README.md                      # Dokumentasi Utama Repositori
-```
-
----
-
-## 🚀 Panduan Memulai Cepat (Getting Started via Docker)
-
-Cara tercepat untuk menjalankan seluruh sistem (Frontend, Backend, Database, MinIO) adalah menggunakan **Docker Compose**:
-
-### Prasyarat:
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (v20+ dengan Docker Compose v2+) telah terpasang dan aktif di komputer Anda.
-
-### 1. Kloning Repositori:
+### Menggunakan Docker Compose:
 ```bash
 git clone https://github.com/omeko11/wirasatya96.git
 cd wirasatya96
-```
-
-### 2. Jalankan Seluruh Kontainer:
-```bash
+cp .env.example .env
 docker-compose up --build -d
 ```
 
-### 3. Akses Layanan Melalui Browser:
-- **Frontend Portal**: [http://localhost:3000](http://localhost:3000)
-- **Backend REST API Healthcheck**: [http://localhost:5000/api/health](http://localhost:5000/api/health)
-- **MinIO Object Storage Console**: [http://localhost:9001](http://localhost:9001) *(Kredensial merujuk pada konfigurasi `.env`)*
-- **PostgreSQL Database Port**: `localhost:5432`
-
-### 4. Menghentikan Kontainer:
+### Mode Pengembangan Lokal (Standalone):
 ```bash
-docker-compose down
-```
-
----
-
-## 💻 Menjalankan Proyek Secara Standalone (Development Mode)
-
-Jika ingin menjalankan kode secara lokal untuk kebutuhan debugging atau pengembangan cepat:
-
-### 1. Frontend (Next.js 14):
-```bash
-# Pastikan berada di root direktori
 npm install
-npm run dev
-
-# Aplikasi akan berjalan di http://localhost:3000
-```
-
-### 2. Backend (Express API):
-```bash
-cd backend
-npm install
-npm run dev
-
-# API server akan berjalan di http://localhost:5000
-```
-
-### 3. Pengujian Build Produksi:
-```bash
-npm run build
-```
-
----
-
-## ⚙️ Variabel Lingkungan (Environment Variables)
-
-Sistem menggunakan file `.env` yang **wajib diisolasi secara lokal** dan **tidak boleh di-commit ke repositori publik**. Template variabel konfigurasi telah disediakan pada file [`.env.example`](./.env.example).
-
-### Langkah Konfigurasi:
-```bash
-# Salin template konfigurasi ke file .env lokal Anda
 cp .env.example .env
+npm run dev
 ```
 
-### Daftar Variabel Konfigurasi:
-
-| Kategori | Nama Variabel | Wajib | Keterangan & Nilai Default |
-|---|---|:---:|---|
-| **Frontend** | `NEXT_PUBLIC_API_URL` | Ya | URL API Gateway Backend (Default: `http://localhost:5000/api`) |
-| **Backend** | `PORT` | Tidak | Port listener layanan API Express (Default: `5000`) |
-| | `NODE_ENV` | Ya | Lingkungan aplikasi (`development` / `production`) |
-| | `JWT_SECRET` | Ya | Kunci rahasia untuk menandatangani token sesi JWT |
-| **Database** | `DB_HOST` | Ya | Host database PostgreSQL (`localhost` atau nama container `postgres`) |
-| | `DB_PORT` | Ya | Port PostgreSQL (Default: `5432`) |
-| | `DB_USER` | Ya | Username database PostgreSQL |
-| | `DB_PASSWORD` | Ya | Kata sandi akun database PostgreSQL |
-| | `DB_NAME` | Ya | Nama basis data utama (Default: `wirasatya96`) |
-| **Storage (S3)** | `MINIO_ENDPOINT` | Ya | URL endpoint MinIO S3 (Default: `http://localhost:9000`) |
-| | `MINIO_REGION` | Tidak | Wilayah penyimpanan S3 (Default: `us-east-1`) |
-| | `MINIO_ACCESS_KEY` | Ya | Kunci akses identitas MinIO S3 |
-| | `MINIO_SECRET_KEY` | Ya | Kunci rahasia kredensial MinIO S3 |
-| | `BUCKET_*` | Ya | Nama bucket: `wirasatya-avatars`, `wirasatya-posts`, `wirasatya-documents` |
-
-> [!CAUTION]
-> **Peringatan Keamanan Kredensial**: Jangan pernah mengunggah atau membagikan berkas `.env` yang memuat kata sandi basis data dan `JWT_SECRET` produksi ke repositori publik. Seluruh kunci rahasia wajib dikelola melalui *Docker Secrets* atau *Environment Variables Manager* hosting produksi (Vercel / Cloud Vault).
+### Matriks Hak Akses (Multi-Role RBAC):
+| Peran (Role) | Lingkup Wewenang Utama |
+| :--- | :--- |
+| **SUPERADMIN** | Kendali penuh sistem, manajemen & pemulihan seluruh akun pengguna, serta pemeliharaan basis data. |
+| **KETUA ANGKATAN** | Akses penuh *Executive Dashboard* (*Anev Leting*), pemantauan wilayah & kesehatan, serta pengelolaan pengguna di bawahnya. |
+| **SEKRETARIS** | Verifikasi pendaftar baru, pemutakhiran direktori 38 Polda/Mabes, administrasi TR, dan pengelolaan akun anggota. |
+| **BENDAHARA** | Pengelolaan penuh *Buku Kas* (**Dana Sosial** & **Dana Investasi**), kampanye **Penggalangan Dana**, dan verifikasi iuran. |
+| **ANGGOTA & ADC** | Akses Buku Saku Digital, Linimasa, Obrolan, pembaruan profil mandiri/delegasi ADC tercatat, serta transparansi kas. |
 
 ---
+---
 
-## 👥 Matriks Hak Akses & Kewenangan Kedinasan (Multi-Role RBAC)
+<a id="-english-version"></a>
 
-Sistem menerapkan prinsip *Least Privilege* dan segregasi tugas kedinasan (*Separation of Duties*) yang terintegrasi dengan mekanisme otorisasi bertingkat:
+# 🇬🇧 ENGLISH VERSION
+*(Also available as a standalone file: [README.en.md](./README.en.md))*
 
-| Peran (Role) | Lingkup Kedinasan | Wewenang Khusus & Tanggung Jawab |
-|---|---|---|
-| **KETUA PAGUYUBAN** | Pimpinan Batalyon WS 1996 | Akses Executive Dashboard (Anev Leting), pengesahan program kerja, atensi kesehatan kritis, dan arah kebijakan. |
-| **SEKRETARIS** | Sekretaris Batalyon | Verifikasi pendaftaran anggota baru, pengelolaan direktori personel, pembaruan penempatan 38 Polda, dan tata naskah dinas (TR/Sprint). |
-| **BENDAHARA** | Kebendaharaan Paguyuban | Akses penuh modul Bendahara Portal, pencatatan mutasi kas masuk/keluar, konfigurasi iuran wajib, portofolio aset, dan penyaluran santunan sosial. |
-| **ANGGOTA** | Alumni Akpol 1996 | Buku Saku digital 38 Polda & Mabes, partisipasi obrolan leting realtime, pembaruan data profil mandiri, dan transparansi kas. |
+> [!NOTE]
+> **Wira Satya Battalion 1996 — #SelaluBahagia**
+> An internal community & executive portal for alumni officers of the 1996 Indonesian National Police Academy (*United, Caring, & Serving Since 1996*). It integrates nationwide organizational placement mapping (National Police Headquarters / Mabes Polri, 38 Regional Police Commands / Polda, Resort Commands, and External Ministry/Agency Assignments), **28 Police Functional Categories (*Tour of Duty*)**, an interactive alumni timeline, a transparent **Treasury Ledger** split into **Social Funds (*Dana Sosial*)** & **Investment Funds (*Dana Investasi*)** with editable **Crowdfunding / Milestone Campaigns**, healthcare attention tracking, and retirement readiness analytics.
 
 > [!IMPORTANT]
-> **Kebijakan Keamanan Akun**: Seluruh personel wajib melalui alur pendaftaran resmi (`NRP Dinas`) dan verifikasi oleh Sekretaris sebelum diberikan akses membuat kata sandi mandiri dan masuk ke portal.
+> **Public Repository Security & Zero Data Leak Policy**:
+> This repository is strictly sanitized for public visibility. All authentication credentials, cryptographic signing keys (`JWT_SECRET`), production database endpoints, and sensitive personnel records are isolated via environment variables (`.env`) and enforced by hierarchical Role-Based Access Control (RBAC). No plaintext passwords, private keys, or sensitive personal records are stored in the public source code.
 
 ---
 
-## 📄 Lisensi & Kebijakan Keamanan
+## 🏛️ System Architecture (4-Tier Decoupled & Cloud-Synced)
 
-- **Hak Cipta**: © 2026 Paguyuban Alumni Akademi Kepolisian 1996 — Batalyon Wira Satya. Seluruh hak cipta dilindungi undang-undang.
-- **Kebijakan Keamanan**: Silakan membaca [SECURITY.md](./SECURITY.md) untuk rincian isolasi data dan pelaporan celah keamanan secara tertutup.
-- **Kontribusi Pengembang**: Silakan membaca [CONTRIBUTING.md](./CONTRIBUTING.md) sebelum mengajukan *Pull Request*.
+```mermaid
+graph LR
+    FE["1️⃣ Frontend (Next.js 14)<br/>SSR, App Router & Offline Sync"] -->|REST API / JSON| BE["2️⃣ Backend & API Layer<br/>Auth, RBAC & Audit Log"]
+    BE -->|SQL / Multi-Table Sync| DB[("3️⃣ Database (PostgreSQL 16)<br/>9 Structured Tables")]
+    BE -->|S3 Protocol| MinIO["4️⃣ Object Storage (MinIO S3)<br/>Avatars, Media & Documents"]
+```
+
+- **Tier 1 — Presentation & Adaptive UI**: Next.js 14 App Router styled in the signature *Bareskrim Crimson Red* (`#8B0000`) & *Officer Gold* (`#D97706`) theme, supporting multi-factor authentication (Security PIN & FIDO2/WebAuthn Biometrics) and an *Offline Sync Engine*.
+- **Tier 2 — Application & Security API**: Modular REST API enforcing schema validation, hierarchical Role-Based Access Control (RBAC), Aide-de-Camp (*ADC Delegation Mode*), and automated tamper-evident audit logging.
+- **Tier 3 — Relational Persistence**: PostgreSQL 16 (featuring a 9-table structured schema for concurrent multi-user cloud synchronization without write contention).
+- **Tier 4 — Object Storage**: MinIO S3-compatible storage segregating public media buckets from private document buckets (`wirasatya-avatars`, `wirasatya-posts`, `wirasatya-documents`).
+
+---
+
+## 🌟 Core Platform Modules
+
+| Module | Icon | Key Features & Capabilities | Target Users |
+| :--- | :---: | :--- | :--- |
+| **Home & Alumni Timeline (Feed)** | 💬 | Interactive social feed with infinite scroll, 6 custom battalion reactions, nested comments, and quick-access summary cards for *Tour of Duty*, *Healthcare Attention*, and *Social & Investment Funds*. | All Alumni |
+| **Network & Digital Pocketbook** | 📖 | Comprehensive alumni directory with regional filters (Mabes Polri, 38 Regional Commands/Polda, External Agencies), smart default sorting (`Active → Retired → PTDH → Deceased`), and one-click WhatsApp contact for officers & their Aide-de-Camp (ADC). | All Alumni & Board |
+| **Positions & Tour of Duty** | 🎖️ | Career history and assignment tracking across **28 Police Functions**, complete with mutation order (TR) references and operational/innovation achievements. | All Alumni & HR |
+| **Treasury Ledger (*Buku Kas*)** | 💰 | Dual-pillar financial transparency divided into **Social Funds (*Dana Sosial*)** (annual dues, voluntary contributions, medical assistance, bereavement funds) and **Investment Funds (*Dana Investasi*)** (time deposits, government bonds/SBN, gold bullion, business units, property), plus editable **Crowdfunding / Milestone Campaigns**. | Treasurer, Board & Alumni |
+| **Battalion Analytics & Healthcare** | 🩺 | Real-time monitoring of colleagues or family members undergoing medical care/hospitalization, enabling coordinated support and prayers. | Welfare Division & Leadership |
+| **Retirement Readiness & Ventures** | 👔 | Mandatory retirement age (58 years) projection, post-service residential mapping, and a directory of alumni-owned enterprises. | All Alumni |
+| **User Management & Audit Log** | 🛡️ | New member verification queue, hierarchical user management, Aide-de-Camp (ADC) account delegation, soft-delete account recovery (*Restore User*), and comprehensive *Audit Logs*. | Superadmin, Chairman & Secretary |
+
+---
+
+## 📱 Adaptive Responsive Design (Desktop PC vs Mobile Smartphone)
+
+- **Desktop / PC View (`lg:`)**:
+  - Preserves the full 3-column executive layout on the Home page (Left Rail: *My Profile*, *Tour of Duty*, & `#SELALUBAHAGIA` card; Center Feed: *Post Composer*, *Timeline Filters*, & *Feed*; Right Rail: *Healthcare Attention*, *Social & Investment Funds*, & *Batalyon Wira Satya 1996* identity footer).
+  - Displays complete, descriptive button and badge labels across all menus.
+- **Mobile / Smartphone View (`< lg`)**:
+  - **Collapsible Summary Card Headers**: Summary cards (*My Profile*, *Tour of Duty*, *Healthcare Attention*, *Social & Investment Funds*) render as compact single-line headers on mobile and expand smoothly when tapped to reveal details and navigation links.
+  - **Self-Contained Infinite Scroll Feed**: On mobile devices, the Home feed scrolls within a dedicated container so continuous scrolling loads additional posts without pushing the `#SELALUBAHAGIA` card and the `BATALYON WIRA SATYA 1996` footer out of reach at the bottom.
+  - **Concise Mobile Labels & `(i)` Tooltips**: Button labels automatically switch to concise single-line text on mobile screens (`sm:hidden`) paired with touch-friendly info tooltips to prevent layout wrapping.
+
+---
+
+## 🚀 Quick Start Guide ( English )
+
+### Using Docker Compose:
+```bash
+git clone https://github.com/omeko11/wirasatya96.git
+cd wirasatya96
+cp .env.example .env
+docker-compose up --build -d
+```
+
+### Standalone Local Development:
+```bash
+npm install
+cp .env.example .env
+npm run dev
+```
+
+### Role-Based Access Control (RBAC) Matrix:
+| Role | Scope of Authority |
+| :--- | :--- |
+| **SUPERADMIN** | Full system configuration control, user account lifecycle management & restoration, and database maintenance. |
+| **CHAIRMAN (*KETUA*)** | Full access to the *Executive Dashboard* (*Anev Leting*), regional & healthcare monitoring, and subordinate user management. |
+| **SECRETARY (*SEKRETARIS*)** | Verification of new member registrations, directory updates across 38 Polda/Mabes, TR administration, and member account management. |
+| **TREASURER (*BENDAHARA*)** | Full management of the *Treasury Ledger* (**Social Funds** & **Investment Funds**), **Crowdfunding Campaigns**, and dues verification. |
+| **MEMBER & ADC (*ANGGOTA*)** | Access to the Digital Directory, Timeline, Messaging, self-service or audited ADC-delegated profile updates, and treasury transparency. |
+
+---
+
+## 📁 Repository Directory Structure / Struktur Direktori
+
+```text
+wirasatya96/
+├── backend/                       # [Tier 2] Express REST API & TypeScript Service
+├── database/                      # [Tier 3] Relational Database Schemas (PostgreSQL / Cloud Sync)
+├── minio/                         # [Tier 4] MinIO S3 Bucket Initialization Scripts
+├── src/                           # [Tier 1] Next.js 14 Web Application (App Router)
+│   ├── app/                       # Pages, Layouts, & API Route Handlers
+│   ├── components/                # Responsive UI Components (PC & Mobile Optimized)
+│   ├── data/                      # SOTK Polri Reference & 28 Police Functions
+│   ├── lib/                       # Cloud Sync Engine, Offline Cache, & Server Store
+│   └── types/                     # Centralized TypeScript Interfaces
+├── .env.example                   # Public-Safe Environment Variables Template
+├── docker-compose.yml             # 4-Tier Container Orchestration
+├── README.md                      # Bilingual Main Documentation (ID & EN)
+├── README.id.md                   # Complete Documentation in Bahasa Indonesia
+├── README.en.md                   # Complete Documentation in English
+├── ARCHITECTURE.md                # Technical Architecture Specification (ID & EN)
+├── SECURITY.md                    # Security & Data Privacy Policy (ID & EN)
+└── CONTRIBUTING.md                # Developer Contribution Guidelines (ID & EN)
+```
 
 <div align="center">
-  <sub>Batalyon Wira Satya Akpol 1996 • <i>#SelaluBahagia</i></sub>
+  <sub>Batalyon Wira Satya Akpol 1996 • <i>Guyub, Peduli, & Mengabdi Sejak 1996 — #SelaluBahagia</i></sub>
 </div>

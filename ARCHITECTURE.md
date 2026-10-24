@@ -1,167 +1,115 @@
-# 🏛️ ARSITEKTUR SISTEM: BATALYON WIRA SATYA AKPOL 1996
-**Blueprint Arsitektur Skala Ratusan Ribu Data, Multi-Tier Decoupled Microservice & Standar Keamanan Enterprise Institusi Kepolisian**
+<div align="center">
 
-*Dokumen ini disusun mengacu pada standar rekayasa enterprise Bareskrim Polri (Crime Analytic System - CAS Reference Architecture) yang disesuaikan secara proporsional untuk kapasitas beban ratusan ribu data pada Sistem Informasi Paguyuban Alumni Akpol 1996 Wira Satya (#SelaluBahagia).*
+# 🏛️ SPESIFIKASI ARSITEKTUR SISTEM / SYSTEM ARCHITECTURE
+### Sistem Informasi Batalyon Wira Satya Akpol 1996
 
----
+**[🇮🇩 Bahasa Indonesia](#-spesifikasi-arsitektur-bahasa-indonesia)** · **[🇬🇧 English Version](#-architecture-specification-english-version)**
 
-## 1. Ikhtisar Arsitektur & Karakteristik Skala Data
-
-Sistem Informasi Batalyon Wira Satya Akpol 1996 mengadopsi arsitektur **Multi-Tier Decoupled Architecture**. Berbeda dengan sistem analitik kriminal nasional (seperti CAS yang menampung jutaan Laporan Polisi), sistem paguyuban perwira ini diproyeksikan beroperasi pada kapasitas **ratusan ribu rekaman data (*hundreds of thousands of records*)**, yang meliputi:
-* **Data Personel Perwira Alumni** beserta data anggota keluarga/tanggungan.
-* **Riwayat mutasi jabatan, penempatan dinas, dan Surat Perintah (Sprint)** lintas fungsi kepolisian dan kewilayahan.
-* **Pesan obrolan leting & koordinasi realtime** dalam modul perpesanan dinas.
-* **Mutasi keuangan kas yayasan**: iuran anggota aktif, sumbangan sukarela, serta santunan kesehatan dan duka cita leting.
-* **Dokumen resmi paguyuban**: Surat Telegram (TR), Surat Keputusan (SK Batalyon), notulen konsolidasi leting, serta arsip digital bukti transfer kas.
-* **Log audit keamanan autentikasi & aktivitas FIDO2/Passkey/MFA serta sesi Ajudan (ADC)**.
-
-Pemisahan lapisan (*layer decoupling*) memastikan bahwa pemrosesan dokumen Word dinas, rekapitulasi kas yayasan, dan linimasa direktori berjalan tanpa saling membebani (*zero-contention*).
+</div>
 
 ---
 
-## 2. Topologi Sistem & Diagram Jaringan Kontainer
+<a id="-spesifikasi-arsitektur-bahasa-indonesia"></a>
+
+# 🇮🇩 Spesifikasi Arsitektur (Bahasa Indonesia)
+
+Sistem Informasi Batalyon Wira Satya Akpol 1996 mengadopsi arsitektur **Multi-Tier Decoupled & Cloud-Synced Architecture** yang memisahkan lapisan antarmuka pengguna, logika bisnis/API, persistensi basis data relasional 9-tabel, serta penyimpanan objek media.
+
+## 1. Topologi Sistem & Aliran Data
 
 ```mermaid
 flowchart TD
-    subgraph Klien_Eksternal["Perangkat Pengguna / Klien"]
-        PC["💻 Laptop / PC Perwira (Intranet / Web Browser)"]
-        Mobile["📱 Smartphone / Tablet (Akses Seluler)"]
+    subgraph Client["Perangkat Pengguna (Adaptif PC & HP)"]
+        PC["💻 Desktop / Laptop (Tata Letak 3 Kolom Utuh)"]
+        HP["📱 Smartphone / HP (Collapsible Cards & Infinite Scroll)"]
     end
 
-    subgraph Perimeter_Gateway["Perimeter Gateway & Reverse Proxy (Port 443 / 80)"]
-        Nginx["Nginx Ingress Gateway & SSL Termination\n(Strict HSTS, Anti-Cache, Rate Limiting)"]
+    subgraph AppTier["Tier 1 & 2: Next.js 14 App Router & Express API"]
+        UI["Komponen Antarmuka Responsif (Tailwind CSS)"]
+        Sync["Offline Sync & Local Cache Engine"]
+        API["REST API Routes, RBAC & Audit Logger"]
     end
 
-    subgraph Docker_Network["🐳 Private Docker Bridge Network: wirasatya-net"]
-        subgraph Tier_FE["Lapisan Frontend & Dokumen"]
-            FE["Next.js 14 App Router: ws96-web\n(React 18 + Tailwind CSS + Lucide Icons)"]
-            OnlyOffice["Document Server: onlyoffice-ds\n(ONLYOFFICE Community Edition - Port 8080)"]
-        end
-
-        subgraph Tier_BE["Lapisan Backend & Logika Bisnis"]
-            BE_API["Core API: ws96-api\n(Node.js / Express / TypeScript - Port 5000)"]
-            SnapshotWorker["Pre-Aggregated Snapshot Engine\n(Anev Leting & Kas Yayasan)"]
-            RedisCache["Cache & Session: ws96-redis\n(Redis In-Memory - Port 6379)"]
-        end
-
-        subgraph Tier_Data["Lapisan Basis Data & Penyimpanan"]
-            PG_DB[("PostgreSQL 16 Alpine: ws96-db\n(Composite B-Tree Indexes - Port 5432)")]
-            MinioStore["Object Storage: ws96-minio\n(MinIO S3 Buckets - Port 9000/9001)"]
-        end
+    subgraph DataTier["Tier 3 & 4: Basis Data & Penyimpanan Objek"]
+        PG[("PostgreSQL 16 / Cloud Multi-Table<br/>(9 Tabel Terstruktur)")]
+        S3["MinIO S3 Object Storage<br/>(Avatars, Media Feed & Dokumen)"]
     end
 
-    PC -->|HTTPS / Port 443| Nginx
-    Mobile -->|HTTPS / Port 443| Nginx
-
-    Nginx -->|Proxy HTTP :3000| FE
-    Nginx -->|Proxy /onlyoffice| OnlyOffice
-    Nginx -->|Proxy /api| BE_API
-
-    FE -->|REST API + Bearer JWT| BE_API
-    FE -->|Direct Attachment View / Socket| OnlyOffice
-    BE_API -->|pg Connection Pool| PG_DB
-    BE_API -->|Session & Cache Query| RedisCache
-    BE_API -->|S3 Protocol Upload/Download| MinioStore
-    SnapshotWorker -->|Background Materialization| PG_DB
-    SnapshotWorker -->|Hot Cache Update| RedisCache
+    PC --> UI
+    HP --> UI
+    UI --> Sync
+    UI --> API
+    API --> PG
+    API --> S3
 ```
 
----
+## 2. Skema 9 Tabel Terstruktur (Multi-Table Persistence)
 
-## 3. Rincian Lapisan Arsitektur (4-Tier Decoupled)
+Untuk mendukung akses dan pembaruan data serentak (*concurrent multi-user input*) tanpa saling menimpa, basis data dibagi menjadi 9 tabel terpisah:
+1. `ws96_members`: Direktori perwira alumni, penempatan SOTK (Mabes/38 Polda/Luar Struktur), riwayat jabatan, keluarga, dan daftar Ajudan (ADC).
+2. `ws96_users`: Akun autentikasi, peran RBAC (`SUPERADMIN`, `KETUA`, `SEKRETARIS`, `BENDAHARA`, `ANGGOTA`), dan penanda akun delegasi ADC.
+3. `ws96_iuran`: Status kepatuhan iuran wajib tahunan anggota aktif (serta pembebasan otomatis bagi status Purna Tugas, PTDH, dan Almarhum).
+4. `ws96_transactions`: Buku besar mutasi pemasukan dan pengeluaran pada **Dana Sosial** dan **Dana Investasi**.
+5. `ws96_assets`: Portofolio komponen **Dana Investasi** (deposito, SBN/obligasi, emas/logam mulia, unit usaha, properti).
+6. `ws96_posts`: Publikasi kegiatan pada linimasa beranda beserta multi-reaksi dan komentar bersarang.
+7. `ws96_messages`: Pesan obrolan langsung antar-perwira.
+8. `ws96_audit_logs`: Catatan rekam jejak manajemen pengguna, pemulihan akun, reset kata sandi, dan aktivitas Ajudan (ADC).
+9. `ws96_config`: Konfigurasi sistem, parameter iuran, serta daftar kampanye **Penggalangan Dana (*Crowdfunding Milestone*)**.
 
-| Lapisan | Layanan & Port | Teknologi | Tanggung Jawab Utama | Sifat Akses |
-|---|---|---|---|---|
-| **Tier 1: Frontend** | `ws96-web`<br/>`:3000` | Next.js 14 App Router, React 18, Tailwind CSS | Antarmuka Buku Saku Digital, Linimasa Jaringan Perwira, Form Wizard SIPP, Dashboard Anev, dan Obrolan Leting. Mengusung visual khas *Bareskrim Crimson Red*. | Publik via Nginx Proxy |
-| **Tier 2: Core API** | `ws96-api`<br/>`:5000` | Express.js, TypeScript, JWT, S3 SDK, pg Pool | API Gateway modular, autentikasi terverifikasi, otorisasi RBAC berjenjang, validasi integritas SIPP Polri, dan orkestrasi perpesanan. | Terisolasi dalam `wirasatya-net` |
-| **Tier 3: Basis Data** | `ws96-db`<br/>`:5432` | PostgreSQL 16 Alpine | Penyimpanan terstruktur data alumni, keluarga, riwayat dinas 38 Polda/Mabes, neraca kas yayasan, dan log pendaftaran. | Terisolasi dalam `wirasatya-net` |
-| **Tier 4: Object Storage** | `ws96-minio`<br/>`:9000 / :9001` | MinIO S3 Engine | Penyimpanan aset biner: foto perwira (`wirasatya-avatars`), dokumentasi giat (`wirasatya-posts`), dan dokumen dinas/bukti kas (`wirasatya-documents`). | S3 API internal & Console Admin |
-| **Document Server** | `onlyoffice-ds`<br/>`:8080` | ONLYOFFICE Community Edition | Mesin penampil dan penyunting naskah dinas Word (`.docx`), rekapitulasi Excel (`.xlsx`), dan PDF dengan format Jukminu Polri. | Terhubung via Nginx `/onlyoffice` |
-| **In-Memory Cache** | `ws96-redis`<br/>`:6379` | Redis Alpine | Cache snapshot agregasi Anev Leting, sesi aktif, dan antrean pesan obrolan realtime. | Terisolasi dalam `wirasatya-net` |
-
----
-
-## 4. Pola Rekayasa Data Skala Ratusan Ribu (Design Patterns)
-
-Mengadopsi praktik terbaik dari arsitektur CAS Bareskrim, sistem ini mengimplementasikan 4 pola kunci:
-
-### Pola 1: Pre-Aggregated Snapshot Cache (Anev Leting & Kas Yayasan)
-* **Konteks**: Modul *Anev Leting* dan *Transparansi Kas* menyajikan rekapitulasi sebaran perwira di 38 Polda, status persiapan pensiun, atensi kesehatan kritis, dan kalkulasi saldo kas.
-* **Penerapan**: Kalkulasi berat (`SUM`, `COUNT GROUP BY polda`, `JOIN` riwayat jabatan) **tidak dihitung ulang secara live** saat pengguna membuka dasbor.
-* **Mekanisme**: Background worker melakukan kalkulasi secara terjadwal (atau saat terjadi perubahan transaksi kas) dan menyimpannya di tabel/cache snapshot. Respons dasbor turun drastis dari **>2.000 ms menjadi <15 ms**.
-
-### Pola 2: ONLYOFFICE Socket Optimization & Direct File Download
-* **Konteks**: ONLYOFFICE Community Edition memiliki batasan 20 concurrent connection (soket).
-* **Penerapan**:
-  1. Frontend menjalankan `destroyEditor()` secara otomatis saat komponen di-unmount atau pengguna berpindah tab, sehingga kuota soket langsung terbebas untuk rekan leting lain.
-  2. Menyediakan tombol **Direct Attachment Download (.docx / .pdf)** di tabel dokumen resmi. Anggota yang hanya ingin mencetak atau mengunduh surat dinas tidak perlu membuka canvas editor yang berat.
-  3. Konfigurasi `forcesave: false` mencegah terjadinya UI freeze saat penyimpanan dokumen berlangsung di latar belakang.
-
-### Pola 3: Hierarchical RBAC & Segregasi Akses Kedinasan
-Data dan fitur dibatasi berdasarkan peran pengguna:
-* **KETUA PAGUYUBAN**: Hak persetujuan program kerja, visibilitas eksekutif penuh pada Anev Leting, dan penetapan kebijakan yayasan.
-* **SEKRETARIS**: Pengelolaan formulir SIPP, verifikasi pendaftaran alumni baru, administrasi persuratan (TR & Sprint paguyuban), serta pemutakhiran direktori.
-* **BENDAHARA**: Pengelolaan neraca kas yayasan, verifikasi iuran anggota, dan pencatatan santunan kesehatan/duka cita.
-* **ANGGOTA (ALUMNI)**: Membaca direktori perwira, mengobrol di Obrolan Leting, memutakhirkan profil mandiri, serta melihat laporan transparansi kas.
-
-### Pola 4: Standar Integritas & Tamper-Evident Storage
-* Setiap bukti transfer kas, dokumen Sprint, dan Surat Telegram yang diunggah ke MinIO S3 diberi penamaan berbasis hash kriptografis SHA-256:
-  $$\text{WS96-}[\text{SHA256}_{8}\text{]-}[\text{TIMESTAMP}].\text{ext}$$
-* Mencegah eksploitasi *Insecure Direct Object References (IDOR)* dan menjamin keaslian bukti keuangan paguyuban dari manipulasi eksternal.
+## 3. Desain Responsif & Ketahanan Offline
+- **Pemisahan Tampilan PC vs HP**: Menggunakan *breakpoint* responsif sehingga tampilan Desktop tetap mempertahankan 3 kolom utuh dengan label deskriptif lengkap, sementara tampilan HP menggunakan *header* kartu buka-tutup (*collapsible*) dan label tombol ringkas.
+- **Zero-Downtime Offline Fallback**: Apabila koneksi jaringan sedang tidak stabil, *Offline Sync Engine* menyimpan pembaruan secara lokal dan menyinkronkannya kembali ke server saat koneksi pulih.
 
 ---
+---
 
-## 5. Alur Keamanan & Onboarding Perwira Alumni (End-to-End Flow)
+<a id="-architecture-specification-english-version"></a>
 
-Sesuai standar operasional kedinasan, pendaftaran alumni tidak mengizinkan akses terbuka langsung (*no unverified open login*), melainkan melalui rantai verifikasi bertingkat:
+# 🇬🇧 Architecture Specification (English Version)
+
+The Wira Satya 1996 Alumni Information System implements a **Multi-Tier Decoupled & Cloud-Synced Architecture**, cleanly separating the presentation layer, API/RBAC business logic, 9-table relational persistence, and S3-compatible object storage.
+
+## 1. System Topology & Data Flow
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Officer as 👮 Perwira Alumni (Pemohon)
-    participant FE as 🌐 Frontend (/login)
-    participant API as ⚡ Core API (/api/auth)
-    participant DB as 🐘 Basis Data (Store)
-    actor Admin as 🛡️ Sekretaris
+flowchart TD
+    subgraph Client["Client Devices (Adaptive PC & Mobile)"]
+        PC["💻 Desktop / Laptop (Full 3-Column Layout)"]
+        HP["📱 Smartphone (Collapsible Cards & Infinite Scroll)"]
+    end
 
-    Officer->>FE: Buka Tab "Pendaftaran Anggota Baru"<br/>Isi NRP, Pangkat, Satker, Polda, WhatsApp, Email Dinas
-    FE->>API: POST /api/auth/register
-    API->>DB: Simpan data dengan status 'PENDING_VERIFIKASI'
-    API-->>FE: Pendaftaran Berhasil Diajukan
-    FE-->>Officer: Tampil Layar Konfirmasi: "Menunggu Verifikasi Pengurus"
+    subgraph AppTier["Tier 1 & 2: Next.js 14 App Router & Express API"]
+        UI["Responsive UI Components (Tailwind CSS)"]
+        Sync["Offline Sync & Local Cache Engine"]
+        API["REST API Routes, RBAC & Audit Logger"]
+    end
 
-    Note over Admin,API: Administrator menerima notifikasi antrean verifikasi di Navbar
-    Admin->>FE: Buka "Verifikasi Pendaftaran" (AdminVerificationModal)
-    Admin->>FE: Klik "Setujui Permohonan"
-    FE->>API: POST /api/auth/verify (action: 'APPROVE')
-    API->>DB: Update status ke 'DISETUJUI_BELUM_PASSWORD'<br/>Daftarkan profil ke direktori perwira
-    API-->>FE: Otorisasi Berhasil
+    subgraph DataTier["Tier 3 & 4: Relational DB & Object Storage"]
+        PG[("PostgreSQL 16 / Cloud Multi-Table<br/>(9 Structured Tables)")]
+        S3["MinIO S3 Object Storage<br/>(Avatars, Feed Media & Documents)"]
+    end
 
-    Officer->>FE: Masuk ke Halaman Login, input NRP Dinas
-    FE->>API: POST /api/auth/login (hanya input NRP)
-    API-->>FE: { requiresPasswordSetup: true, nama, pangkat }
-    FE->>Officer: Buka Dialog: "Aktivasi Akun & Buat Kata Sandi Baru"
-    Officer->>FE: Input Kata Sandi Baru & Pilih Metode MFA (PIN / FIDO2)
-    FE->>API: POST /api/auth/set-password
-    API->>DB: Set Password, simpan MFA, update status ke 'AKTIF'
-    API-->>FE: Login Sukses (User Token)
-    FE-->>Officer: Berhasil masuk ke akun pribadi (Buku Saku / Direktori)
+    PC --> UI
+    HP --> UI
+    UI --> Sync
+    UI --> API
+    API --> PG
+    API --> S3
 ```
 
----
+## 2. 9-Table Structured Persistence Schema
 
-## 6. Standar SOTK Satuan Kerja
+To support concurrent multi-user updates without write contention, data is partitioned into 9 dedicated relational tables:
+1. `ws96_members`: Alumni officer profiles, SOTK placements (Mabes Polri, 38 Regional Commands, External Agencies), career history, family data, and Aide-de-Camp (ADC) roster.
+2. `ws96_users`: Authentication records, RBAC roles (`SUPERADMIN`, `KETUA`, `SEKRETARIS`, `BENDAHARA`, `ANGGOTA`), and ADC delegation flags.
+3. `ws96_iuran`: Annual membership dues tracking for active officers (with automated exemption for Retired, PTDH, and Deceased statuses).
+4. `ws96_transactions`: Financial ledger recording inflows and outflows across **Social Funds** and **Investment Funds**.
+5. `ws96_assets`: **Investment Fund** portfolio records (time deposits, government bonds, gold bullion, business units, property).
+6. `ws96_posts`: Timeline posts, multi-reactions, and nested comments.
+7. `ws96_messages`: Direct peer-to-peer messaging records.
+8. `ws96_audit_logs`: Tamper-evident audit trail for user management, account restoration, password resets, and ADC-delegated actions.
+9. `ws96_config`: Global system settings, dues parameters, and editable **Crowdfunding / Milestone Campaigns**.
 
-Mengikuti SOTK Polri mutakhir:
-* **Tingkat Mabes Polri**: Unsur Pimpinan, Unsur Pengawas, Unsur Pembantu Pimpinan, Unsur Pelaksana Tugas Pokok, serta Unsur Pendukung dan Pelayanan.
-* **Tingkat Polda & Kewilayahan**: 38 Polda seluruh Indonesia beserta satuan kewilayahan jajaran.
-* **Penugasan Luar Struktur**: Kementerian, badan, dan lembaga negara terkait.
-* **Status Kedinasan**: Klasifikasi anggota aktif, Purna Tugas, PTDH, dan Almarhum/Gugur.
-
----
-
-## 7. Ketahanan & Rencana Pemulihan Bencana (Disaster Recovery)
-
-* **Daily Automated SQL Dumps**: Backup basis data otomatis ke volume terisolasi `./data_aplikasi/backups`.
-* **MinIO Object Replication**: Sinkronisasi berkas dokumen dan foto antar-node cadangan via utility `mc mirror`.
-* **Zero-Downtime Cache Fallback**: Jika koneksi jaringan database mengalami gangguan sesaat, client Next.js memanfaatkan cache lokal terenkripsi sehingga antarmuka tidak mengalami *crash* atau layar kosong.
+## 3. Adaptive UI & Offline Resilience
+- **Desktop vs Mobile Separation**: Responsive breakpoints preserve the full 3-column layout and descriptive labels on PC screens while delivering collapsible card headers, self-contained infinite scroll, and concise single-line button labels on smartphones.
+- **Zero-Downtime Offline Fallback**: When network connectivity is intermittent, the *Offline Sync Engine* queues mutations locally and synchronizes automatically upon reconnection.

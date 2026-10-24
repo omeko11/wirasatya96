@@ -26,36 +26,6 @@ router.post('/login', async (req: Request, res: Response) => {
     );
 
     if (userRes.rows.length === 0) {
-      // Fallback for development demo if DB is not yet populated
-      if (username.toLowerCase() === 'ekoagung' || username.toLowerCase() === 'agungkrisdianto96@gmail.com') {
-        const token = jwt.sign(
-          {
-            id: '11111111-1111-1111-1111-111111111111',
-            username: 'ekoagung',
-            role: 'SUPERADMIN',
-          },
-          JWT_SECRET,
-          { expiresIn: '7d' }
-        );
-        return res.json({
-          success: true,
-          token,
-          user: {
-            id: '11111111-1111-1111-1111-111111111111',
-            username: 'ekoagung',
-            email: 'agungkrisdianto96@gmail.com',
-            role: 'SUPERADMIN',
-            namaLengkap: 'Eko Agung',
-            pangkat: 'Briptu',
-            jabatan: 'Developer',
-            satker: 'Dittipidsiber Bareskrim Polri',
-            polda: 'Mabes Polri',
-            fotoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256',
-            statusIuran2026: '-',
-            totalRekanLeting: 286,
-          },
-        });
-      }
       return res.status(401).json({ success: false, message: 'Kredensial tidak valid' });
     }
 
