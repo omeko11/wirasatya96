@@ -15,7 +15,7 @@ import {
 import { LinkedInProfileView } from './LinkedInProfileView';
 import { LinkedInPostCard } from './LinkedInPostCard';
 import { CreatePostModal } from './CreatePostModal';
-import { MetaVerifiedBadge } from './MetaVerifiedBadge';
+import { MetaVerifiedBadge, resolveRoleForBadge } from './MetaVerifiedBadge';
 import { FeedPostSkeleton, DirectoryCardSkeleton } from './SkeletonLoader';
 import {
   Phone,
@@ -843,6 +843,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     currentMemberObj?.fotoUrl,
     currentUser.fotoUrl
   );
+  const myEffectiveRole = resolveRoleForBadge(currentUser?.nrp, currentUser?.role) || currentUser?.role;
 
   return (
     <div className="font-sans text-slate-900 pb-20">
@@ -958,15 +959,15 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     {currentMemberObj?.satuanKerja || currentUser.polda || 'MABES POLRI'}
                   </span>
                 </div>
-                {(currentUser.role === 'KETUA' ||
-                  currentUser.role === 'SEKRETARIAT' ||
-                  currentUser.role === 'BENDAHARA') && (
+                {(myEffectiveRole === 'KETUA' ||
+                  myEffectiveRole === 'SEKRETARIAT' ||
+                  myEffectiveRole === 'BENDAHARA') && (
                   <div className="flex items-center justify-between gap-2 text-slate-500">
                     <span className="shrink-0">Jabatan Angkatan:</span>
                     <span className="font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
-                      {currentUser.role === 'KETUA' ? (
+                      {myEffectiveRole === 'KETUA' ? (
                         'Ketua Angkatan'
-                      ) : currentUser.role === 'SEKRETARIAT' ? (
+                      ) : myEffectiveRole === 'SEKRETARIAT' ? (
                         <>
                           <span className="sm:hidden">Sekretaris</span>
                           <span className="hidden sm:inline">Sekretaris Angkatan</span>
@@ -983,7 +984,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Hak Akses:</span>
                   <span className="font-bold text-slate-900">
-                    {currentUser.role === 'SEKRETARIAT' ? 'Sekretaris' : currentUser.role}
+                    {myEffectiveRole === 'SEKRETARIAT' ? 'Sekretaris' : myEffectiveRole}
                   </span>
                 </div>
               </div>

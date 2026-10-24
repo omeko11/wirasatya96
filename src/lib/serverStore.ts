@@ -1142,7 +1142,12 @@ async function syncFromSupabaseCloud(
         });
         cloudMembers.forEach((cm) => {
           if (cm && cm.nrp && !deletedSet.has(cm.nrp)) {
-            byNrp.set(cm.nrp, { ...(byNrp.get(cm.nrp) || {}), ...cm });
+            const oldKey = cm.oldNrp && cm.oldNrp !== cm.nrp ? cm.oldNrp : undefined;
+            const prevEntry = byNrp.get(cm.nrp) || (oldKey ? byNrp.get(oldKey) : undefined);
+            if (oldKey && byNrp.has(oldKey)) {
+              byNrp.delete(oldKey);
+            }
+            byNrp.set(cm.nrp, { ...(prevEntry || {}), ...cm });
           }
         });
         globalStore.members = Array.from(byNrp.values());
@@ -1155,7 +1160,18 @@ async function syncFromSupabaseCloud(
         });
         cloudUsers.forEach((cu) => {
           if (cu && cu.nrp && !deletedSet.has(cu.nrp)) {
-            byNrp.set(cu.nrp, { ...(byNrp.get(cu.nrp) || {}), ...cu });
+            const oldKey = cu.oldNrp && cu.oldNrp !== cu.nrp ? cu.oldNrp : undefined;
+            const prevEntry = byNrp.get(cu.nrp) || (oldKey ? byNrp.get(oldKey) : undefined);
+            if (oldKey && byNrp.has(oldKey)) {
+              byNrp.delete(oldKey);
+            }
+            const resolvedRole =
+              cu.role && cu.role !== 'ANGGOTA'
+                ? cu.role
+                : prevEntry?.role && prevEntry.role !== 'ANGGOTA'
+                  ? prevEntry.role
+                  : cu.role || prevEntry?.role || 'ANGGOTA';
+            byNrp.set(cu.nrp, { ...(prevEntry || {}), ...cu, role: resolvedRole });
           }
         });
         globalStore.users = Array.from(byNrp.values());

@@ -431,7 +431,14 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
     };
   };
 
-  const officialEmail = localMember.email || `${localMember.nrp}@polri.go.id`;
+  const officialEmail =
+    localMember.email &&
+    !(
+      /^74090\d{3}@polri\.go\.id$/i.test(localMember.email) &&
+      !/^74090\d{3}$/.test(localMember.nrp)
+    )
+      ? localMember.email
+      : `${localMember.nrp}@polri.go.id`;
   const secondaryEmail =
     localMember.secondaryEmail ||
     (localMember.nrp === '98010710' ? 'agungkrisdianto98@gmail.com' : '—');

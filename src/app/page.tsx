@@ -35,7 +35,7 @@ import {
   isSuperadminAccount,
 } from '@/lib/avatarUtils';
 
-const STORAGE_VERSION = 'ws96_akpol96_real_v17';
+const STORAGE_VERSION = 'ws96_akpol96_real_v18';
 
 export default function Home() {
   const router = useRouter();
@@ -155,9 +155,19 @@ export default function Home() {
                       item.nama.trim().toLowerCase() === u.nama.trim().toLowerCase()))
               );
             const effectiveNrp = ov?.nrp || u.nrp;
-            const effectiveRole = ov?.role || u.role;
+            const effectiveRole =
+              ov?.role && ov.role !== 'ANGGOTA'
+                ? ov.role
+                : u.role && u.role !== 'ANGGOTA'
+                  ? u.role
+                  : ov?.role || u.role;
             if (effectiveNrp && effectiveRole && !deletedSet.has(effectiveNrp)) {
-              roleMap[effectiveNrp] = effectiveRole;
+              if (!roleMap[effectiveNrp] || roleMap[effectiveNrp] === 'ANGGOTA' || effectiveRole !== 'ANGGOTA') {
+                roleMap[effectiveNrp] = effectiveRole;
+              }
+              if (u.oldNrp && (!roleMap[u.oldNrp] || roleMap[u.oldNrp] === 'ANGGOTA' || effectiveRole !== 'ANGGOTA')) {
+                roleMap[u.oldNrp] = effectiveRole;
+              }
             }
           });
           if (typeof window !== 'undefined') {
@@ -165,20 +175,34 @@ export default function Home() {
             window.dispatchEvent(new Event('ws96_roles_updated'));
           }
           setCurrentUser((prev) => {
-            const matched = usersList.find(
+            const exactNrpMatch = usersList.find((u: AuthUser) => u.nrp === prev.nrp);
+            const fallbackMatch = usersList.find(
               (u: AuthUser) =>
-                u.nrp === prev.nrp ||
                 (prev.oldNrp && u.nrp === prev.oldNrp) ||
+                (u.oldNrp && u.oldNrp === prev.nrp) ||
                 (u.id && u.id === prev.id)
             );
+            const matched =
+              exactNrpMatch && exactNrpMatch.role !== 'ANGGOTA'
+                ? exactNrpMatch
+                : fallbackMatch && fallbackMatch.role !== 'ANGGOTA'
+                  ? fallbackMatch
+                  : exactNrpMatch || fallbackMatch;
             const ov =
               userOverrides[prev.nrp] ||
               (prev.oldNrp ? userOverrides[prev.oldNrp] : undefined);
             if (!matched && !ov) return prev;
             const mergedSource = { ...(matched || {}), ...(ov || {}) };
+            const resolvedRole =
+              mergedSource.role && mergedSource.role !== 'ANGGOTA'
+                ? mergedSource.role
+                : prev.role && prev.role !== 'ANGGOTA' && !ov?.role
+                  ? prev.role
+                  : mergedSource.role || prev.role;
             const nextUser: AuthUser = {
               ...prev,
               ...mergedSource,
+              role: resolvedRole,
               nrp: mergedSource.nrp || prev.nrp,
               nama:
                 (mergedSource.nrp || prev.nrp) === '98010710' &&
@@ -625,6 +649,12 @@ export default function Home() {
               if (bName === 'arief adiharsa' && parsedUOv[k]?.oldNrp === '74090168') {
                 parsedUOv[k].oldNrp = '74090260';
               }
+              const presetMatch = PRESET_USERS.find(
+                (pu) => pu.nrp === parsedUOv[k]?.nrp || pu.nrp === k || (pu.oldNrp && pu.oldNrp === k)
+              );
+              if (presetMatch && presetMatch.role !== 'ANGGOTA' && parsedUOv[k]?.role === 'ANGGOTA') {
+                parsedUOv[k].role = presetMatch.role;
+              }
             }
           });
           localStorage.setItem('ws96_user_overrides_v1', JSON.stringify(parsedUOv));
@@ -689,6 +719,19 @@ export default function Home() {
           }
           if (parsed.nama) {
             parsed.nama = stripRankFromName(parsed.nama) || parsed.nama;
+          }
+          const presetUserMatch = PRESET_USERS.find(
+            (pu) =>
+              pu.nrp === parsed.nrp ||
+              (pu.oldNrp && pu.oldNrp === parsed.nrp) ||
+              (parsed.oldNrp && pu.nrp === parsed.oldNrp) ||
+              (pu.id && pu.id === parsed.id)
+          );
+          if (presetUserMatch && presetUserMatch.role !== 'ANGGOTA' && (!parsed.role || parsed.role === 'ANGGOTA')) {
+            parsed.role = presetUserMatch.role;
+          }
+          if (parsed.nrp && parsed.email && /^74090\d{3}@polri\.go\.id$/i.test(parsed.email) && !/^74090\d{3}$/.test(parsed.nrp)) {
+            parsed.email = `${parsed.nrp}@polri.go.id`;
           }
           const sanitizedUser: AuthUser = {
             ...parsed,

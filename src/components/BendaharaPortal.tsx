@@ -14,6 +14,7 @@ import {
 } from '@/types';
 import { generateLeakageTrackedFileName } from '@/lib/mediaSecurity';
 import { isSuperadminAccount } from '@/lib/avatarUtils';
+import { resolveRoleForBadge } from './MetaVerifiedBadge';
 import { NON_AKTIF_IURAN_NRPS } from '@/data/akpol1996Alumni';
 import {
   Wallet,
@@ -562,7 +563,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [payNominal, setPayNominal] = useState<number>(250000);
 
   // PERMISSION RULES:
-  const userRole = currentUser.role;
+  const userRole = resolveRoleForBadge(currentUser.nrp, currentUser.role) || currentUser.role;
   const canInputKas = userRole === 'BENDAHARA' || userRole === 'SUPERADMIN';
   const canRekap = userRole === 'BENDAHARA' || userRole === 'KETUA' || userRole === 'SUPERADMIN';
   const canInputFinance = canInputKas;

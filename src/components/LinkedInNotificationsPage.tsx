@@ -180,7 +180,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
         timeAgo: trx.tanggal,
         isRead: readSet.has(id),
         avatarUrl: '/default-avatar.png',
-        actionLabel: 'Buka Arus Kas & Aset',
+        actionLabel: 'Buka Dana Sosial & Investasi',
         targetTab: 'bendahara',
       });
     });
@@ -342,7 +342,7 @@ export const LinkedInNotificationsPage: React.FC<LinkedInNotificationsPageProps>
               {[
                 { key: 'semua', label: `Semua (${countByType.semua})` },
                 { key: 'health', label: `❤️ Kesehatan (${countByType.health})` },
-                { key: 'treasury', label: `💰 Kas & Aset (${countByType.treasury})` },
+                { key: 'treasury', label: `💰 Dana Sosial (${countByType.treasury})` },
                 { key: 'social', label: `💬 Linimasa (${countByType.social})` },
               ].map((f) => (
                 <button

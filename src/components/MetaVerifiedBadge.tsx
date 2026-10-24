@@ -12,6 +12,20 @@ export interface MetaVerifiedBadgeProps {
 
 const VALID_ROLES: UserRole[] = ['SUPERADMIN', 'KETUA', 'SEKRETARIAT', 'BENDAHARA', 'ANGGOTA'];
 
+const DEFAULT_PENGURUS_ROLE_BY_NRP: Record<string, UserRole> = {
+  '98010710': 'SUPERADMIN',
+  '75060702': 'KETUA',
+  '74090165': 'KETUA',
+  '72080762': 'SEKRETARIAT',
+  '74090167': 'SEKRETARIAT',
+  '74060709': 'SEKRETARIAT',
+  '74090168': 'SEKRETARIAT',
+  '74050716': 'BENDAHARA',
+  '74090009': 'BENDAHARA',
+  '74090583': 'BENDAHARA',
+  '74090072': 'BENDAHARA',
+};
+
 let memoryRoleMap: Record<string, UserRole> | null = null;
 
 function ensureRoleMapLoaded(): Record<string, UserRole> {
@@ -66,6 +80,12 @@ export function getDynamicRoleForNrp(nrp?: string): UserRole | undefined {
   if (!cleanNrp) return undefined;
   const map = ensureRoleMapLoaded();
   const found = map[cleanNrp];
+  if (found && VALID_ROLES.includes(found) && found !== 'ANGGOTA') {
+    return found;
+  }
+  if (DEFAULT_PENGURUS_ROLE_BY_NRP[cleanNrp]) {
+    return DEFAULT_PENGURUS_ROLE_BY_NRP[cleanNrp];
+  }
   if (found && VALID_ROLES.includes(found)) {
     return found;
   }
@@ -73,17 +93,26 @@ export function getDynamicRoleForNrp(nrp?: string): UserRole | undefined {
 }
 
 export function resolveRoleForBadge(nrp?: string, explicitRole?: UserRole | string): UserRole | undefined {
+  if (explicitRole && VALID_ROLES.includes(explicitRole as UserRole) && explicitRole !== 'ANGGOTA') {
+    return explicitRole as UserRole;
+  }
+  if (!nrp) {
+    return explicitRole && VALID_ROLES.includes(explicitRole as UserRole)
+      ? (explicitRole as UserRole)
+      : undefined;
+  }
+  const cleanNrp = nrp.trim();
+  const dynamicRole = getDynamicRoleForNrp(cleanNrp);
+  if (dynamicRole && dynamicRole !== 'ANGGOTA') {
+    return dynamicRole;
+  }
+  if (DEFAULT_PENGURUS_ROLE_BY_NRP[cleanNrp]) {
+    return DEFAULT_PENGURUS_ROLE_BY_NRP[cleanNrp];
+  }
   if (explicitRole && VALID_ROLES.includes(explicitRole as UserRole)) {
     return explicitRole as UserRole;
   }
-  if (!nrp) return undefined;
-  const cleanNrp = nrp.trim();
-  const dynamicRole = getDynamicRoleForNrp(cleanNrp);
-  if (dynamicRole) {
-    return dynamicRole;
-  }
-  if (cleanNrp === '98010710') return 'SUPERADMIN';
-  return 'ANGGOTA';
+  return dynamicRole || 'ANGGOTA';
 }
 
 /**

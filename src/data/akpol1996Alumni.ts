@@ -1,4 +1,4 @@
-import { AnggotaWiraSatya, AuthUser, IuranAnggota, PendingRegistration, StatusKedinasan } from '@/types';
+import { AnggotaWiraSatya, AuthUser, IuranAnggota, PendingRegistration, StatusKedinasan, UserRole } from '@/types';
 import { calculateRetirement58, stripRankFromName } from '@/lib/avatarUtils';
 
 export interface RawAkpol96Officer {
@@ -13,6 +13,7 @@ export interface RawAkpol96Officer {
   polda: string;
   tipeSatker: 'MABES' | 'POLDA' | 'POLRES/TA/BES' | 'KEMEN/LEMBAGA';
   statusKedinasan?: StatusKedinasan;
+  role?: UserRole;
 }
 
 export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
@@ -24,7 +25,7 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
   { no: 6, nama: 'Petrus Canisius Elva Setyasto, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Auditor Kepolisian Madya Itwasda Polda Sulsel', satker: 'Itwasda Polda Sulsel', polda: 'POLDA SULAWESI SELATAN', tipeSatker: 'POLDA' },
   { no: 7, nama: 'Ary Donny Setiawan, S.I.K., M.H.', pangkat: 'Brigjen Pol', nrp: '75020377', tanggalLahir: '1975-02-15', jabatan: 'Direktur Aparatur Negara Deputi Bidang Intelijen BIN', satker: 'Badan Intelijen Negara (BIN)', polda: 'MABES POLRI', tipeSatker: 'KEMEN/LEMBAGA' },
   { no: 8, nama: 'Ferry Raimond Ukoli, S.I.K.', pangkat: 'Kombes Pol', tempatLahir: 'Manado', jabatan: 'Karo Ops Polda Sulawesi Utara', satker: 'Roops Polda Sulut', polda: 'POLDA SULAWESI UTARA', tipeSatker: 'POLDA' },
-  { no: 9, nama: 'Hadi Wicaksono, S.I.K.', pangkat: 'Kombes Pol', jabatan: 'Pamen Polda Riau', satker: 'Polda Riau', polda: 'POLDA RIAU', tipeSatker: 'POLDA' },
+  { no: 9, nama: 'Hadi Wicaksono, S.I.K.', pangkat: 'Kombes Pol', nrp: '74050716', tanggalLahir: '1974-09-01', jabatan: 'Kabagrenopsnal Robinopsnal Bareskrim Polri', satker: 'ROBINOPSNAL - BARESKRIM POLRI', polda: 'MABES POLRI', tipeSatker: 'MABES', role: 'BENDAHARA' },
   { no: 10, nama: 'Puji Hendro Wibowo, S.H., S.I.K., CHRMP.', pangkat: 'Brigjen Pol', nrp: '75020376', tanggalLahir: '1975-02-15', jabatan: 'Kabag Opsnal dan TIK Korpolairud Baharkam Polri', satker: 'Korpolairud Baharkam Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 11, nama: 'Teguh Hardiyo Wibisono, S.I.K., M.Si.', pangkat: 'Kombes Pol', nrp: '73080754', tanggalLahir: '1973-08-15', jabatan: 'Analis Kebijakan Madya Bidang Brimob Korbrimob Polri', satker: 'Korbrimob Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 12, nama: 'Armaini, S.I.K., M.Si.', pangkat: 'Brigjen Pol', nrp: '74080668', tanggalLahir: '1974-08-18', tempatLahir: 'Banda Aceh', jabatan: 'Widyaiswara Kepolisian Utama Tk. II Sespim Lemdiklat Polri', satker: 'Sespim Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
@@ -87,7 +88,7 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
   { no: 69, nama: 'Muhammad Aldian, S.I.K., M.H.', pangkat: 'Kombes Pol', jabatan: 'Dirlantas Polda Jawa Tengah', satker: 'Ditlantas Polda Jateng', polda: 'POLDA JAWA TENGAH', tipeSatker: 'POLDA' },
   { no: 70, nama: 'Sucahyo Hadi, S.I.K., M.H.', pangkat: 'Kombes Pol', jabatan: 'Analis Kebijakan Madya Bidang Sespimmen Lemdiklat Polri', satker: 'Sespimmen Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 71, nama: 'Yandri Irsan, S.H., S.I.K., M.Si.', pangkat: 'Kombes Pol', nrp: '74090547', tanggalLahir: '1974-09-15', jabatan: 'Karolog Polda Metro Jaya', satker: 'Rolog Polda Metro Jaya', polda: 'POLDA METRO JAYA', tipeSatker: 'POLDA' },
-  { no: 72, nama: 'Sumaryono, S.H., S.I.K., M.H.', pangkat: 'Brigjen Pol', nrp: '74090546', tanggalLahir: '1974-09-02', tempatLahir: 'Surabaya', jabatan: 'Karobinopsnal Bareskrim Polri', satker: 'Bareskrim Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
+  { no: 72, nama: 'Sumaryono, S.H., S.I.K., M.H.', pangkat: 'Brigjen Pol', nrp: '74090583', tanggalLahir: '1974-09-02', tempatLahir: 'Surabaya', jabatan: 'Karobinopsnal Bareskrim Polri', satker: 'Bareskrim Polri', polda: 'MABES POLRI', tipeSatker: 'MABES', role: 'BENDAHARA' },
   { no: 73, nama: 'Ahmad Yanuari Insan, S.I.K., M.Si.', pangkat: 'Kombes Pol', nrp: '75010581', tanggalLahir: '1975-01-15', jabatan: 'Dirlantas Polda Kalimantan Timur', satker: 'Ditlantas Polda Kaltim', polda: 'POLDA KALIMANTAN TIMUR', tipeSatker: 'POLDA' },
   { no: 74, nama: 'Jansen Avitus Panjaitan, S.I.K., M.H.', pangkat: 'Kombes Pol', tanggalLahir: '1975-08-01', tempatLahir: 'Medan', jabatan: 'Analis Kebijakan Madya Bidang PID Divhumas Polri', satker: 'Divhumas Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 75, nama: 'Muhammad Arif Sugiarto, S.I.K., M.P.P., M.H.', pangkat: 'Brigjen Pol', nrp: '75010582', tanggalLahir: '1975-01-15', jabatan: 'Widyaiswara Kepolisian Utama Tk. II Sespim Lemdiklat Polri', satker: 'Sespim Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
@@ -180,10 +181,10 @@ export const RAW_AKPOL_1996_ALUMNI: RawAkpol96Officer[] = [
   { no: 162, nama: 'Edward Indharmawan Eka Chandra, S.I.K., M.H.', pangkat: 'Kombes Pol', jabatan: 'Dirpolairud Polda Jawa Barat', satker: 'Ditpolairud Polda Jabar', polda: 'POLDA JAWA BARAT', tipeSatker: 'POLDA' },
   { no: 163, nama: 'I Ketut Budi Hendrawan, S.H., S.I.K., M.H.', pangkat: 'Kombes Pol', jabatan: 'Penjamin Mutu Pendidikan Madya Tk. I Lemdiklat Polri', satker: 'Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
   { no: 164, nama: 'Slamet Riyadi, S.H.', pangkat: 'Kombes Pol', jabatan: 'Dosen Utama STIK Lemdiklat Polri', satker: 'STIK Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES', statusKedinasan: 'PURNA_TUGAS' },
-  { no: 165, nama: 'Jhonny Edison Isir, S.I.K., M.T.C.P.', pangkat: 'Irjen Pol', nrp: '75060702', tanggalLahir: '1975-06-07', tempatLahir: 'Jayapura', jabatan: 'Kadiv Humas Polri', satker: 'Divhumas Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
+  { no: 165, nama: 'Jhonny Edison Isir, S.I.K., M.T.C.P.', pangkat: 'Irjen Pol', nrp: '75060702', tanggalLahir: '1975-06-07', tempatLahir: 'Jayapura', jabatan: 'Kadiv Humas Polri', satker: 'Divhumas Polri', polda: 'MABES POLRI', tipeSatker: 'MABES', role: 'KETUA' },
   { no: 166, nama: 'Dr. Ribut Hari Wibowo, S.H., S.I.K., M.H.', pangkat: 'Irjen Pol', nrp: '74070746', tanggalLahir: '1974-07-30', tempatLahir: 'Magetan', jabatan: 'Wakalemdiklat Polri', satker: 'Lemdiklat Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
-  { no: 167, nama: 'Yudhi Sulistianto Wahid, S.I.K., M.Si.', pangkat: 'Irjen Pol', nrp: '72080762', tanggalLahir: '1972-08-22', tempatLahir: 'Wajo', jabatan: 'Kapolda Bengkulu', satker: 'Polda Bengkulu', polda: 'POLDA BENGKULU', tipeSatker: 'POLDA' },
-  { no: 168, nama: 'Jeffri Dian Juniarta, S.H., S.I.K., M.H., M.I.Kom.', pangkat: 'Kombes Pol', nrp: '74060709', tanggalLahir: '1974-06-01', tempatLahir: 'Jawa Tengah', jabatan: 'Pengawas Penyidikan Kepolisian Madya Tk. I Bareskrim Polri', satker: 'Bareskrim Polri', polda: 'MABES POLRI', tipeSatker: 'MABES' },
+  { no: 167, nama: 'Yudhi Sulistianto Wahid, S.I.K., M.Si.', pangkat: 'Irjen Pol', nrp: '72080762', tanggalLahir: '1972-08-22', tempatLahir: 'Wajo', jabatan: 'Kapolda Bengkulu', satker: 'Polda Bengkulu', polda: 'POLDA BENGKULU', tipeSatker: 'POLDA', role: 'SEKRETARIAT' },
+  { no: 168, nama: 'Jeffri Dian Juniarta, S.H., S.I.K., M.H., M.I.Kom.', pangkat: 'Kombes Pol', nrp: '74060709', tanggalLahir: '1974-06-01', tempatLahir: 'Jawa Tengah', jabatan: 'Pengawas Penyidikan Kepolisian Madya Tk. I Bareskrim Polri', satker: 'Bareskrim Polri', polda: 'MABES POLRI', tipeSatker: 'MABES', role: 'SEKRETARIAT' },
   { no: 169, nama: 'Dr. Herry Heryawan, S.I.K., M.H., M.Hum.', pangkat: 'Irjen Pol', nrp: '72020677', tanggalLahir: '1972-02-23', tempatLahir: 'Ambon', jabatan: 'Kapolda Riau', satker: 'Polda Riau', polda: 'POLDA RIAU', tipeSatker: 'POLDA' },
   { no: 170, nama: 'Dr. Barito Mulyo Ratmono, S.H., S.I.K., M.Si.', pangkat: 'Irjen Pol', nrp: '74110750', tanggalLahir: '1974-11-18', tempatLahir: 'Jakarta', jabatan: 'Staf Ahli Bidang Hankam BIN', satker: 'Badan Intelijen Negara (BIN)', polda: 'MABES POLRI', tipeSatker: 'KEMEN/LEMBAGA' },
   { no: 171, nama: 'Arif Makhfudiharto, S.I.K., M.H.', pangkat: 'Irjen Pol', nrp: '74050719', tanggalLahir: '1974-05-15', tempatLahir: 'Purwokerto', jabatan: 'Deputi Bidang Pencegahan, Perlindungan, dan Deradikalisasi BNPT RI', satker: 'BNPT RI', polda: 'MABES POLRI', tipeSatker: 'KEMEN/LEMBAGA' },
@@ -442,7 +443,7 @@ export const AKPOL_1996_USERS: AuthUser[] = RAW_AKPOL_1996_ALUMNI.map((item) => 
     nama: cleanNama,
     pangkat,
     email: `${nrp}@polri.go.id`,
-    role: 'ANGGOTA',
+    role: item.role || 'ANGGOTA',
     profileId: `ws-${legacyNrp}`,
     mfaEnabled: false,
     mfaMethod: 'PIN',
