@@ -141,23 +141,39 @@ flowchart TB
 ## 📂 Struktur Lengkap Repositori
 
 ```text
-├── src/                                      # Kode Sumber Aplikasi Utama (React 19 + TypeScript 5.8)
-│   ├── App.tsx                               # Pengendali Utama Portal, Hak Akses RBAC, Modal & 6 Menu Utama
-│   ├── main.tsx                              # Titik Masuk DOM React 19
-│   ├── index.css                             # Sistem Desain Tailwind CSS 4 & Aturan Responsif Layar HP/PC
-│   ├── data/
+├── src/                                      # Kode Sumber Utama Portal Next.js 14 App Router
+│   ├── app/                                  # Halaman App Router & Endpoint REST API Server
+│   │   ├── api/                              # Route API Server (auth, finance, members, messages, posts, users)
+│   │   ├── login/page.tsx                    # Halaman Login, Pendaftaran & Bantuan Lupa Kata Sandi
+│   │   ├── page.tsx                          # Pengendali Utama 6 Menu (Beranda, Jabatan, Pesan, Notifikasi, Dana Sosial, Anev)
+│   │   ├── layout.tsx & globals.css          # Tata Letak Induk, Tipografi & Aturan Responsif Layar HP/PC
+│   ├── components/                           # Bundel Modul Komponen Antarmuka (21 Komponen)
+│   │   ├── AdminVerificationModal.tsx        # Konsol Kelola Akun, Verifikasi & Log Audit (Sekretaris/Superadmin)
+│   │   ├── BendaharaPortal.tsx               # Modul Transparansi Dana Sosial, Investasi & Buku Kas Dua Kamar
+│   │   ├── BukuSaku.tsx                      # Direktori Buku Saku Digital & Pencarian Multi-Kriteria
+│   │   ├── ExecutiveDashboard.tsx            # Dasbor 5 Tab Anev & Statistik Pengurus Paguyuban
+│   │   ├── LinkedInJobsPage.tsx              # Pemetaan 28 Fungsi Kepolisian (Tour of Duty) & 38 Polda
+│   │   ├── LinkedInMessagingPage.tsx         # Pusat Pesan Internal & Pintasan Langsung WhatsApp
+│   │   ├── LinkedInProfileView.tsx           # Tampilan Biodata Lengkap, Riwayat Jabatan & Rekan Satu Wilayah
+│   │   ├── SecuritySettingsModal.tsx         # Pengaturan Passkey Biometrik, TOTP 2FA, PIN & Kelola Gawai
+│   │   └── Navbar.tsx & WSLogo.tsx           # Navigasi Atas Dinamis Sesuai Peran & Penanda Mode Pendamping (ADC)
+│   ├── data/                                 # Basis Data Terverifikasi & Struktur Organisasi Polri
 │   │   ├── akpol1996Alumni.ts                # Direktori Terverifikasi 261 Alumni Akpol 1996 (38 Polda & 28 Fungsi)
-│   │   └── mockData.ts                       # Model Data, Taksonomi 28 Fungsi Polri & Utilitas Pembantu
-│   └── utils/
-│       ├── cloudSync.ts                      # Mesin Sinkronisasi Supabase PostgreSQL, Realtime WebSocket & Media
-│       └── security.ts                       # Utilitas Kriptografi WebAuthn Passkey, TOTP, Captcha PoW & PIN
-├── supabase/
-│   └── migrations/                           # Skrip Migrasi SQL PostgreSQL & Konfigurasi Storage Bucket
-│       └── 20261024000000_ws96_cloud_state.sql # DDL Tabel public.ws96_app_state, Kebijakan RLS & Bucket ws96-media
-├── index.html                                # Dokumen Induk HTML5 & Konfigurasi Viewport Responsif
-├── package.json                              # Daftar Dependensi & Skrip Build (Vite 6, React 19, Supabase)
-├── tsconfig.json                             # Konfigurasi Kompilasi TypeScript 5.8
-├── vite.config.ts                            # Konfigurasi Bundler Vite 6 & Plugin Tailwind CSS 4
+│   │   ├── polriStructure.ts & polriJabatan.ts # Taksonomi Mabes Polri, 38 Polda & Luar Struktur
+│   │   └── mockUsers.ts & mockFinance.ts     # Matriks Hak Akses (RBAC) & Struktur Awal Buku Kas
+│   └── lib/                                  # Mesin Penyimpanan Cloud, Cache & Keamanan
+│       ├── serverStore.ts                    # Penyimpanan Multi-Koleksi & Rekonsiliasi Peran Pengurus
+│       ├── supabaseCloud.ts                  # Mesin Sinkronisasi 9 Tabel PostgreSQL Supabase Cloud
+│       ├── offlineSyncEngine.ts              # Cache Lokal Tangguh & Antrean Sinkronisasi Luring
+│       └── redisCache.ts & mediaSecurity.ts  # Akselerasi Cache Server & Validasi Keamanan Media
+├── backend/                                  # Layanan Mikro Mandiri Express.js + PostgreSQL + MinIO S3
+│   ├── src/index.ts                          # Bootstrap Server REST API Express (:5000)
+│   ├── src/config/db.ts & minio.ts           # Koneksi Pool PostgreSQL 16 & Klien MinIO S3 Presigned URL
+│   └── src/routes/                           # Rute Modular Express (auth, finance, jabatan, kesehatan, members, posts)
+├── database/                                 # Skema Basis Data Relasional & Skrip Setup Cloud
+│   ├── init.sql                              # Skema DDL Lengkap PostgreSQL 16 On-Premise
+│   └── supabase_setup.sql                    # Skema 9 Tabel Terstruktur Supabase Cloud (ws96_members, ws96_users, dll.)
+├── docker-compose.yml                        # Orkestrasi Multi-Container (Frontend, Backend, Postgres 16, MinIO S3)
 ├── README.md                                 # Dokumentasi Utama (Edisi Bahasa Inggris / Default)
 ├── README.id.md                              # Dokumentasi Utama (Edisi Bahasa Indonesia Resmi)
 ├── ARCHITECTURE.md                           # Catatan Keputusan Arsitektur Rekayasa (ADR 001–005 — Bilingual)
@@ -175,11 +191,11 @@ flowchart TB
 
 | Lapisan | Teknologi yang Digunakan |
 | :--- | :--- |
-| **Portal Frontend (`wirasatya96`)** | React 19.0, TypeScript 5.8, Vite 6.2, Tailwind CSS 4.1, Lucide React Icons (`lucide-react`), Desain Responsif *Mobile-First* |
-| **Basis Data Cloud & Realtime** | Supabase PostgreSQL (`public.ws96_app_state` JSONB State Store), Supabase Realtime WebSockets (`postgres_changes`), Row-Level Security (RLS) |
-| **Penyimpanan Foto & Media** | Supabase Storage (`ws96-media` CDN bucket untuk foto profil, sampul & dokumentasi kegiatan) dengan *fallback* DataURL otomatis |
-| **Kriptografi & Keamanan MFA** | Web Crypto API (`crypto.subtle` SHA-256 & HMAC-SHA1), WebAuthn / FIDO2 (`navigator.credentials` Passkey), RFC 6238 TOTP 2FA |
-| **Infrastruktur & Hosting** | Vercel Edge Network (`https://wirasatya96.vercel.app`), Git CI/CD Pipeline |
+| **Portal Frontend & App Router (`wirasatya96`)** | Next.js 14 (App Router & API Routes), React 18/19, TypeScript 5, Tailwind CSS, Lucide React Icons (`lucide-react`), Desain Responsif *Mobile-First* |
+| **Layanan Backend & Container (`backend/`)** | Node.js, Express.js, TypeScript, PostgreSQL 16 (`pg` Pool), MinIO S3 (`@aws-sdk/client-s3`), Docker & Docker Compose |
+| **Penyimpanan Cloud & Sinkronisasi (`src/lib/`)** | Supabase Multi-Table PostgreSQL (`ws96_members`, `ws96_users`, `ws96_posts`, `ws96_transactions`, `ws96_milestones`, `ws96_assets`), Offline Sync Engine |
+| **Keamanan & Verifikasi Multi-Faktor** | WebAuthn / FIDO2 Hardware Passkey (`navigator.credentials`), RFC 6238 TOTP 2FA, PIN Keamanan 6-Angka, Audit & Cabut Akses Gawai Terpercaya |
+| **Infrastruktur & Hosting** | Vercel Edge Network (`https://wirasatya96.vercel.app`) & Dukungan Self-Hosted Docker Compose |
 
 ---
 

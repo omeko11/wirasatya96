@@ -1,7 +1,7 @@
 @echo off
 title Push Wira Satya 96 ke GitHub
 echo =======================================================
-echo [WS96] MENGUNGGAH KODE KE GITHUB (omeko11/wirasatya96)...
+echo [WS96] MENGUNGGAH KODE KE GITHUB (omeko42/wirasatya96)...
 echo =======================================================
 echo.
 cd /d "%~dp0"

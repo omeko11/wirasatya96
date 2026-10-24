@@ -141,23 +141,39 @@ flowchart TB
 ## 📂 Complete Repository Structure
 
 ```text
-├── src/                                      # Application Source Code (React 19 + TypeScript 5.8)
-│   ├── App.tsx                               # Core Portal Controller, RBAC Matrix, Modals & 6 Main Views
-│   ├── main.tsx                              # React 19 DOM Entry Point
-│   ├── index.css                             # Tailwind CSS 4 Design System & Responsive Utility Rules
-│   ├── data/
+├── src/                                      # Next.js 14 App Router & Full-Stack Portal Source
+│   ├── app/                                  # Next.js App Router Pages & API Route Handlers
+│   │   ├── api/                              # Server-Side REST Endpoints (auth, finance, members, messages, posts, users)
+│   │   ├── login/page.tsx                    # Zero-Trust Login, Registration & Forgot Password Portal
+│   │   ├── page.tsx                          # Main Portal Orchestrator (Beranda, Jabatan, Pesan, Notifikasi, Dana Sosial, Anev)
+│   │   ├── layout.tsx & globals.css          # Root Layout, Typography & Responsive Mobile-First CSS Rules
+│   ├── components/                           # Modular UI & Operational Feature Bundles (21 Components)
+│   │   ├── AdminVerificationModal.tsx        # Secretariat/Superadmin Account Management & Audit Log Console
+│   │   ├── BendaharaPortal.tsx               # Dual-Chamber Social Fund, Investment & Cash Book Management
+│   │   ├── BukuSaku.tsx                      # Digital Pocketbook Directory & Multi-Criteria Filter View
+│   │   ├── ExecutiveDashboard.tsx            # 5-Tab Executive Anev & Welfare Telemetry Dashboard
+│   │   ├── LinkedInJobsPage.tsx              # 28 Polri Function (Tour of Duty) & 38 Polda Assignment Explorer
+│   │   ├── LinkedInMessagingPage.tsx         # Internal Quick Messaging & WhatsApp Deep-Link Hub
+│   │   ├── LinkedInProfileView.tsx           # Officer Biography, Career History & Same-Region Colleagues View
+│   │   ├── SecuritySettingsModal.tsx         # WebAuthn Passkey, TOTP 2FA, 6-Digit PIN & Trusted Device Manager
+│   │   └── Navbar.tsx & WSLogo.tsx           # Dynamic Role-Based Top Navigation & Companion/ADC Mode Banner
+│   ├── data/                                 # Verified Cohort Seed & Polri Organizational Taxonomies
 │   │   ├── akpol1996Alumni.ts                # Verified Directory Seed (261 Officers, 38 Polda, 28 Functions)
-│   │   └── mockData.ts                       # Data Models, 28 Polri Function Taxonomies & Helper Utilities
-│   └── utils/
-│       ├── cloudSync.ts                      # Supabase PostgreSQL State Sync, Realtime WebSocket & Media Upload
-│       └── security.ts                       # WebAuthn Passkey, RFC 6238 TOTP, SHA-256 PoW Captcha & PIN Crypto
-├── supabase/
-│   └── migrations/                           # Idempotent PostgreSQL Schema & Storage Bucket Migrations
-│       └── 20261024000000_ws96_cloud_state.sql # DDL for public.ws96_app_state, RLS Policies & ws96-media Bucket
-├── index.html                                # HTML5 Entry Point & Responsive Viewport Metadata
-├── package.json                              # Project Dependencies & Build Scripts (Vite 6, React 19, Supabase)
-├── tsconfig.json                             # Strict TypeScript 5.8 Compiler Configuration
-├── vite.config.ts                            # Vite 6 Bundler & Tailwind CSS 4 Plugin Configuration
+│   │   ├── polriStructure.ts & polriJabatan.ts # Mabes Polri, 38 Polda & Luar Struktur Hierarchy Definitions
+│   │   └── mockUsers.ts & mockFinance.ts     # RBAC Permission Matrix & Initial Financial Ledger Structure
+│   └── lib/                                  # Core Persistence, Caching & Security Engines
+│       ├── serverStore.ts                    # Unified Multi-Collection State Store & Canonical Role Reconciler
+│       ├── supabaseCloud.ts                  # 9-Table Supabase PostgreSQL Persistence & Realtime Sync Engine
+│       ├── offlineSyncEngine.ts              # Resilient Client Cache & Offline Mutation Outbox
+│       └── redisCache.ts & mediaSecurity.ts  # High-Speed Server Cache & Media Sanitization Utilities
+├── backend/                                  # Standalone Express.js + PostgreSQL + MinIO S3 Microservice
+│   ├── src/index.ts                          # Express REST API Bootstrap (:5000)
+│   ├── src/config/db.ts & minio.ts           # PostgreSQL 16 Connection Pool & MinIO S3 Presigned URL Client
+│   └── src/routes/                           # Modular Express Routes (auth, finance, jabatan, kesehatan, members, posts)
+├── database/                                 # Relational Database Schemas & Cloud Setup Scripts
+│   ├── init.sql                              # Complete On-Premise PostgreSQL 16 DDL Schema
+│   └── supabase_setup.sql                    # Multi-Table Supabase Cloud Schema (ws96_members, ws96_users, etc.)
+├── docker-compose.yml                        # Multi-Container Orchestration (Frontend, Backend, Postgres 16, MinIO S3)
 ├── README.md                                 # Main Documentation (English Edition / Default)
 ├── README.id.md                              # Main Documentation (Bahasa Indonesia Official Edition)
 ├── ARCHITECTURE.md                           # Engineering Decision Records (ADRs 001–005 — Bilingual)
@@ -175,11 +191,11 @@ flowchart TB
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Frontend Portal (`wirasatya96`)** | React 19.0, TypeScript 5.8, Vite 6.2, Tailwind CSS 4.1, Lucide React Icons (`lucide-react`), Responsive Mobile-First Layout |
-| **Cloud Database & Realtime** | Supabase PostgreSQL (`public.ws96_app_state` JSONB State Store), Supabase Realtime WebSockets (`postgres_changes`), Row-Level Security (RLS) |
-| **Media & Object Storage** | Supabase Storage (`ws96-media` CDN bucket for profile avatars, cover banners & timeline attachments) with automatic DataURL fallback |
-| **Client Cryptography & MFA** | Native Web Crypto API (`crypto.subtle` SHA-256 & HMAC-SHA1), WebAuthn / FIDO2 (`navigator.credentials` Passkey), RFC 6238 TOTP 2FA |
-| **Deployment & Edge Hosting** | Vercel Edge Network (`https://wirasatya96.vercel.app`), Git CI/CD Pipeline |
+| **Frontend & App Router (`wirasatya96`)** | Next.js 14 (App Router & API Routes), React 18/19, TypeScript 5, Tailwind CSS, Lucide React Icons (`lucide-react`), Mobile-First Responsive UI |
+| **Backend & Container Stack (`backend/`)** | Node.js, Express.js, TypeScript, PostgreSQL 16 (`pg` Pool), MinIO S3 (`@aws-sdk/client-s3`), Docker & Docker Compose |
+| **Cloud Persistence & Realtime (`src/lib/`)** | Supabase Multi-Table PostgreSQL (`ws96_members`, `ws96_users`, `ws96_posts`, `ws96_transactions`, `ws96_milestones`, `ws96_assets`), Offline Sync Engine |
+| **Security & Multi-Factor Auth** | WebAuthn / FIDO2 Hardware Passkey (`navigator.credentials`), RFC 6238 TOTP 2FA, 6-Digit Security PIN, Trusted Device Audit & Revocation |
+| **Deployment & Edge Hosting** | Vercel Edge Network (`https://wirasatya96.vercel.app`) & Self-Hosted Docker Compose Support |
 
 ---
 
