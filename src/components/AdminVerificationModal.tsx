@@ -2159,7 +2159,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-[11px] flex items-center gap-1.5"
           >
             <FilePlus2 className="w-3.5 h-3.5" />
-            <span>Form Lengkap</span>
+            <span className="sm:hidden">Form Lengkap</span>
+            <span className="hidden sm:inline">Form Pendataan Lengkap (5 Tahap)</span>
           </button>
         ) : <span />}
 
@@ -2177,7 +2178,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             className="px-5 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-red-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50"
           >
             <Check className="w-4 h-4 stroke-[2.5]" />
-            <span>{creatingUser ? 'Menyimpan...' : 'Simpan'}</span>
+            <span className="sm:hidden">{creatingUser ? 'Menyimpan...' : 'Simpan'}</span>
+            <span className="hidden sm:inline">{creatingUser ? 'Menyimpan...' : 'Simpan Pengguna'}</span>
           </button>
         </div>
       </div>
@@ -2218,11 +2220,17 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 )}
               </h3>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[10px] font-bold">
-                {currentUserRole === 'SUPERADMIN' ? 'Superadmin' : currentUserRole === 'KETUA' ? 'Ketua' : 'Sekretaris'}
+                <span className="sm:hidden">
+                  {currentUserRole === 'SUPERADMIN' ? 'Superadmin' : currentUserRole === 'KETUA' ? 'Ketua' : 'Sekretaris'}
+                </span>
+                <span className="hidden sm:inline">
+                  Otoritas: {currentUserRole === 'SUPERADMIN' ? 'Superadmin' : currentUserRole === 'KETUA' ? 'Ketua Angkatan' : 'Sekretaris'}
+                </span>
               </span>
               {pendingCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold animate-pulse">
-                  {pendingCount} Menunggu
+                  <span className="sm:hidden">{pendingCount} Menunggu</span>
+                  <span className="hidden sm:inline">{pendingCount} Menunggu Verifikasi</span>
                 </span>
               )}
             </div>
@@ -2243,7 +2251,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setActiveTab('USERS')}
-            className={`px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 border-t border-x transition-all whitespace-nowrap ${
+            className={`px-3.5 sm:px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 border-t border-x transition-all whitespace-nowrap ${
               activeTab === 'USERS'
                 ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
                 : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
@@ -2255,14 +2263,15 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
           <button
             onClick={() => setActiveTab('VERIFICATION')}
-            className={`px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 border-t border-x transition-all whitespace-nowrap ${
+            className={`px-3.5 sm:px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 border-t border-x transition-all whitespace-nowrap ${
               activeTab === 'VERIFICATION'
                 ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
                 : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
             }`}
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Verifikasi</span>
+            <span className="sm:hidden">Verifikasi</span>
+            <span className="hidden sm:inline">Verifikasi Pendaftaran</span>
             {pendingCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-red-700 text-white text-[10px] font-extrabold">
                 {pendingCount}
@@ -2272,7 +2281,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
           <button
             onClick={() => setActiveTab('AUDIT_LOG')}
-            className={`px-3.5 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 border-t border-x transition-all whitespace-nowrap ${
+            className={`px-3.5 sm:px-4 py-2 rounded-t-xl text-xs font-bold flex items-center gap-1.5 sm:gap-2 border-t border-x transition-all whitespace-nowrap ${
               activeTab === 'AUDIT_LOG'
                 ? 'bg-white text-red-900 border-slate-200 shadow-sm -mb-px pb-2.5'
                 : 'bg-transparent text-slate-600 border-transparent hover:bg-white/60'
@@ -2306,7 +2315,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
       {/* TAB 1: DAFTAR PENGGUNA */}
       {activeTab === 'USERS' && (
         <>
-          <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2">
+          <div className="p-3.5 sm:p-4 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2 sm:gap-2.5">
             {/* Paling Kiri: Sorting Button Trigger -> Membuka Modal Pop-up List dengan Pilihan Ascend / Descend */}
             <SortTriggerBar
               sortBy={sortBy}
@@ -2316,7 +2325,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
             />
 
             {/* Searchbox di sebelah kanan tombol Sorting */}
-            <div className="relative flex-1 min-w-[180px]">
+            <div className="relative flex-1 min-w-[180px] sm:min-w-[200px]">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -2331,11 +2340,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as 'ALL' | UserRole)}
-                className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-800 shrink-0"
+                className="px-2.5 sm:px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-800 shrink-0"
               >
                 <option value="ALL">Semua Role ({visibleUsers.length})</option>
                 {canImpersonate && <option value="SUPERADMIN">Superadmin</option>}
-                <option value="KETUA">Ketua</option>
+                <option value="KETUA">Ketua Paguyuban</option>
                 <option value="SEKRETARIAT">Sekretaris</option>
                 <option value="BENDAHARA">Bendahara</option>
                 <option value="ANGGOTA">Anggota</option>
@@ -2351,7 +2360,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 className="px-3 py-1.5 rounded-lg bg-red-900 hover:bg-red-800 text-white font-bold flex items-center gap-1.5 whitespace-nowrap shadow-sm transition-colors shrink-0"
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Tambah</span>
+                <span className="sm:hidden">Tambah</span>
+                <span className="hidden sm:inline">Tambah Pengguna</span>
               </button>
             </div>
           </div>
@@ -2385,11 +2395,11 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                 const cleanSatker = (u.satker || 'Mabes Polri').split(' / ')[0].trim();
                 const dynamicJabatanAngkatan =
                   u.role === 'KETUA'
-                    ? 'Ketua Angkatan'
+                    ? { short: 'Ketua Angkatan', full: 'Jabatan Angkatan: Ketua' }
                     : u.role === 'SEKRETARIAT'
-                    ? 'Sekretaris'
+                    ? { short: 'Sekretaris', full: 'Jabatan Angkatan: Sekretaris' }
                     : u.role === 'BENDAHARA'
-                    ? 'Bendahara'
+                    ? { short: 'Bendahara', full: 'Jabatan Angkatan: Bendahara' }
                     : null;
                 const cleanNameNoRank = stripRankFromName(u.nama) || u.nama;
                 const deleteAuth = getDeleteAuthorityCheck(u);
@@ -2411,7 +2421,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                         </span>
                         {dynamicJabatanAngkatan && (
                           <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 font-bold text-amber-800">
-                            {dynamicJabatanAngkatan}
+                            <span className="sm:hidden">{dynamicJabatanAngkatan.short}</span>
+                            <span className="hidden sm:inline">{dynamicJabatanAngkatan.full}</span>
                           </span>
                         )}
                         {statusDinas === 'ALMARHUM' ? (
@@ -2469,7 +2480,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
                     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
                       <div className="flex flex-col">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">ROLE</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">
+                          <span className="sm:hidden">ROLE</span>
+                          <span className="hidden sm:inline">JABATAN ANGKATAN / ROLE</span>
+                        </label>
                         <select
                           value={u.role}
                           disabled={updatingUserNrp === u.nrp}
@@ -2508,7 +2522,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                         className="mt-4 px-2.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50"
                         title={`Reset password akun ini ke default: WS96@${u.nrp}`}
                       >
-                        <span>🔑 Reset</span>
+                        <span className="sm:hidden">🔑 Reset</span>
+                        <span className="hidden sm:inline">🔑 Reset Password</span>
                       </button>
 
                       <button
@@ -2629,17 +2644,17 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
                         {reg.status === 'PENDING_VERIFIKASI' && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> Menunggu
+                            <Clock className="w-3 h-3" /> <span className="sm:hidden">Menunggu</span><span className="hidden sm:inline">Menunggu Verifikasi</span>
                           </span>
                         )}
                         {reg.status === 'DISETUJUI_BELUM_PASSWORD' && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> Disetujui
+                            <CheckCircle2 className="w-3 h-3" /> <span className="sm:hidden">Disetujui</span><span className="hidden sm:inline">Disetujui (Belum Set Password)</span>
                           </span>
                         )}
                         {reg.status === 'AKTIF' && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
-                            <UserCheck className="w-3 h-3" /> Aktif
+                            <UserCheck className="w-3 h-3" /> <span className="sm:hidden">Aktif</span><span className="hidden sm:inline">Akun Aktif</span>
                           </span>
                         )}
                         {reg.status === 'DITOLAK' && (
@@ -2692,7 +2707,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                         <>
                           <div className="w-full sm:w-44">
                             <label className="text-[10px] font-bold text-slate-500 uppercase block mb-0.5">
-                              Role:
+                              <span className="sm:hidden">Role:</span><span className="hidden sm:inline">Tetapkan Role Saat Disetujui:</span>
                             </label>
                             <select
                               value={selectedApproveRoles[reg.id] || 'ANGGOTA'}
@@ -2733,7 +2748,10 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       ) : reg.status === 'DISETUJUI_BELUM_PASSWORD' ? (
                         <div className="text-right">
                           <span className="text-[11px] font-bold text-blue-700 block">Siap Aktivasi</span>
-                          <span className="text-[10px] text-slate-400">Menunggu login</span>
+                          <span className="text-[10px] text-slate-400">
+                            <span className="sm:hidden">Menunggu login</span>
+                            <span className="hidden sm:inline">Menunggu alumni login &amp; buat password</span>
+                          </span>
                         </div>
                       ) : null}
                     </div>
@@ -2783,7 +2801,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                   type="button"
                   onClick={() => setShowAuditMatrixInfo((prev) => !prev)}
                   title="Lihat Matriks Otoritas & Hak Hapus Pengguna"
-                  className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 shrink-0 transition-colors ${
+                  className={`sm:hidden px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 shrink-0 transition-colors ${
                     showAuditMatrixInfo
                       ? 'bg-red-900 text-white border-red-900'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
@@ -2795,37 +2813,35 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               </div>
             </div>
 
-            {showAuditMatrixInfo && (
-              <div className="bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-2 animate-fadeIn">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-red-800" />
-                    <span>Matriks Otoritas &amp; Hak Hapus</span>
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                    Wajib Konfirmasi + Log Audit
-                  </span>
+            <div className={`${showAuditMatrixInfo ? 'block' : 'hidden'} sm:block bg-white border border-slate-200 rounded-xl p-3 text-xs space-y-2 animate-fadeIn`}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="font-extrabold text-slate-800 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-red-800" />
+                  <span>Matriks Otoritas &amp; Hak Hapus<span className="hidden sm:inline"> Pengguna</span></span>
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  Wajib Konfirmasi + Log Audit
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px]">
+                <div className="p-2 rounded-lg bg-slate-900 text-white">
+                  <div className="font-extrabold text-amber-300">1. SUPERADMIN</div>
+                  <div className="text-slate-300 mt-0.5">Kelola, hapus, &amp; pulihkan seluruh akun.</div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px]">
-                  <div className="p-2 rounded-lg bg-slate-900 text-white">
-                    <div className="font-extrabold text-amber-300">1. SUPERADMIN</div>
-                    <div className="text-slate-300 mt-0.5">Kelola, hapus, &amp; pulihkan seluruh akun.</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-red-950">
-                    <div className="font-extrabold text-red-800">2. KETUA</div>
-                    <div className="text-red-900/80 mt-0.5">Kelola user, verifikasi, &amp; hapus Anggota / Pengurus di bawahnya.</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
-                    <div className="font-extrabold text-amber-900">3. SEKRETARIS</div>
-                    <div className="text-amber-900/80 mt-0.5">Kelola user, verifikasi, &amp; hapus akun ANGGOTA.</div>
-                  </div>
-                  <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700">
-                    <div className="font-extrabold text-slate-800">4. BENDAHARA / ANGGOTA</div>
-                    <div className="text-slate-500 mt-0.5">Tidak memiliki akses manajemen/hapus user.</div>
-                  </div>
+                <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-red-950">
+                  <div className="font-extrabold text-red-800">2. KETUA</div>
+                  <div className="text-red-900/80 mt-0.5">Kelola user, verifikasi, &amp; hapus Anggota / Pengurus di bawahnya.</div>
+                </div>
+                <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-950">
+                  <div className="font-extrabold text-amber-900">3. SEKRETARIS</div>
+                  <div className="text-amber-900/80 mt-0.5">Kelola user, verifikasi, &amp; hapus akun ANGGOTA.</div>
+                </div>
+                <div className="p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700">
+                  <div className="font-extrabold text-slate-800">4. BENDAHARA / ANGGOTA</div>
+                  <div className="text-slate-500 mt-0.5">Tidak memiliki akses manajemen/hapus user.</div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
@@ -2907,7 +2923,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400 pt-0.5">
                         <span>
-                          Oleh:{' '}
+                          <span className="sm:hidden">Oleh:</span><span className="hidden sm:inline">Dieksekusi oleh:</span>{' '}
                           <strong className="text-slate-700">
                             {resolvedActorName} ({log.actorNrp ? `${log.actorNrp} • ` : ''}{log.actorRole === 'SEKRETARIAT' ? 'SEKRETARIS' : log.actorRole})
                           </strong>
@@ -2934,7 +2950,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                           className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs flex items-center gap-1.5 shrink-0 transition-colors disabled:opacity-50"
                           title={`Penuhi permintaan lupa password dan reset ke WS96@${log.targetNrp}`}
                         >
-                          <span>🔑 Reset</span>
+                          <span className="sm:hidden">🔑 Reset</span>
+                          <span className="hidden sm:inline">🔑 Reset ke WS96@{log.targetNrp}</span>
                         </button>
                       )}
 
@@ -2947,7 +2964,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                           title="Pulihkan kembali akun pengguna yang telah dihapus ini"
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>{restoringLogId === log.id ? '...' : 'Pulihkan'}</span>
+                          <span>{restoringLogId === log.id ? '...' : <><span className="sm:hidden">Pulihkan</span><span className="hidden sm:inline">Pulihkan User</span></>}</span>
                         </button>
                       )}
                     </div>
@@ -3456,7 +3473,8 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100 font-bold text-[11px] flex items-center gap-1.5"
                   >
                     <FilePlus2 className="w-3.5 h-3.5" />
-                    <span>Biodata Lengkap</span>
+                    <span className="sm:hidden">Biodata Lengkap</span>
+                    <span className="hidden sm:inline">Edit Biodata Lengkap (4 Tahap)</span>
                   </button>
                 ) : <span />}
 
@@ -3474,7 +3492,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                     className="px-5 py-2.5 rounded-xl bg-[#b91c1c] hover:bg-red-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-md disabled:opacity-50"
                   >
                     <Check className="w-4 h-4 stroke-[2.5]" />
-                    <span>{updatingUserNrp === editingUser.nrp ? 'Menyimpan...' : 'Simpan'}</span>
+                    <span>{updatingUserNrp === editingUser.nrp ? 'Menyimpan...' : <><span className="sm:hidden">Simpan</span><span className="hidden sm:inline">Simpan Perubahan</span></>}</span>
                   </button>
                 </div>
               </div>

@@ -579,7 +579,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 onClick={onOpenFormWizard}
                 className="w-full mt-2 py-1.5 px-3 rounded-lg border border-red-800/40 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
-                Perbarui Profil
+                <span className="sm:hidden">Perbarui Profil</span>
+                <span className="hidden sm:inline">Perbarui Data Kedinasan</span>
               </button>
             </div>
           </div>
@@ -618,7 +619,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     Reset
                   </button>
                 )}
-                <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
+                <span className="lg:hidden text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
                   {jabatanList.length}
                 </span>
                 <span className="lg:hidden text-slate-400">
@@ -668,7 +669,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                           isSelected ? 'bg-white/20 text-white' : 'bg-white text-slate-900 border border-slate-200'
                         }`}
                       >
-                        {row.count}
+                        <span className="sm:hidden">{row.count}</span>
+                        <span className="hidden sm:inline">{row.count} Jabatan</span>
                       </span>
                     </button>
                   );
@@ -689,7 +691,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
             >
               <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 truncate">
                 <Award className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                <span className="truncate">Kategori Jabatan</span>
+                <span className="sm:hidden truncate">Kategori Jabatan</span>
+                <span className="hidden sm:inline truncate">Rekap Kategori Jabatan</span>
               </h4>
               <div className="flex items-center gap-2 shrink-0">
                 {selectedKategoriJabatan !== 'SEMUA' && (
@@ -704,7 +707,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     Reset
                   </button>
                 )}
-                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                <span className="lg:hidden text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                   {jabatanCategoryStats.length} Kategori
                 </span>
                 <span className="lg:hidden text-slate-400">
@@ -751,7 +754,7 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
           
           {/* Top Search & Filter Bar */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2.5 sm:gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2 truncate">
@@ -762,13 +765,16 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                     type="button"
                     onClick={() => setShowJabatanHeaderInfo((prev) => !prev)}
                     title="Penempatan aktif di Mabes Polri & 38 Polda • Urutan Default: Status (Aktif → Purna → PTDH → Almarhum) • Pangkat • Level Satker • NRP • Nama • Role"
-                    className="text-slate-400 hover:text-red-800 cursor-pointer focus:outline-none shrink-0"
+                    className="sm:hidden text-slate-400 hover:text-red-800 cursor-pointer focus:outline-none shrink-0"
                   >
                     <Info className="w-4 h-4" />
                   </button>
                 </div>
+                <p className="hidden sm:block text-xs text-slate-500 mt-0.5 truncate">
+                  Penempatan aktif di Mabes Polri &amp; 38 Polda &bull; Urutan Default: Status (Aktif &rarr; Purna &rarr; PTDH &rarr; Almarhum) &bull; Pangkat &bull; Level Satker &bull; NRP &bull; Nama &bull; Role
+                </p>
                 {showJabatanHeaderInfo && (
-                  <p className="text-[11px] text-slate-600 mt-1.5 p-2.5 rounded-lg bg-slate-50 border border-slate-200 leading-relaxed">
+                  <p className="sm:hidden text-[11px] text-slate-600 mt-1.5 p-2.5 rounded-lg bg-slate-50 border border-slate-200 leading-relaxed">
                     Penempatan Mabes Polri &amp; 38 Polda. Urutan Default: <strong>Status (Aktif &rarr; Purna &rarr; PTDH &rarr; Almarhum) &bull; Pangkat &bull; Level Satker &bull; NRP &bull; Nama &bull; Role</strong>.
                   </p>
                 )}
@@ -799,22 +805,22 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 <select
                   value={selectedPolda}
                   onChange={(e) => setSelectedPolda(e.target.value)}
-                  className="px-2.5 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800/30"
+                  className="px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold border border-slate-200 rounded-lg bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-800/30"
                 >
-                  <option value="SEMUA">Semua Wilayah</option>
+                  <option value="SEMUA">Filter Wilayah (Semua)</option>
                   {DAFTAR_38_POLDA.map((p) => (
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
 
-                <div className="relative flex-1 min-w-[180px]">
+                <div className="relative flex-1 min-w-[180px] sm:min-w-[200px]">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Cari nama, NRP, jabatan, satker..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800/30 focus:border-red-800"
+                    className="w-full pl-9 pr-3 py-1.5 sm:py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-800/30 focus:border-red-800"
                   />
                 </div>
               </div>
@@ -854,11 +860,11 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                 const angkatanRole = resolveRoleForBadge(item.perwiraNrp);
                 const jabatanAngkatanBadge =
                   angkatanRole === 'KETUA'
-                    ? { label: 'Ketua Angkatan', cls: 'bg-red-100 text-red-900 border-red-300' }
+                    ? { shortLabel: 'Ketua Angkatan', fullLabel: 'Jabatan Angkatan: Ketua Angkatan', cls: 'bg-red-100 text-red-900 border-red-300' }
                     : angkatanRole === 'SEKRETARIAT'
-                    ? { label: 'Sekretaris', cls: 'bg-amber-100 text-amber-900 border-amber-300' }
+                    ? { shortLabel: 'Sekretaris', fullLabel: 'Jabatan Angkatan: Sekretaris Angkatan', cls: 'bg-amber-100 text-amber-900 border-amber-300' }
                     : angkatanRole === 'BENDAHARA'
-                    ? { label: 'Bendahara', cls: 'bg-amber-100 text-amber-900 border-amber-300' }
+                    ? { shortLabel: 'Bendahara', fullLabel: 'Jabatan Angkatan: Bendahara Angkatan', cls: 'bg-amber-100 text-amber-900 border-amber-300' }
                     : null;
 
                 return (
@@ -898,7 +904,8 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${jabatanAngkatanBadge.cls}`}
                               >
-                                {jabatanAngkatanBadge.label}
+                                <span className="sm:hidden">{jabatanAngkatanBadge.shortLabel}</span>
+                                <span className="hidden sm:inline">{jabatanAngkatanBadge.fullLabel}</span>
                               </span>
                             )}
                           </div>
@@ -932,24 +939,27 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                       {/* Status Badge */}
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         {item.statusKedinasan === 'ALMARHUM' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                            🕊️ Almarhum
+                          <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+                            <span className="sm:hidden">🕊️ Almarhum</span>
+                            <span className="hidden sm:inline">🕊️ Almarhum / Gugur</span>
                           </span>
                         ) : item.statusKedinasan === 'PURNA_TUGAS' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            🎖️ Purna Tugas
+                          <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            <span className="sm:hidden">🎖️ Purna Tugas</span>
+                            <span className="hidden sm:inline">🎖️ Purna Tugas / Pensiun</span>
                           </span>
                         ) : item.statusKedinasan === 'PTDH' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                          <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
                             ⚠️ PTDH
                           </span>
                         ) : item.isCurrent ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
-                            Aktif
+                            <span className="sm:hidden">Aktif</span>
+                            <span className="hidden sm:inline">Menjabat Sekarang</span>
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                          <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
                             {item.tahunMulai} - {item.tahunSelesai || 'Selesai'}
                           </span>
                         )}
@@ -971,7 +981,10 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                       <div className="mt-2.5 sm:ml-[62px] p-2.5 rounded-lg bg-amber-50/60 border border-amber-200/80 text-xs text-amber-900 flex items-start gap-2">
                         <Award className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
                         <div>
-                          <span className="font-bold">Prestasi: </span>
+                          <span className="font-bold">
+                            <span className="sm:hidden">Prestasi: </span>
+                            <span className="hidden sm:inline">Prestasi Operasional / Inovasi: </span>
+                          </span>
                           <span>{item.prestasiOperasional}</span>
                         </div>
                       </div>
@@ -983,25 +996,27 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                         Dasar: <span className="text-slate-600 font-semibold">{item.dasarTR || '-'}</span>
                       </span>
 
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                         {matchedMember && (
                           <button
                             onClick={() => onSelectMember && onSelectMember(matchedMember)}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs transition-colors flex items-center gap-1"
+                            className="px-2.5 sm:px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs transition-colors flex items-center gap-1"
                             title="Lihat Profil Lengkap"
                           >
-                            <span>Profil</span>
+                            <span className="sm:hidden">Profil</span>
+                            <span className="hidden sm:inline">Lihat Profil</span>
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )}
                         {matchedMember && onOpenChat && item.statusKedinasan !== 'ALMARHUM' && (
                           <button
                             onClick={() => onOpenChat(matchedMember)}
-                            className="px-2.5 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
+                            className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs"
                             title="Kirim Pesan / Obrolan Cepat"
                           >
                             <MessageSquare className="w-3.5 h-3.5" />
-                            <span>Pesan</span>
+                            <span className="sm:hidden">Pesan</span>
+                            <span className="hidden sm:inline">Obrolan Cepat</span>
                           </button>
                         )}
                         {matchedMember?.noHp && item.statusKedinasan !== 'ALMARHUM' && (
@@ -1009,11 +1024,12 @@ export const LinkedInJobsPage: React.FC<LinkedInJobsPageProps> = ({
                             href={`https://wa.me/${matchedMember.noHp.replace(/[^0-9]/g, '').replace(/^0/, '62')}?text=Halo%20Komandan%20${encodeURIComponent(item.namaPerwira)}%2C%20salam%20Wira%20Satya%2096`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1 shadow-2xs"
+                            className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center gap-1 sm:gap-1.5 shadow-2xs"
                             title="Hubungi via WhatsApp"
                           >
                             <Phone className="w-3.5 h-3.5" />
-                            <span>WA</span>
+                            <span className="sm:hidden">WA</span>
+                            <span className="hidden sm:inline">WhatsApp</span>
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         )}

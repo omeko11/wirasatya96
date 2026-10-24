@@ -208,10 +208,11 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
         <button
           onClick={handleExportCSV}
           title="Unduh Rekapitulasi Anev ke CSV"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-bold text-xs shadow-lg transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-bold text-xs shadow-lg transition-all self-start sm:self-auto"
         >
           <Download className="w-4 h-4" />
-          <span>CSV</span>
+          <span className="sm:hidden">CSV</span>
+          <span className="hidden sm:inline">Unduh CSV</span>
         </button>
       </div>
 
@@ -269,10 +270,10 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       {/* Actionable Solution Tabs */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Sub-tab Navigation */}
-        <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-1.5 overflow-x-auto">
+        <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-1.5 sm:gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveSubTab('kesehatan')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'kesehatan'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
@@ -284,50 +285,54 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
 
           <button
             onClick={() => setActiveSubTab('hunian')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'hunian'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Home className="w-4 h-4" />
-            Hunian ({stillRenting.length})
+            <span className="sm:hidden">Hunian ({stillRenting.length})</span>
+            <span className="hidden sm:inline">Hunian &amp; Purna Tugas ({stillRenting.length})</span>
           </button>
 
           <button
             onClick={() => setActiveSubTab('usaha')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'usaha'
                 ? 'bg-emerald-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Briefcase className="w-4 h-4" />
-            Usaha ({withBusiness.length})
+            <span className="sm:hidden">Usaha ({withBusiness.length})</span>
+            <span className="hidden sm:inline">Katalog Usaha ({withBusiness.length})</span>
           </button>
 
           <button
             onClick={() => setActiveSubTab('pemetaan')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'pemetaan'
                 ? 'bg-blue-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <MapPin className="w-4 h-4" />
-            Wilayah ({regionalStats.length})
+            <span className="sm:hidden">Wilayah ({regionalStats.length})</span>
+            <span className="hidden sm:inline">Sebaran Wilayah ({regionalStats.length})</span>
           </button>
 
           <button
             onClick={() => setActiveSubTab('keuangan')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'keuangan'
                 ? 'bg-purple-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Wallet className="w-4 h-4" />
-            Pendidikan
+            <span className="sm:hidden">Pendidikan</span>
+            <span className="hidden sm:inline">Pendidikan &amp; Pensiun</span>
           </button>
         </div>
 

@@ -14,7 +14,9 @@ import {
   Building2,
   Calendar,
   HeartHandshake,
-  MessageSquare
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface LinkedInNetworkPageProps {
@@ -36,6 +38,8 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
 }) => {
   const [searchPolda, setSearchPolda] = useState('SEMUA');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileOpenKelola, setMobileOpenKelola] = useState(false);
+  const [mobileOpenAkses, setMobileOpenAkses] = useState(false);
 
   // Check role permission: SUPERADMIN, KETUA, and SEKRETARIAT have full editing rights
   const isLeadership = ['SUPERADMIN', 'KETUA', 'SEKRETARIAT'].includes(currentUser.role);
@@ -72,19 +76,26 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
         {/* ============================================================ */}
         {/* LEFT RAIL (lg:col-span-4): FILTER JARINGAN & STATUS           */}
         {/* ============================================================ */}
-        <div className="lg:col-span-4 space-y-4">
-          
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-            <div className="pb-2 border-b border-slate-100 flex items-center justify-between">
+        <div className="lg:col-span-4 space-y-3 sm:space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3.5 sm:p-4">
+            <div
+              onClick={() => setMobileOpenKelola((prev) => !prev)}
+              className="flex items-center justify-between cursor-pointer lg:cursor-default select-none"
+            >
               <h3 className="text-sm font-bold text-slate-900">
                 Kelola Jaringan Leting
               </h3>
-              <span className="text-[10px] font-bold text-red-900 bg-red-50 px-2 py-0.5 rounded border border-red-200">
-                {currentUser.role}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-red-900 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                  {currentUser.role}
+                </span>
+                <span className="lg:hidden text-slate-400">
+                  {mobileOpenKelola ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-1 text-xs">
+            <div className={`${mobileOpenKelola ? 'block' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100 space-y-1 text-xs`}>
               <button 
                 onClick={() => setSearchPolda('SEMUA')}
                 className={`w-full py-2 px-2.5 rounded-lg flex items-center justify-between transition-colors ${
@@ -131,7 +142,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
               <div className="w-full py-2 px-2.5 flex items-center justify-between text-slate-700">
                 <div className="flex items-center gap-2.5">
                   <Calendar className="w-4 h-4 text-purple-600" />
-                  <span>Agenda Reuni & Temu Letting</span>
+                  <span>Agenda Reuni &amp; Temu Letting</span>
                 </div>
                 <span className="font-bold text-slate-900">3 Acara</span>
               </div>
@@ -146,8 +157,8 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
             </div>
           </div>
 
-          {/* Slogan Banner */}
-          <div className="p-4 bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 text-white rounded-xl shadow-sm text-center space-y-1">
+          {/* Slogan Banner (Tampil di PC) */}
+          <div className="hidden lg:block p-4 bg-gradient-to-r from-red-950 via-slate-900 to-amber-950 text-white rounded-xl shadow-sm text-center space-y-1">
             <span className="text-[11px] font-black text-amber-300 tracking-wider">
               BATALYON WIRA SATYA AKPOL 1996
             </span>
@@ -157,12 +168,20 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
           </div>
 
           {/* Hak Akses Info */}
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
-            <div className="font-bold text-slate-800 flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5 text-red-800" />
-              <span>Kewenangan Akses ({currentUser.role})</span>
+          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+            <div
+              onClick={() => setMobileOpenAkses((prev) => !prev)}
+              className="font-bold text-slate-800 flex items-center justify-between cursor-pointer lg:cursor-default select-none"
+            >
+              <span className="flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-red-800" />
+                <span>Kewenangan Akses ({currentUser.role})</span>
+              </span>
+              <span className="lg:hidden text-slate-400">
+                {mobileOpenAkses ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </span>
             </div>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
+            <p className={`${mobileOpenAkses ? 'block' : 'hidden'} lg:block text-[11px] text-slate-500 leading-relaxed pt-2 mt-2 border-t border-slate-200/70`}>
               {isLeadership
                 ? 'Sebagai Pengurus / Pimpinan, Anda memiliki wewenang untuk melihat, memverifikasi, dan mengedit data seluruh anggota leting se-Indonesia.'
                 : 'Sebagai Anggota, Anda dapat melihat direktori seluruh rekan leting dan hanya dapat memperbarui data profil Anda sendiri.'}
@@ -182,10 +201,14 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Users className="w-5 h-5 text-red-800" />
-                  Direktori Jaringan ({filteredMembers.length})
+                  <span className="sm:hidden">Direktori Jaringan ({filteredMembers.length})</span>
+                  <span className="hidden sm:inline">Direktori Jaringan Leting Wira Satya 96</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Perwira leting Akpol 1996 di seluruh wilayah penugasan.
+                  <span className="sm:hidden">Perwira leting Akpol 1996 di seluruh wilayah penugasan.</span>
+                  <span className="hidden sm:inline">
+                    Menampilkan <b>{filteredMembers.length}</b> perwira leting Akpol 1996 di seluruh wilayah penugasan.
+                  </span>
                 </p>
               </div>
 
@@ -197,7 +220,8 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   className="px-3.5 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap self-start sm:self-auto"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Tambah</span>
+                  <span className="sm:hidden">Tambah</span>
+                  <span className="hidden sm:inline">Input Anggota Baru</span>
                 </button>
               )}
             </div>
@@ -220,7 +244,8 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   onClick={() => setSearchPolda('SEMUA')}
                   className="text-xs text-red-600 font-bold hover:underline px-2 whitespace-nowrap"
                 >
-                  Reset
+                  <span className="sm:hidden">Reset</span>
+                  <span className="hidden sm:inline">Reset Filter</span>
                 </button>
               )}
             </div>

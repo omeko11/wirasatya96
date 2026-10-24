@@ -964,11 +964,19 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   <div className="flex items-center justify-between gap-2 text-slate-500">
                     <span className="shrink-0">Jabatan Angkatan:</span>
                     <span className="font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
-                      {currentUser.role === 'KETUA'
-                        ? 'Ketua Angkatan'
-                        : currentUser.role === 'SEKRETARIAT'
-                        ? 'Sekretaris'
-                        : 'Bendahara'}
+                      {currentUser.role === 'KETUA' ? (
+                        'Ketua Angkatan'
+                      ) : currentUser.role === 'SEKRETARIAT' ? (
+                        <>
+                          <span className="sm:hidden">Sekretaris</span>
+                          <span className="hidden sm:inline">Sekretaris Angkatan</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="sm:hidden">Bendahara</span>
+                          <span className="hidden sm:inline">Bendahara Angkatan</span>
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
@@ -984,7 +992,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 onClick={() => setSelectedMember(currentMemberObj)}
                 className="w-full mt-3 py-1.5 px-3 rounded-lg border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
-                Buka Profil Saya →
+                <span className="lg:hidden">Buka Profil Saya →</span>
+                <span className="hidden lg:inline">Lihat Profil Saya</span>
               </button>
             </div>
           </div>
@@ -1027,7 +1036,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             )}
 
             <div className={`${mobileOpenTod ? 'block' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100 space-y-2.5`}>
-              <div className="grid grid-cols-3 gap-1.5 text-center">
+              {/* Ringkasan angka penempatan khusus saat di-expand di HP */}
+              <div className="lg:hidden grid grid-cols-3 gap-1.5 text-center">
                 <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
                   <div className="text-xs font-extrabold text-slate-900">{todSummary.mabes}</div>
                   <div className="text-[10px] text-slate-500">Mabes</div>
@@ -1051,6 +1061,16 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Slogan Banner khusus tampilan PC (di kolom kiri seperti semula) */}
+          <div className="hidden lg:block p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
+            <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
+              #SELALUBAHAGIA
+            </span>
+            <p className="text-[10px] text-amber-800 mt-0.5">
+              Guyub, Peduli, &amp; Mengabdi Sejak 1996
+            </p>
           </div>
         </div>
 
@@ -1109,7 +1129,14 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                             }`}
                           >
                             {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                            {isUrgent ? 'ATENSI' : 'TERPANTAU'}
+                            {isUrgent ? (
+                              <>
+                                <span className="sm:hidden">ATENSI</span>
+                                <span className="hidden sm:inline">ATENSI KHUSUS</span>
+                              </>
+                            ) : (
+                              'TERPANTAU'
+                            )}
                           </span>
                         </div>
 
@@ -1125,13 +1152,16 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                             rel="noreferrer"
                             className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
                           >
-                            <Phone className="w-3 h-3" /> Kirim Doa
+                            <Phone className="w-3 h-3" />
+                            <span className="sm:hidden">Kirim Doa</span>
+                            <span className="hidden sm:inline">Kirim Doa &amp; Semangat</span>
                           </a>
                           <button
                             onClick={() => setSelectedMember(m)}
                             className="text-[10px] font-bold text-red-900 hover:underline"
                           >
-                            Detail →
+                            <span className="sm:hidden">Detail →</span>
+                            <span className="hidden sm:inline">Detail Medis →</span>
                           </button>
                         </div>
                       </div>
@@ -1147,7 +1177,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               {onNavigateToHealth && (
                 <button
                   onClick={onNavigateToHealth}
-                  className="w-full py-1.5 px-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-900 border border-red-200 font-bold text-xs transition-colors"
+                  className="lg:hidden w-full py-1.5 px-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-900 border border-red-200 font-bold text-xs transition-colors"
                 >
                   Buka Menu Kesehatan →
                 </button>
@@ -1275,7 +1305,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                     onClick={onNavigateToBendahara}
                     className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
                   >
-                    Buka Bendahara →
+                    <span className="sm:hidden">Buka Bendahara →</span>
+                    <span className="hidden sm:inline">Buka Dana Sosial &amp; Investasi →</span>
                   </button>
                 )}
                 <span
@@ -1288,12 +1319,19 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Widget 3: Info Footer khusus tampilan PC (di kolom kanan seperti semula) */}
+          <div className="hidden lg:block text-center text-[10px] text-slate-400 space-y-0.5 py-2">
+            <p className="font-extrabold text-slate-500 tracking-wide">BATALYON WIRA SATYA 1996</p>
+            <p>Akademi Kepolisian Negara Republik Indonesia</p>
+            <p>Portal Internal Alumni 1996 &copy; 2026</p>
+          </div>
         </div>
 
         {/* ============================================================ */}
         {/* 3. CENTER FEED (lg:col-span-6, order-3 di HP):               */}
         {/*    Card Posting -> Linimasa -> Feed Scroll -> #SELALUBAHAGIA */}
-        {/*    -> BATALYON WIRA SATYA 1996 (Paling Bawah)                */}
+        {/*    -> BATALYON WIRA SATYA 1996 (Paling Bawah di HP)          */}
         {/* ============================================================ */}
         <div className="order-3 lg:order-2 lg:col-span-6 space-y-4 scroll-mt-20">
           {/* Quick Search Results if user typed in Navbar Search */}
@@ -1302,14 +1340,18 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
                 <span className="font-bold text-slate-900 flex items-center gap-1.5">
                   <Search className="w-3.5 h-3.5 text-red-800 shrink-0" />
-                  <span className="truncate">Hasil Pencarian: &ldquo;{externalSearch}&rdquo;</span>
+                  <span className="truncate">
+                    <span className="sm:hidden">Hasil Pencarian: &ldquo;{externalSearch}&rdquo;</span>
+                    <span className="hidden sm:inline">Hasil Pencarian Cepat: &ldquo;{externalSearch}&rdquo;</span>
+                  </span>
                 </span>
                 {onNavigateToJabatan && (
                   <button
                     onClick={onNavigateToJabatan}
                     className="text-red-800 font-bold hover:underline flex items-center gap-0.5 shrink-0"
                   >
-                    <span>Menu Jabatan</span>
+                    <span className="sm:hidden">Menu Jabatan</span>
+                    <span className="hidden sm:inline">Buka Menu Jabatan</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -1343,7 +1385,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                         </div>
                       </div>
                       <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded flex-shrink-0">
-                        Profil
+                        <span className="sm:hidden">Profil</span>
+                        <span className="hidden sm:inline">Lihat Profil</span>
                       </span>
                     </div>
                   ))}
@@ -1405,7 +1448,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="flex items-center gap-1.5 sm:gap-2 hover:text-amber-600 transition-colors p-1 whitespace-nowrap"
               >
                 <PenSquare className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Artikel</span>
+                <span className="sm:hidden">Artikel</span>
+                <span className="hidden sm:inline">Tulis Artikel</span>
               </button>
             </div>
           </div>
@@ -1452,7 +1496,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             ) : infiniteFeedPosts.length > 0 ? (
               <div
                 onScroll={handleFeedScroll}
-                className="max-h-[68vh] sm:max-h-[75vh] overflow-y-auto pr-1 space-y-4 overscroll-contain rounded-xl"
+                className="max-h-[68vh] lg:max-h-none overflow-y-auto lg:overflow-visible pr-1 lg:pr-0 space-y-4 overscroll-contain rounded-xl"
               >
                 {infiniteFeedPosts.map(({ post, renderKey }) => (
                   <LinkedInPostCard
@@ -1481,14 +1525,14 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   }}
                   className="text-xs font-bold text-red-900 hover:underline"
                 >
-                  Buat Postingan
+                  Buat Postingan Baru
                 </button>
               </div>
             )}
           </div>
 
-          {/* Di atas tulisan paling bawah: Card #SELALUBAHAGIA */}
-          <div className="p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
+          {/* Di atas tulisan paling bawah (Khusus HP): Card #SELALUBAHAGIA */}
+          <div className="lg:hidden p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
             <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
               #SELALUBAHAGIA
             </span>
@@ -1497,8 +1541,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </p>
           </div>
 
-          {/* Paling Bawah: Tulisan BATALYON WIRA SATYA 1996 */}
-          <div className="text-center text-[10px] text-slate-400 space-y-0.5 py-2">
+          {/* Paling Bawah (Khusus HP): Tulisan BATALYON WIRA SATYA 1996 */}
+          <div className="lg:hidden text-center text-[10px] text-slate-400 space-y-0.5 py-2">
             <p className="font-extrabold text-slate-500 tracking-wide">BATALYON WIRA SATYA 1996</p>
             <p>Akademi Kepolisian Negara Republik Indonesia</p>
             <p>Portal Internal Alumni 1996 &copy; 2026</p>

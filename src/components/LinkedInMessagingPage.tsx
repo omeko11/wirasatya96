@@ -514,7 +514,8 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              Aktif ({activeChatCount})
+              <span className="sm:hidden">Aktif ({activeChatCount})</span>
+              <span className="hidden sm:inline">Obrolan Aktif ({activeChatCount})</span>
             </button>
             <button
               onClick={() => {
@@ -539,7 +540,8 @@ export const LinkedInMessagingPage: React.FC<LinkedInMessagingPageProps> = ({
                 className="px-2.5 py-1 rounded-full font-bold transition-colors whitespace-nowrap bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1"
                 title="Klik untuk kembali ke Obrolan Aktif"
               >
-                <span>Kontak ({contacts.length})</span>
+                <span className="sm:hidden">Kontak ({contacts.length})</span>
+                <span className="hidden sm:inline">Direktori Kontak ({contacts.length})</span>
                 <X className="w-3 h-3" />
               </button>
             )}
