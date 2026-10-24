@@ -45,36 +45,183 @@ export interface FinanceCategoryOption {
   label: string;
 }
 
+export type CampaignCategory =
+  | 'ANAK_YATIM'
+  | 'ANGGOTA_SAKIT'
+  | 'ANGGOTA_MD'
+  | 'EVENT_BAKSOS'
+  | 'LAINNYA';
+
+export interface FundraisingCampaign {
+  id: string;
+  title: string;
+  category: CampaignCategory;
+  targetAmount: number;
+  collectedAmount: number;
+  disbursedAmount: number;
+  donorCount: number;
+  description: string;
+  status: 'AKTIF' | 'TERCAPAI' | 'SELESAI';
+  deadline?: string;
+  updatedAt: string;
+}
+
+export interface InvestmentParticipant {
+  id: string;
+  nrp: string;
+  namaLengkap: string;
+  pangkat: string;
+  polda: string;
+  namaProgram: string;
+  nominalPenyertaan: number;
+  estimasiNilaiSaatIni: number;
+  tanggalBergabung: string;
+  statusPartisipasi: 'AKTIF' | 'CAIR';
+  catatan: string;
+}
+
 export interface FinanceConfig {
   iuranWajibPerBulan: number;
   tahunBuku: number;
   subKategoriMasuk: FinanceCategoryOption[];
   subKategoriKeluar: FinanceCategoryOption[];
+  campaigns?: FundraisingCampaign[];
+  investmentParticipants?: InvestmentParticipant[];
   updatedAt: string;
   updatedBy: string;
 }
 
+export const DEFAULT_CAMPAIGNS: FundraisingCampaign[] = [
+  {
+    id: 'cmp-anak-yatim',
+    title: 'Santunan & Beasiswa Anak Yatim Keluarga Besar WS96',
+    category: 'ANAK_YATIM',
+    targetAmount: 100000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Program dana sosial sukarela untuk santunan berkala dan dukungan biaya pendidikan putra-putri rekan leting Wira Satya 96 yang telah mendahului (Almarhum).',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cmp-anggota-sakit',
+    title: 'Dana Solidaritas Besuk & Bantuan Medis Anggota Sakit',
+    category: 'ANGGOTA_SAKIT',
+    targetAmount: 75000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Gotong royong dana sosial untuk besuk, pendampingan rawat inap, dan tali asih pemulihan medis rekan-rekan Batalyon Wira Satya 96 yang sedang sakit.',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cmp-anggota-md',
+    title: 'Tali Asih Duka Cita & Santunan Anggota yang MD',
+    category: 'ANGGOTA_MD',
+    targetAmount: 100000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Dana sosial kehormatan untuk tali asih duka cita, karangan bunga, dan santunan keluarga rekan Wira Satya 96 yang Meninggal Dunia (MD).',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cmp-event-baksos',
+    title: 'Milestone Baksos & Kegiatan Silaturahmi Leting WS96',
+    category: 'EVENT_BAKSOS',
+    targetAmount: 150000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Penggalangan dana sukarela (milestone event) untuk kegiatan Bakti Sosial, Reuni, dan acara kebersamaan Batalyon Wira Satya 96.',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 const DEFAULT_FINANCE_CONFIG: FinanceConfig = {
-  iuranWajibPerBulan: 250000,
+  iuranWajibPerBulan: 0,
   tahunBuku: 2026,
   subKategoriMasuk: [
-    { code: 'IURAN_WAJIB_BULANAN', label: 'Iuran Wajib Bulanan Anggota' },
-    { code: 'SUMBANGAN_SUKARELA', label: 'Sumbangan Sukarela / Donasi Anggota' },
-    { code: 'PENCAIRAN_ASET_INVESTASI', label: 'Bagi Hasil / Pencairan Aset Berharga (SBN/Valas/Crypto)' },
-    { code: 'DANA_KEGIATAN_REUNI', label: 'Sumbangan Khusus Kegiatan / Reuni' },
+    { code: 'DANA_SOSIAL_YATIM', label: 'Donasi Sosial: Santunan Anak Yatim' },
+    { code: 'DANA_SOSIAL_SAKIT', label: 'Donasi Sosial: Bantuan Anggota Sakit' },
+    { code: 'DANA_SOSIAL_MD', label: 'Donasi Sosial: Santunan Anggota MD (Duka Cita)' },
+    { code: 'DONASI_MILESTONE_EVENT', label: 'Penggalangan Dana Event / Milestone Baksos' },
+    { code: 'SUMBANGAN_SUKARELA', label: 'Kas Sukarela / Komponen Cadangan Leting' },
+    { code: 'DANA_INVESTASI_ANGGOTA', label: 'Penyertaan Dana Investasi (Bagi yang Mau Ikut)' },
+    { code: 'PENCAIRAN_ASET_INVESTASI', label: 'Bagi Hasil / Pencairan Aset & Investasi' },
     { code: 'PEMASUKAN_LAINNYA', label: 'Penerimaan Kas Lainnya' },
   ],
   subKategoriKeluar: [
-    { code: 'SANTUNAN_KESEHATAN', label: 'Santunan Kesehatan / Personel Sakit' },
-    { code: 'SANTUNAN_DUKA_CITA', label: 'Santunan Duka Cita Keluarga Besar' },
-    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Bantuan Pendidikan Putra-Putri Anggota' },
-    { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Pembelian Aset Berharga (SBN / Valas / Crypto / Emas)' },
-    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Operasional & Kesekretariatan' },
-    { code: 'KEGIATAN_REUNI_LETING', label: 'Biaya Kegiatan Reuni & Silaturahmi' },
+    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Penyaluran Santunan Anak Yatim & Pendidikan' },
+    { code: 'SANTUNAN_KESEHATAN', label: 'Penyaluran Bantuan Anggota Sakit / Medis' },
+    { code: 'SANTUNAN_DUKA_CITA', label: 'Penyaluran Santunan Anggota MD / Duka Cita' },
+    { code: 'KEGIATAN_REUNI_LETING', label: 'Penyaluran Dana Event / Baksos / Reuni' },
+    { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Penempatan Dana Investasi & Pembelian Aset' },
+    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Pengeluaran Kas Cadangan / Operasional' },
     { code: 'PENGELUARAN_LAINNYA', label: 'Pengeluaran Kas Lainnya' },
   ],
+  campaigns: DEFAULT_CAMPAIGNS,
+  investmentParticipants: [],
   updatedAt: new Date().toISOString(),
   updatedBy: 'Bendahara',
+};
+
+const CAMPAIGN_CATEGORY_META: Record<
+  CampaignCategory,
+  { label: string; icon: string; badge: string; barGradient: string; defaultInflowCode: string; defaultOutflowCode: string }
+> = {
+  ANAK_YATIM: {
+    label: 'Bantu Anak Yatim & Beasiswa',
+    icon: '🤲',
+    badge: 'bg-purple-100 text-purple-800 border-purple-200',
+    barGradient: 'from-purple-600 to-indigo-600',
+    defaultInflowCode: 'DANA_SOSIAL_YATIM',
+    defaultOutflowCode: 'BANTUAN_PENDIDIKAN_ANAK',
+  },
+  ANGGOTA_SAKIT: {
+    label: 'Bantu Anggota yang Sakit',
+    icon: '🏥',
+    badge: 'bg-red-100 text-red-800 border-red-200',
+    barGradient: 'from-red-600 to-rose-600',
+    defaultInflowCode: 'DANA_SOSIAL_SAKIT',
+    defaultOutflowCode: 'SANTUNAN_KESEHATAN',
+  },
+  ANGGOTA_MD: {
+    label: 'Bantu Anggota yang MD (Duka Cita)',
+    icon: '🕊️',
+    badge: 'bg-amber-100 text-amber-900 border-amber-200',
+    barGradient: 'from-amber-500 to-orange-600',
+    defaultInflowCode: 'DANA_SOSIAL_MD',
+    defaultOutflowCode: 'SANTUNAN_DUKA_CITA',
+  },
+  EVENT_BAKSOS: {
+    label: 'Event Leting / Baksos / Milestone',
+    icon: '🤝',
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    barGradient: 'from-emerald-600 to-teal-600',
+    defaultInflowCode: 'DONASI_MILESTONE_EVENT',
+    defaultOutflowCode: 'KEGIATAN_REUNI_LETING',
+  },
+  LAINNYA: {
+    label: 'Program Sosial Lainnya',
+    icon: '🎯',
+    badge: 'bg-blue-100 text-blue-800 border-blue-200',
+    barGradient: 'from-blue-600 to-cyan-600',
+    defaultInflowCode: 'SUMBANGAN_SUKARELA',
+    defaultOutflowCode: 'OPERASIONAL_PAGUYUBAN',
+  },
 };
 
 interface BendaharaPortalProps {
@@ -147,10 +294,11 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   onDeleteAsset,
   onUpdateFinanceConfig,
 }) => {
-  const [activeTab, setActiveTab] = useState<'bukuKas' | 'aset' | 'iuran' | 'santunan' | 'pendidikan'>('bukuKas');
+  const [activeTab, setActiveTab] = useState<'milestone' | 'aset' | 'bukuKas' | 'santunan' | 'pendidikan'>('milestone');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'SEMUA' | 'MASUK' | 'KELUAR'>('SEMUA');
   const [showReadOnlyInfo, setShowReadOnlyInfo] = useState(false);
+  const [campaignFilter, setCampaignFilter] = useState<'SEMUA' | CampaignCategory>('SEMUA');
 
   const filterOutSuperadminIuran = (list: IuranAnggota[]) => {
     const nonAktifMemberNrps = new Set<string>(NON_AKTIF_IURAN_NRPS);
@@ -175,6 +323,55 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [localAssets, setLocalAssets] = useState<AssetPortfolioItem[]>(propAssets || []);
   const [financeConfig, setFinanceConfig] = useState<FinanceConfig>(propFinanceConfig || DEFAULT_FINANCE_CONFIG);
   const [assetCategoryFilter, setAssetCategoryFilter] = useState<'SEMUA' | AssetCategory>('SEMUA');
+
+  // Derived Campaigns & Investment Participants from financeConfig
+  const campaigns: FundraisingCampaign[] =
+    Array.isArray(financeConfig.campaigns) && financeConfig.campaigns.length > 0
+      ? financeConfig.campaigns
+      : DEFAULT_CAMPAIGNS;
+  const investmentParticipants: InvestmentParticipant[] = Array.isArray(financeConfig.investmentParticipants)
+    ? financeConfig.investmentParticipants
+    : [];
+
+  // Modal State for Create / Edit Fundraising Campaign (Milestone ala Kitabisa / Saweria)
+  const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [cmpTitle, setCmpTitle] = useState('');
+  const [cmpCategory, setCmpCategory] = useState<CampaignCategory>('ANAK_YATIM');
+  const [cmpTarget, setCmpTarget] = useState<number>(100000000);
+  const [cmpCollected, setCmpCollected] = useState<number>(0);
+  const [cmpDisbursed, setCmpDisbursed] = useState<number>(0);
+  const [cmpDonors, setCmpDonors] = useState<number>(0);
+  const [cmpDeadline, setCmpDeadline] = useState<string>('2026-12-31');
+  const [cmpStatus, setCmpStatus] = useState<'AKTIF' | 'TERCAPAI' | 'SELESAI'>('AKTIF');
+  const [cmpDesc, setCmpDesc] = useState('');
+
+  // Modal State for Quick Donation / Disbursement on a Milestone Campaign
+  const [milestoneActionModal, setMilestoneActionModal] = useState<{
+    campaign: FundraisingCampaign;
+    mode: 'DONASI' | 'SALURKAN';
+  } | null>(null);
+  const [mlsNominal, setMlsNominal] = useState<number>(1000000);
+  const [mlsPihak, setMlsPihak] = useState<string>('');
+  const [mlsNrp, setMlsNrp] = useState<string>('');
+  const [mlsKeterangan, setMlsKeterangan] = useState<string>('');
+  const [mlsMemberQuery, setMlsMemberQuery] = useState<string>('');
+
+  // Modal State for Voluntary Investment Participant ("Dana Investasi — Bagi yang Mau Ikut")
+  const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
+  const [editingInvestId, setEditingInvestId] = useState<string | null>(null);
+  const [invNrp, setInvNrp] = useState<string>('');
+  const [invNama, setInvNama] = useState<string>('');
+  const [invPangkat, setInvPangkat] = useState<string>('Kombes Pol.');
+  const [invPolda, setInvPolda] = useState<string>('MABES POLRI');
+  const [invProgram, setInvProgram] = useState<string>('Pool Investasi Bersama Wira Satya 96');
+  const [invNominal, setInvNominal] = useState<number>(10000000);
+  const [invEstimasi, setInvEstimasi] = useState<number>(10000000);
+  const [invTanggal, setInvTanggal] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [invStatus, setInvStatus] = useState<'AKTIF' | 'CAIR'>('AKTIF');
+  const [invCatatan, setInvCatatan] = useState<string>('');
+  const [invRecordToKas, setInvRecordToKas] = useState<boolean>(true);
+  const [invMemberQuery, setInvMemberQuery] = useState<string>('');
 
   useEffect(() => {
     setLocalSummary(financeSummary);
@@ -471,12 +668,281 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       ? allTimeSaldoKas
       : totalKasMasuk - totalKasKeluar;
   const totalValuasiAset = periodFilteredAssets.reduce((sum, a) => sum + (Number(a.estimasiNilaiIdr) || 0), 0);
-  const totalKekayaanGabungan = effectiveSaldoKas + totalValuasiAset;
+  const totalDanaInvestasiPartisipan = investmentParticipants
+    .filter((p) => p.statusPartisipasi !== 'CAIR')
+    .reduce((sum, p) => sum + (Number(p.estimasiNilaiSaatIni || p.nominalPenyertaan) || 0), 0);
+  const totalKekayaanGabungan = effectiveSaldoKas + totalValuasiAset + totalDanaInvestasiPartisipan;
 
-  const lunasCount = localIuranList.filter((i) => i.status === 'LUNAS').length;
-  const sebagianCount = localIuranList.filter((i) => i.status === 'SEBAGIAN').length;
-  const iuranCompliancePct =
-    localIuranList.length > 0 ? ((lunasCount / localIuranList.length) * 100).toFixed(1) : '0.0';
+  // Milestone Dana Sosial Totals
+  const totalTargetMilestone = campaigns.reduce((sum, c) => sum + (Number(c.targetAmount) || 0), 0);
+  const totalTerkumpulMilestone = campaigns.reduce((sum, c) => sum + (Number(c.collectedAmount) || 0), 0);
+  const totalDisalurkanMilestone = campaigns.reduce((sum, c) => sum + (Number(c.disbursedAmount) || 0), 0);
+  const milestoneOverallPct =
+    totalTargetMilestone > 0 ? Math.min(100, Math.round((totalTerkumpulMilestone / totalTargetMilestone) * 100)) : 0;
+
+  const filteredCampaigns = campaigns.filter(
+    (c) => campaignFilter === 'SEMUA' || c.category === campaignFilter
+  );
+
+  // Sync helper for Campaigns & Investment Participants
+  const persistCampaignsAndInvestments = async (
+    nextCampaigns: FundraisingCampaign[],
+    nextInvestments: InvestmentParticipant[],
+    linkedTrx?: {
+      jenis: TransactionType;
+      kategori: string;
+      nominal: number;
+      keterangan: string;
+      pihakTerkait?: string;
+      nrpTerkait?: string;
+    }
+  ) => {
+    const optimisticCfg: FinanceConfig = {
+      ...financeConfig,
+      campaigns: nextCampaigns,
+      investmentParticipants: nextInvestments,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser.nama,
+    };
+    setFinanceConfig(optimisticCfg);
+    if (onUpdateFinanceConfig) onUpdateFinanceConfig(optimisticCfg);
+
+    if (linkedTrx) {
+      onAddTransaction({
+        nomorReferensi: 'WS96-MLS-' + Date.now().toString().slice(-4),
+        tanggal: new Date().toISOString().split('T')[0],
+        jenis: linkedTrx.jenis,
+        kategori: linkedTrx.kategori as TransactionCategory,
+        nominal: linkedTrx.nominal,
+        keterangan: linkedTrx.keterangan,
+        pihakTerkait: linkedTrx.pihakTerkait || '-',
+        nrpTerkait: linkedTrx.nrpTerkait || '',
+        dicatatOleh: currentUser.nama,
+      });
+    }
+
+    try {
+      const res = await fetch('/api/finance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_FINANCE_CONFIG',
+          actorRole: currentUser.role,
+          campaigns: nextCampaigns,
+          investmentParticipants: nextInvestments,
+          linkedTransaction: linkedTrx,
+          updatedBy: currentUser.nama,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const srvCfg = data.financeConfig || data.data?.financeConfig || optimisticCfg;
+        setFinanceConfig(srvCfg);
+        if (Array.isArray(data.transactions)) setLocalTransactions(data.transactions);
+        if (data.summary) setLocalSummary(data.summary);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('ws96_finance_config_v1', JSON.stringify(srvCfg));
+          window.dispatchEvent(new Event('ws96_finance_updated'));
+        }
+        return;
+      }
+    } catch {
+      // Fallback local
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ws96_finance_config_v1', JSON.stringify(optimisticCfg));
+      window.dispatchEvent(new Event('ws96_finance_updated'));
+    }
+  };
+
+  const handleOpenCreateCampaign = (defaultCat: CampaignCategory = 'EVENT_BAKSOS') => {
+    setEditingCampaignId(null);
+    setCmpCategory(defaultCat);
+    setCmpTitle('');
+    setCmpTarget(50000000);
+    setCmpCollected(0);
+    setCmpDisbursed(0);
+    setCmpDonors(0);
+    setCmpDeadline('2026-12-31');
+    setCmpStatus('AKTIF');
+    setCmpDesc('');
+    setIsCampaignModalOpen(true);
+  };
+
+  const handleOpenEditCampaign = (cmp: FundraisingCampaign) => {
+    setEditingCampaignId(cmp.id);
+    setCmpCategory(cmp.category);
+    setCmpTitle(cmp.title);
+    setCmpTarget(cmp.targetAmount);
+    setCmpCollected(cmp.collectedAmount);
+    setCmpDisbursed(cmp.disbursedAmount);
+    setCmpDonors(cmp.donorCount);
+    setCmpDeadline(cmp.deadline || '2026-12-31');
+    setCmpStatus(cmp.status);
+    setCmpDesc(cmp.description);
+    setIsCampaignModalOpen(true);
+  };
+
+  const handleSaveCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canInputKas || !cmpTitle.trim()) return;
+    const item: FundraisingCampaign = {
+      id: editingCampaignId || 'cmp-' + Date.now(),
+      title: cmpTitle.trim(),
+      category: cmpCategory,
+      targetAmount: Math.max(0, Number(cmpTarget) || 0),
+      collectedAmount: Math.max(0, Number(cmpCollected) || 0),
+      disbursedAmount: Math.max(0, Number(cmpDisbursed) || 0),
+      donorCount: Math.max(0, Number(cmpDonors) || 0),
+      deadline: cmpDeadline || '2026-12-31',
+      status: cmpStatus,
+      description: cmpDesc.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    const nextList = editingCampaignId
+      ? campaigns.map((c) => (c.id === editingCampaignId ? item : c))
+      : [item, ...campaigns];
+    setIsCampaignModalOpen(false);
+    await persistCampaignsAndInvestments(nextList, investmentParticipants);
+  };
+
+  const handleDeleteCampaign = async (id: string) => {
+    if (!canInputKas) return;
+    const nextList = campaigns.filter((c) => c.id !== id);
+    setIsCampaignModalOpen(false);
+    await persistCampaignsAndInvestments(nextList, investmentParticipants);
+  };
+
+  const handleOpenMilestoneAction = (campaign: FundraisingCampaign, mode: 'DONASI' | 'SALURKAN') => {
+    setMilestoneActionModal({ campaign, mode });
+    setMlsNominal(mode === 'DONASI' ? 1000000 : 5000000);
+    setMlsPihak('');
+    setMlsNrp('');
+    setMlsMemberQuery('');
+    setMlsKeterangan(
+      mode === 'DONASI'
+        ? `Donasi / Kontribusi untuk ${campaign.title}`
+        : `Penyaluran Dana Sosial: ${campaign.title}`
+    );
+  };
+
+  const handleSubmitMilestoneAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canInputKas || !milestoneActionModal) return;
+    const { campaign, mode } = milestoneActionModal;
+    const amount = Math.max(1, Number(mlsNominal) || 0);
+    const meta = CAMPAIGN_CATEGORY_META[campaign.category] || CAMPAIGN_CATEGORY_META.LAINNYA;
+
+    const updatedCmp: FundraisingCampaign =
+      mode === 'DONASI'
+        ? {
+            ...campaign,
+            collectedAmount: (Number(campaign.collectedAmount) || 0) + amount,
+            donorCount: (Number(campaign.donorCount) || 0) + 1,
+            status:
+              campaign.targetAmount > 0 && (Number(campaign.collectedAmount) || 0) + amount >= campaign.targetAmount
+                ? 'TERCAPAI'
+                : campaign.status,
+            updatedAt: new Date().toISOString(),
+          }
+        : {
+            ...campaign,
+            disbursedAmount: (Number(campaign.disbursedAmount) || 0) + amount,
+            updatedAt: new Date().toISOString(),
+          };
+
+    const nextCampaigns = campaigns.map((c) => (c.id === campaign.id ? updatedCmp : c));
+    setMilestoneActionModal(null);
+
+    await persistCampaignsAndInvestments(nextCampaigns, investmentParticipants, {
+      jenis: mode === 'DONASI' ? 'MASUK' : 'KELUAR',
+      kategori: mode === 'DONASI' ? meta.defaultInflowCode : meta.defaultOutflowCode,
+      nominal: amount,
+      keterangan:
+        mlsKeterangan.trim() ||
+        (mode === 'DONASI'
+          ? `Donasi Program "${campaign.title}" oleh ${mlsPihak || 'Anggota WS96'}`
+          : `Penyaluran Program "${campaign.title}" kepada ${mlsPihak || 'Penerima Manfaat'}`),
+      pihakTerkait: mlsPihak.trim() || '-',
+      nrpTerkait: mlsNrp.trim() || '',
+    });
+  };
+
+  const handleOpenInvestModal = (existing?: InvestmentParticipant) => {
+    if (existing) {
+      setEditingInvestId(existing.id);
+      setInvNrp(existing.nrp);
+      setInvNama(existing.namaLengkap);
+      setInvPangkat(existing.pangkat);
+      setInvPolda(existing.polda);
+      setInvProgram(existing.namaProgram);
+      setInvNominal(existing.nominalPenyertaan);
+      setInvEstimasi(existing.estimasiNilaiSaatIni);
+      setInvTanggal(existing.tanggalBergabung);
+      setInvStatus(existing.statusPartisipasi);
+      setInvCatatan(existing.catatan);
+      setInvRecordToKas(false);
+    } else {
+      setEditingInvestId(null);
+      setInvNrp('');
+      setInvNama('');
+      setInvPangkat('Kombes Pol.');
+      setInvPolda('MABES POLRI');
+      setInvProgram('Pool Investasi Bersama Wira Satya 96');
+      setInvNominal(10000000);
+      setInvEstimasi(10000000);
+      setInvTanggal(new Date().toISOString().split('T')[0]);
+      setInvStatus('AKTIF');
+      setInvCatatan('');
+      setInvRecordToKas(true);
+    }
+    setInvMemberQuery('');
+    setIsInvestModalOpen(true);
+  };
+
+  const handleSaveInvestment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canInputKas || !invNama.trim()) return;
+    const item: InvestmentParticipant = {
+      id: editingInvestId || 'inv-' + Date.now(),
+      nrp: invNrp.trim() || '-',
+      namaLengkap: invNama.trim(),
+      pangkat: invPangkat.trim() || 'Kombes Pol.',
+      polda: invPolda.trim() || 'MABES POLRI',
+      namaProgram: invProgram.trim() || 'Pool Investasi Bersama Wira Satya 96',
+      nominalPenyertaan: Math.max(0, Number(invNominal) || 0),
+      estimasiNilaiSaatIni: Math.max(0, Number(invEstimasi || invNominal) || 0),
+      tanggalBergabung: invTanggal || new Date().toISOString().split('T')[0],
+      statusPartisipasi: invStatus,
+      catatan: invCatatan.trim(),
+    };
+    const nextList = editingInvestId
+      ? investmentParticipants.map((p) => (p.id === editingInvestId ? item : p))
+      : [item, ...investmentParticipants];
+    setIsInvestModalOpen(false);
+
+    await persistCampaignsAndInvestments(
+      campaigns,
+      nextList,
+      !editingInvestId && invRecordToKas && item.nominalPenyertaan > 0
+        ? {
+            jenis: 'MASUK',
+            kategori: 'DANA_INVESTASI_ANGGOTA',
+            nominal: item.nominalPenyertaan,
+            keterangan: `Penyertaan Dana Investasi (${item.namaProgram}) oleh ${item.namaLengkap}`,
+            pihakTerkait: item.namaLengkap,
+            nrpTerkait: item.nrp !== '-' ? item.nrp : '',
+          }
+        : undefined
+    );
+  };
+
+  const handleDeleteInvestment = async (id: string) => {
+    if (!canInputKas) return;
+    const nextList = investmentParticipants.filter((p) => p.id !== id);
+    await persistCampaignsAndInvestments(campaigns, nextList);
+  };
 
   const getCategoryLabel = (code: string) => {
     const foundMasuk = financeConfig.subKategoriMasuk.find((c) => c.code === code);
@@ -955,16 +1421,21 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           <span className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
             <Wallet className="w-5 h-5" />
           </span>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-extrabold text-white">
-              Kas &amp; Aset
-            </h2>
-            <span
-              className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-help text-[11px] font-bold"
-              title="Pembukuan arus kas masuk/keluar, iuran wajib, dan portofolio aset berharga (SBN, Valas, Crypto, Emas)."
-            >
-              <Info className="w-3.5 h-3.5" />
-            </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-extrabold text-white">
+                Dana Sosial, Milestone &amp; Investasi
+              </h2>
+              <span
+                className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-help text-[11px] font-bold"
+                title="1. Dana Sosial & Milestone Event (Anak Yatim, Anggota Sakit, Anggota MD, Baksos) • 2. Dana Investasi (Bagi yang Mau Ikut) & Portofolio Aset • 3. Kas Sukarela (Komponen Cadangan)"
+              >
+                <Info className="w-3.5 h-3.5" />
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-200/80">
+              1. Dana Sosial &amp; Milestone Event &bull; 2. Dana Investasi (Bagi yg Mau Ikut) &amp; Aset &bull; 3. Kas Sukarela Cadangan
+            </p>
           </div>
         </div>
 
@@ -972,15 +1443,29 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
           {canInputKas ? (
             <>
               <button
+                onClick={() => handleOpenCreateCampaign('EVENT_BAKSOS')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
+              >
+                <PlusCircle className="w-4 h-4" />
+                + Buat Milestone
+              </button>
+              <button
                 onClick={() => handleOpenMutasiModal('MASUK')}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold text-xs shadow-lg transition-all"
               >
                 <PlusCircle className="w-4 h-4" />
-                + Kas
+                + Kas / Donasi
+              </button>
+              <button
+                onClick={() => handleOpenInvestModal()}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-lg transition-all"
+              >
+                <Users className="w-4 h-4" />
+                + Investasi
               </button>
               <button
                 onClick={() => setIsAssetModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs shadow-lg transition-all"
               >
                 <Coins className="w-4 h-4" />
                 + Aset
@@ -988,10 +1473,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               <button
                 onClick={handleOpenConfigModal}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-xs border border-amber-400/30 transition-all"
-                title="Pengaturan Iuran & Kategori Kas"
+                title="Pengaturan Kategori Kas"
               >
                 <Settings className="w-4 h-4" />
-                Atur
+                Kategori
               </button>
             </>
           ) : (
@@ -1019,7 +1504,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     <Info className="w-3.5 h-3.5" />
                     Akses Kebendaharaan
                   </div>
-                  Input kas masuk/keluar, pengaturan iuran wajib, dan portofolio aset dikelola khusus oleh{' '}
+                  Pengelolaan milestone dana sosial, kas sukarela cadangan, dan dana investasi dikelola oleh{' '}
                   <b className="text-emerald-300">Bendahara</b>.
                 </div>
               )}
@@ -1176,45 +1661,95 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         )}
       </div>
 
-      {/* Top KPI Cards — Cashflow Summary */}
+      {/* Top KPI Cards — Dana Sosial Milestone, Dana Investasi & Kas Cadangan */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Saldo Kas Tunai */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-600">
-              {periodMode === 'SEMUA' ? 'Saldo Kas Tunai' : 'Selisih Kas (Periode)'}
-            </span>
-            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-              <Wallet className="w-5 h-5" />
+        {/* 1. Dana Sosial & Milestone Event (Kitabisa / Saweria Style) */}
+        <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/30 shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-emerald-950">1. Dana Sosial &amp; Milestone</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold border border-emerald-200">
+              {milestoneOverallPct}% Tercapai
             </span>
           </div>
-          <div className="mt-3">
+          <div className="mt-2.5">
+            <span className="text-2xl sm:text-3xl font-black text-emerald-900 block">
+              {formatRupiah(totalTerkumpulMilestone)}
+            </span>
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden my-2">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all"
+                style={{ width: `${Math.max(milestoneOverallPct, totalTerkumpulMilestone > 0 ? 4 : 0)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-slate-600">
+              <span>Target: <b>{formatRupiah(totalTargetMilestone)}</b></span>
+              <span className="text-emerald-700 font-bold">Salur: {formatRupiah(totalDisalurkanMilestone)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. Dana Investasi (Bagi yang Mau Ikut) & Portofolio Aset */}
+        <div className="bg-white p-5 rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50/40 via-white to-blue-50/30 shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-indigo-950">2. Dana Investasi &amp; Aset</span>
+            <span className="p-1.5 rounded-xl bg-indigo-100 text-indigo-800">
+              <Coins className="w-4 h-4" />
+            </span>
+          </div>
+          <div className="mt-2.5">
+            <span className="text-2xl sm:text-3xl font-black text-indigo-950 block">
+              {formatRupiah(totalDanaInvestasiPartisipan + totalValuasiAset)}
+            </span>
+            <div className="mt-2 pt-2 border-t border-indigo-100 space-y-1 text-[11px]">
+              <div className="flex justify-between text-slate-600">
+                <span>Investasi Anggota (Yg Ikut):</span>
+                <b className="text-indigo-800">{formatRupiah(totalDanaInvestasiPartisipan)} ({investmentParticipants.length} org)</b>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Portofolio Aset Dimiliki:</span>
+                <b className="text-blue-800">{formatRupiah(totalValuasiAset)} ({periodFilteredAssets.length} unit)</b>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Kas Sukarela (Komponen Cadangan) */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-extrabold text-slate-700">
+              {periodMode === 'SEMUA' ? '3. Kas Sukarela (Cadangan)' : 'Selisih Kas (Periode)'}
+            </span>
+            <span className="p-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+              <Wallet className="w-4 h-4" />
+            </span>
+          </div>
+          <div className="mt-2.5">
             <span className="text-2xl sm:text-3xl font-black text-slate-900 block">
               {formatRupiah(effectiveSaldoKas)}
             </span>
             <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
-              <span>{periodMode === 'SEMUA' ? 'Kas + Aset:' : 'Saldo Kas Akumulasi:'}</span>
+              <span>Total Kas + Investasi + Aset:</span>
               <span className="font-bold text-slate-800">
-                {formatRupiah(periodMode === 'SEMUA' ? totalKekayaanGabungan : allTimeSaldoKas)}
+                {formatRupiah(totalKekayaanGabungan)}
               </span>
             </div>
           </div>
         </div>
 
-        {/* 2. Arus Kas (Cashflow) */}
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/40 via-white to-red-50/30 shadow-sm relative overflow-hidden">
+        {/* 4. Rekapan Arus Kas (Inflow & Outflow) */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 bg-gradient-to-br from-emerald-50/30 via-white to-red-50/20 shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-700">Arus Kas (Cashflow)</span>
+            <span className="text-xs font-extrabold text-slate-700">Rekapan Arus Kas</span>
             <div className="flex items-center gap-1">
-              <span className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700" title="Total Kas Masuk">
-                <ArrowUpRight className="w-4 h-4" />
+              <span className="p-1 rounded-lg bg-emerald-100 text-emerald-700" title="Total Kas Masuk">
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </span>
-              <span className="p-1.5 rounded-lg bg-red-100 text-red-700" title="Total Kas Keluar">
-                <ArrowDownRight className="w-4 h-4" />
+              <span className="p-1 rounded-lg bg-red-100 text-red-700" title="Total Kas Keluar">
+                <ArrowDownRight className="w-3.5 h-3.5" />
               </span>
             </div>
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="mt-2.5 space-y-2">
             <div className="flex items-center justify-between bg-emerald-50/80 border border-emerald-200/70 px-3 py-1.5 rounded-xl">
               <span className="text-[11px] font-bold text-emerald-800">Kas Masuk</span>
               <span className="text-xs sm:text-sm font-black text-emerald-700">
@@ -1229,57 +1764,35 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             </div>
           </div>
         </div>
-
-        {/* 3. Nilai Aset Berharga */}
-        <div className="bg-white p-5 rounded-2xl border border-blue-200 bg-blue-50/20 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-blue-900">Portofolio Aset</span>
-            <span className="p-2 rounded-xl bg-blue-100 text-blue-800">
-              <Coins className="w-5 h-5" />
-            </span>
-          </div>
-          <div className="mt-3">
-            <span className="text-2xl sm:text-3xl font-black text-blue-950 block">
-              {formatRupiah(totalValuasiAset)}
-            </span>
-            <span className="text-[11px] text-blue-700 font-medium block mt-1.5">
-              {periodFilteredAssets.length} instrumen ({activePeriodLabel})
-            </span>
-          </div>
-        </div>
-
-        {/* 4. Iuran Wajib */}
-        <div className="bg-white p-5 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-sm relative overflow-hidden flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-amber-950">Iuran Wajib</span>
-              {canInputKas && (
-                <button
-                  type="button"
-                  onClick={handleOpenConfigModal}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-[10px] shadow-sm transition-all whitespace-nowrap shrink-0"
-                >
-                  ⚙️ Atur
-                </button>
-              )}
-            </div>
-            <div className="mt-2.5">
-              <span className="text-xl sm:text-2xl font-black text-slate-900 block">
-                {formatRupiah(financeConfig.iuranWajibPerBulan)}{' '}
-                <span className="text-xs font-bold text-slate-500">/ Bulan</span>
-              </span>
-              <span className="text-[11px] text-amber-800 font-semibold block mt-1.5">
-                Target {financeConfig.tahunBuku}: {formatRupiah(financeConfig.iuranWajibPerBulan * 12)} / Thn &bull;{' '}
-                <b>{iuranCompliancePct}% Lunas</b> ({lunasCount} Lunas, {sebagianCount} Cicil)
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Main Tabs Navigation */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('milestone')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'milestone'
+                ? 'bg-emerald-800 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <span>🎯</span>
+            1. Dana Sosial &amp; Milestone ({campaigns.length})
+          </button>
+
+          <button
+            onClick={() => setActiveTab('aset')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === 'aset'
+                ? 'bg-indigo-800 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-200/60'
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            2. Dana Investasi (Yg Ikut) &amp; Aset ({investmentParticipants.length + filteredAssets.length})
+          </button>
+
           <button
             onClick={() => setActiveTab('bukuKas')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
@@ -1289,31 +1802,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            Buku Kas ({filteredTransactions.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('aset')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'aset'
-                ? 'bg-blue-800 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <Briefcase className="w-4 h-4" />
-            Portofolio ({filteredAssets.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab('iuran')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'iuran'
-                ? 'bg-emerald-700 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-200/60'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            Iuran Wajib ({localIuranList.length})
+            3. Buku Kas Cadangan ({filteredTransactions.length})
           </button>
 
           <button
@@ -1325,7 +1814,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <Heart className="w-4 h-4" />
-            Santunan ({chronicIllMembers.length})
+            Atensi Sakit ({chronicIllMembers.length})
           </button>
 
           <button
@@ -1337,9 +1826,208 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             }`}
           >
             <GraduationCap className="w-4 h-4" />
-            Pendidikan Anak
+            Anak Yatim &amp; Pendidikan ({collegeChildren.length})
           </button>
         </div>
+
+        {/* ============================================================== */}
+        {/* TAB 0: PROGRAM DANA SOSIAL & MILESTONE EVENT (KITABISA/SAWERIA) */}
+        {/* ============================================================== */}
+        {activeTab === 'milestone' && (
+          <div className="p-5 sm:p-6 space-y-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-emerald-50 via-teal-50/60 to-amber-50/40 border border-emerald-200 rounded-2xl p-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold uppercase tracking-wider">
+                    Editable Milestone &bull; Sukarela
+                  </span>
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    Program Penggalangan Dana Sosial &amp; Milestone Event Wira Satya 96
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-600 mt-1">
+                  Penggalangan dana sukarela untuk <b>Bantu Anak Yatim</b>, <b>Bantu Anggota yang Sakit</b>,{' '}
+                  <b>Bantu Anggota yang MD (Meninggal Dunia)</b>, maupun <b>Event / Baksos Leting</b> dengan target milestone yang fleksibel dan dapat diedit kapan saja oleh Bendahara.
+                </p>
+              </div>
+              {canInputKas && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenCreateCampaign('EVENT_BAKSOS')}
+                  className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  + Buat Program / Milestone Baru
+                </button>
+              )}
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => setCampaignFilter('SEMUA')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all whitespace-nowrap cursor-pointer ${
+                  campaignFilter === 'SEMUA'
+                    ? 'bg-slate-900 text-amber-300 border-slate-900'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Semua Program ({campaigns.length})
+              </button>
+              {(['ANAK_YATIM', 'ANGGOTA_SAKIT', 'ANGGOTA_MD', 'EVENT_BAKSOS', 'LAINNYA'] as CampaignCategory[]).map(
+                (cat) => {
+                  const meta = CAMPAIGN_CATEGORY_META[cat];
+                  const count = campaigns.filter((c) => c.category === cat).length;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCampaignFilter(cat)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all whitespace-nowrap cursor-pointer ${
+                        campaignFilter === cat
+                          ? 'bg-emerald-800 text-white border-emerald-800'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {meta.icon} {meta.label} ({count})
+                    </button>
+                  );
+                }
+              )}
+            </div>
+
+            {/* Milestone Cards Grid (Kitabisa / Saweria style) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filteredCampaigns.map((cmp) => {
+                const meta = CAMPAIGN_CATEGORY_META[cmp.category] || CAMPAIGN_CATEGORY_META.LAINNYA;
+                const pct =
+                  cmp.targetAmount > 0
+                    ? Math.min(100, Math.round(((Number(cmp.collectedAmount) || 0) / cmp.targetAmount) * 100))
+                    : 0;
+                const sisaDana = Math.max(0, (Number(cmp.collectedAmount) || 0) - (Number(cmp.disbursedAmount) || 0));
+
+                return (
+                  <div
+                    key={cmp.id}
+                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-extrabold ${meta.badge}`}>
+                            {meta.icon} {meta.label}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              cmp.status === 'TERCAPAI'
+                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                : cmp.status === 'SELESAI'
+                                ? 'bg-slate-200 text-slate-700'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {cmp.status === 'TERCAPAI'
+                              ? '🏆 MILESTONE TERCAPAI'
+                              : cmp.status === 'SELESAI'
+                              ? 'SELESAI'
+                              : '● AKTIF MENGGALANG'}
+                          </span>
+                        </div>
+                        {cmp.deadline && (
+                          <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">
+                            Target s/d {cmp.deadline}
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm sm:text-base font-extrabold text-slate-900">{cmp.title}</h4>
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">{cmp.description}</p>
+                      </div>
+
+                      {/* Visual Milestone Progress Bar */}
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                              Dana Terkumpul
+                            </span>
+                            <span className="text-lg sm:text-xl font-black text-emerald-800">
+                              {formatRupiah(cmp.collectedAmount)}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                              Target Milestone
+                            </span>
+                            <span className="text-xs sm:text-sm font-extrabold text-slate-800">
+                              {formatRupiah(cmp.targetAmount)} ({pct}%)
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden p-0.5">
+                          <div
+                            className={`h-full bg-gradient-to-r ${meta.barGradient} rounded-full transition-all duration-500`}
+                            style={{ width: `${Math.max(pct, cmp.collectedAmount > 0 ? 4 : 0)}%` }}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 pt-1 text-[11px]">
+                          <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200/70">
+                            <span className="text-slate-400 block text-[10px]">Kontributor</span>
+                            <span className="font-extrabold text-slate-800">{cmp.donorCount || 0} Donatur</span>
+                          </div>
+                          <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200/70">
+                            <span className="text-slate-400 block text-[10px]">Telah Disalurkan</span>
+                            <span className="font-extrabold text-red-700">{formatRupiah(cmp.disbursedAmount || 0)}</span>
+                          </div>
+                          <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200/70">
+                            <span className="text-slate-400 block text-[10px]">Saldo Siap Salur</span>
+                            <span className="font-extrabold text-emerald-700">{formatRupiah(sisaDana)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {canInputKas && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenMilestoneAction(cmp, 'DONASI')}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                          >
+                            <PlusCircle className="w-3.5 h-3.5" />
+                            + Catat Donasi
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenMilestoneAction(cmp, 'SALURKAN')}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                          >
+                            <ArrowDownRight className="w-3.5 h-3.5" />
+                            Salurkan Dana
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditCampaign(cmp)}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
+                        >
+                          <Settings className="w-3.5 h-3.5" />
+                          Edit Milestone
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ============================================================== */}
         {/* TAB 1: BUKU KAS & RIWAYAT TRANSAKSI                            */}
@@ -1463,269 +2151,278 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
         )}
 
         {/* ============================================================== */}
-        {/* TAB 2: PORTOFOLIO ASET (SURAT BERHARGA / VALAS / CRYPTO)       */}
+        {/* TAB 2: DANA INVESTASI (BAGI YANG MAU IKUT) & PORTOFOLIO ASET   */}
         {/* ============================================================== */}
         {activeTab === 'aset' && (
-          <div className="p-5 sm:p-6 space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-3.5">
-              <div>
-                <h4 className="text-xs font-extrabold text-blue-950">
-                  Portofolio Aset &amp; Surat Berharga
-                </h4>
-                <p className="text-[11px] text-blue-800 mt-0.5">
-                  Inventaris Surat Berharga (SBN/Deposito), Valuta Asing, Aset Digital, dan Logam Mulia.
-                </p>
-              </div>
-              {canInputKas && (
-                <button
-                  onClick={() => setIsAssetModalOpen(true)}
-                  className="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm flex-shrink-0"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  + Catat Aset Baru
-                </button>
-              )}
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <button
-                onClick={() => setAssetCategoryFilter('SEMUA')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
-                  assetCategoryFilter === 'SEMUA'
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                Semua Aset ({localAssets.length})
-              </button>
-              {(['SURAT_BERHARGA', 'VALUTA_ASING', 'CRYPTO', 'LOGAM_MULIA_ASET'] as AssetCategory[]).map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setAssetCategoryFilter(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
-                    assetCategoryFilter === cat
-                      ? 'bg-blue-800 text-white border-blue-800'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {ASSET_CATEGORY_LABELS[cat].label} ({localAssets.filter((a) => a.kategori === cat).length})
-                </button>
-              ))}
-            </div>
-
-            {/* Asset Table */}
-            <div className="rounded-xl border border-slate-200 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">Kode &amp; Tanggal</th>
-                    <th className="px-4 py-3">Nama Instrumen &amp; Kategori</th>
-                    <th className="px-4 py-3">Kuantitas / Unit</th>
-                    <th className="px-4 py-3">Kustodian / Wallet / Lokasi</th>
-                    <th className="px-4 py-3 text-right">Nilai Perolehan (IDR)</th>
-                    <th className="px-4 py-3 text-right">Estimasi Valuasi (IDR)</th>
-                    {canInputKas && <th className="px-4 py-3 text-center">Aksi</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredAssets.map((ast) => {
-                    const selisih = (ast.estimasiNilaiIdr || 0) - (ast.nilaiPerolehanIdr || 0);
-                    return (
-                      <tr key={ast.id} className="hover:bg-slate-50/70">
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="font-mono font-bold text-slate-900 block">{ast.kodeAset}</span>
-                          <span className="text-[10px] text-slate-400">{ast.tanggalPerolehan}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-bold text-slate-900 block">{ast.namaAset}</span>
-                          <span
-                            className={`inline-block mt-1 px-2 py-0.5 rounded border text-[10px] font-bold ${
-                              ASSET_CATEGORY_LABELS[ast.kategori]?.badge || 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {ASSET_CATEGORY_LABELS[ast.kategori]?.label || ast.kategori}
-                          </span>
-                          {ast.keterangan && (
-                            <span className="block text-[11px] text-slate-500 mt-0.5">{ast.keterangan}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="font-black text-slate-900 text-sm">
-                            {ast.jumlahUnit} {ast.satuan}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-semibold text-slate-800 block">{ast.kustodianLokasi}</span>
-                          {ast.nomorSeriAtauWallet && ast.nomorSeriAtauWallet !== '-' && (
-                            <span className="font-mono text-[10px] text-slate-500 block">
-                              Ref/Wallet: {ast.nomorSeriAtauWallet}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-slate-600">
-                          {formatRupiah(ast.nilaiPerolehanIdr)}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right">
-                          <span className="font-black text-blue-900 text-sm block">
-                            {formatRupiah(ast.estimasiNilaiIdr)}
-                          </span>
-                          {selisih !== 0 && (
-                            <span
-                              className={`text-[10px] font-bold ${
-                                selisih > 0 ? 'text-emerald-600' : 'text-red-600'
-                              }`}
-                            >
-                              {selisih > 0 ? '+' : ''}
-                              {formatRupiah(selisih)}
-                            </span>
-                          )}
-                        </td>
-                        {canInputKas && (
-                          <td className="px-4 py-3 text-center">
-                            <button
-                              onClick={() => handleRemoveAsset(ast.id)}
-                              className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                              title="Hapus Aset (Bendahara / Superadmin)"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                  {filteredAssets.length === 0 && (
-                    <tr>
-                      <td colSpan={canInputKas ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
-                        Belum ada aset Surat Berharga, Valas, atau Crypto yang tercatat.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* TAB 3: MANAJEMEN IURAN WAJIB                                   */}
-        {/* ============================================================== */}
-        {activeTab === 'iuran' && (
-          <div className="p-5 sm:p-6 space-y-5">
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <span className="font-bold block">
-                  Iuran Wajib ({formatRupiah(financeConfig.iuranWajibPerBulan)} / Bulan &bull;{' '}
-                  {formatRupiah(financeConfig.iuranWajibPerBulan * 12)} / Tahun {financeConfig.tahunBuku})
-                </span>
-                <span className="text-[11px] text-emerald-800">
-                  Pencatatan setoran iuran dan tarif bulanan dikelola oleh <b>Bendahara</b>.
-                </span>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="p-5 sm:p-6 space-y-6">
+            {/* SECTION A: REKAPAN DANA INVESTASI (BAGI YANG MAU IKUT) */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-50/80 border border-indigo-200 rounded-xl p-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-indigo-700 text-white text-[10px] font-extrabold uppercase">
+                      Sukarela &bull; Bagi yang Mau Ikut
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-extrabold text-indigo-950">
+                      2A. Rekapan Dana Investasi Anggota (Bagi yang Berminat Ikut Serta)
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-indigo-800 mt-1">
+                    Pencatatan penyertaan modal / investasi bersama khusus bagi rekan-rekan Wira Satya 96 yang ikut serta secara sukarela.
+                  </p>
+                </div>
                 {canInputKas && (
                   <button
                     type="button"
-                    onClick={handleOpenConfigModal}
-                    className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-sm transition-all"
+                    onClick={() => handleOpenInvestModal()}
+                    className="px-4 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"
                   >
-                    ⚙️ Ubah Tarif Iuran
+                    <PlusCircle className="w-4 h-4" />
+                    + Catat Partisipan Investasi
                   </button>
                 )}
-                <div className="text-right">
-                  <span className="text-[11px] text-emerald-700 font-semibold block">Tingkat Kepatuhan</span>
-                  <span className="text-xl font-black text-emerald-900">{iuranCompliancePct}% Lunas</span>
-                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3">Nama Anggota &amp; NRP</th>
+                      <th className="px-4 py-3">Pangkat &amp; Polda/Satker</th>
+                      <th className="px-4 py-3">Program Investasi &amp; Tgl Gabung</th>
+                      <th className="px-4 py-3 text-right">Modal Penyertaan</th>
+                      <th className="px-4 py-3 text-right">Estimasi Nilai Saat Ini</th>
+                      <th className="px-4 py-3 text-center">Status</th>
+                      {canInputKas && <th className="px-4 py-3 text-center">Aksi</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {investmentParticipants.map((inv) => {
+                      const gain = (inv.estimasiNilaiSaatIni || 0) - (inv.nominalPenyertaan || 0);
+                      return (
+                        <tr key={inv.id} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-3">
+                            <span className="font-bold text-slate-900 block">{inv.namaLengkap}</span>
+                            {inv.nrp && inv.nrp !== '-' && (
+                              <span className="text-[10px] font-mono text-slate-400">NRP {inv.nrp}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-semibold text-slate-800 block">{inv.pangkat}</span>
+                            <span className="text-[11px] text-slate-500">{inv.polda}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-bold text-indigo-950 block">{inv.namaProgram}</span>
+                            <span className="text-[10px] text-slate-400 block">Sejak: {inv.tanggalBergabung}</span>
+                            {inv.catatan && (
+                              <span className="text-[11px] text-slate-500 block mt-0.5">{inv.catatan}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">
+                            {formatRupiah(inv.nominalPenyertaan)}
+                          </td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <span className="font-black text-indigo-900 text-sm block">
+                              {formatRupiah(inv.estimasiNilaiSaatIni)}
+                            </span>
+                            {gain !== 0 && (
+                              <span
+                                className={`text-[10px] font-bold ${
+                                  gain > 0 ? 'text-emerald-600' : 'text-red-600'
+                                }`}
+                              >
+                                {gain > 0 ? '+' : ''}
+                                {formatRupiah(gain)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                inv.statusPartisipasi === 'AKTIF'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {inv.statusPartisipasi}
+                            </span>
+                          </td>
+                          {canInputKas && (
+                            <td className="px-4 py-3 text-center whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenInvestModal(inv)}
+                                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-[11px]"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteInvestment(inv.id)}
+                                  className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
+                                  title="Hapus Partisipan"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {investmentParticipants.length === 0 && (
+                      <tr>
+                        <td colSpan={canInputKas ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
+                          Belum ada partisipan Dana Investasi yang tercatat. Klik <b>+ Catat Partisipan Investasi</b> bagi anggota yang berminat ikut.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">Nama Personel &amp; NRP</th>
-                    <th className="px-4 py-3">Pangkat &amp; Satker</th>
-                    <th className="px-4 py-3">Target Iuran {financeConfig.tahunBuku}</th>
-                    <th className="px-4 py-3">Terbayar</th>
-                    <th className="px-4 py-3 text-center">Status</th>
-                    {canInputKas && <th className="px-4 py-3 text-center">Input Bendahara</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {localIuranList.map((iur) => (
-                    <tr key={iur.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <span className="font-bold text-slate-900 block">{iur.namaLengkap}</span>
-                        <span className="text-[11px] text-slate-400 font-mono">NRP {iur.nrp}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-slate-800 font-semibold block">{iur.pangkat}</span>
-                        <span className="text-[11px] text-slate-500">{iur.polda}</span>
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-700">
-                        {formatRupiah(iur.totalTagihan)}
-                        <span className="block text-[10px] text-slate-400 font-normal">
-                          12 &times; {formatRupiah(financeConfig.iuranWajibPerBulan)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-bold text-emerald-700">
-                        {formatRupiah(iur.totalTerbayar)}
-                        {iur.terakhirBayar && (
-                          <span className="text-[10px] text-slate-400 block font-normal">
-                            Bayar: {iur.terakhirBayar}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                            iur.status === 'LUNAS'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : iur.status === 'SEBAGIAN'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {iur.status}
-                        </span>
-                      </td>
-                      {canInputKas && (
-                        <td className="px-4 py-3 text-center">
-                          {iur.status !== 'LUNAS' ? (
-                            <button
-                              onClick={() => {
-                                setPayIuranModal(iur);
-                                setPayNominal(
-                                  Math.max(
-                                    financeConfig.iuranWajibPerBulan,
-                                    iur.totalTagihan - iur.totalTerbayar
-                                  )
-                                );
-                              }}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm transition-colors"
-                            >
-                              Catat Bayar
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[11px]">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Lunas
-                            </span>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                  {localIuranList.length === 0 && (
+            {/* SECTION B: PORTOFOLIO ASET YANG DIMILIKI */}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-3.5">
+                <div>
+                  <h4 className="text-xs sm:text-sm font-extrabold text-blue-950">
+                    2B. Portofolio Aset yang Dimiliki (SBN / Deposito / Valas / Crypto / Emas)
+                  </h4>
+                  <p className="text-[11px] text-blue-800 mt-0.5">
+                    Inventaris instrumen aset berharga dan penempatan dana investasi Wira Satya 96.
+                  </p>
+                </div>
+                {canInputKas && (
+                  <button
+                    onClick={() => setIsAssetModalOpen(true)}
+                    className="px-4 py-2 rounded-xl bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm flex-shrink-0"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    + Catat Aset Baru
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <button
+                  onClick={() => setAssetCategoryFilter('SEMUA')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
+                    assetCategoryFilter === 'SEMUA'
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Semua Aset ({localAssets.length})
+                </button>
+                {(['SURAT_BERHARGA', 'VALUTA_ASING', 'CRYPTO', 'LOGAM_MULIA_ASET'] as AssetCategory[]).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setAssetCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
+                      assetCategoryFilter === cat
+                        ? 'bg-blue-800 text-white border-blue-800'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {ASSET_CATEGORY_LABELS[cat].label} ({localAssets.filter((a) => a.kategori === cat).length})
+                  </button>
+                ))}
+              </div>
+
+              {/* Asset Table */}
+              <div className="rounded-xl border border-slate-200 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
-                      <td colSpan={canInputKas ? 6 : 5} className="px-4 py-8 text-center text-slate-400">
-                        Belum ada data kewajiban iuran personel yang tercatat.
-                      </td>
+                      <th className="px-4 py-3">Kode &amp; Tanggal</th>
+                      <th className="px-4 py-3">Nama Instrumen &amp; Kategori</th>
+                      <th className="px-4 py-3">Kuantitas / Unit</th>
+                      <th className="px-4 py-3">Kustodian / Wallet / Lokasi</th>
+                      <th className="px-4 py-3 text-right">Nilai Perolehan (IDR)</th>
+                      <th className="px-4 py-3 text-right">Estimasi Valuasi (IDR)</th>
+                      {canInputKas && <th className="px-4 py-3 text-center">Aksi</th>}
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredAssets.map((ast) => {
+                      const selisih = (ast.estimasiNilaiIdr || 0) - (ast.nilaiPerolehanIdr || 0);
+                      return (
+                        <tr key={ast.id} className="hover:bg-slate-50/70">
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-mono font-bold text-slate-900 block">{ast.kodeAset}</span>
+                            <span className="text-[10px] text-slate-400">{ast.tanggalPerolehan}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-bold text-slate-900 block">{ast.namaAset}</span>
+                            <span
+                              className={`inline-block mt-1 px-2 py-0.5 rounded border text-[10px] font-bold ${
+                                ASSET_CATEGORY_LABELS[ast.kategori]?.badge || 'bg-slate-100 text-slate-700'
+                              }`}
+                            >
+                              {ASSET_CATEGORY_LABELS[ast.kategori]?.label || ast.kategori}
+                            </span>
+                            {ast.keterangan && (
+                              <span className="block text-[11px] text-slate-500 mt-0.5">{ast.keterangan}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-black text-slate-900 text-sm">
+                              {ast.jumlahUnit} {ast.satuan}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-semibold text-slate-800 block">{ast.kustodianLokasi}</span>
+                            {ast.nomorSeriAtauWallet && ast.nomorSeriAtauWallet !== '-' && (
+                              <span className="font-mono text-[10px] text-slate-500 block">
+                                Ref/Wallet: {ast.nomorSeriAtauWallet}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right font-semibold text-slate-600">
+                            {formatRupiah(ast.nilaiPerolehanIdr)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <span className="font-black text-blue-900 text-sm block">
+                              {formatRupiah(ast.estimasiNilaiIdr)}
+                            </span>
+                            {selisih !== 0 && (
+                              <span
+                                className={`text-[10px] font-bold ${
+                                  selisih > 0 ? 'text-emerald-600' : 'text-red-600'
+                                }`}
+                              >
+                                {selisih > 0 ? '+' : ''}
+                                {formatRupiah(selisih)}
+                              </span>
+                            )}
+                          </td>
+                          {canInputKas && (
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => handleRemoveAsset(ast.id)}
+                                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                title="Hapus Aset (Bendahara / Superadmin)"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {filteredAssets.length === 0 && (
+                      <tr>
+                        <td colSpan={canInputKas ? 7 : 6} className="px-4 py-8 text-center text-slate-400">
+                          Belum ada aset Surat Berharga, Valas, atau Crypto yang tercatat.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -2367,81 +3064,306 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL 3: CATAT PEMBAYARAN IURAN (BENDAHARA & SUPERADMIN)       */}
+      {/* MODAL 3A: BUAT / EDIT PROGRAM MILESTONE DANA SOSIAL            */}
       {/* ============================================================== */}
-      {payIuranModal && canInputKas && (
+      {isCampaignModalOpen && canInputKas && (
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
-            <div className="bg-emerald-800 p-4 text-white flex items-center justify-between">
-              <h3 className="text-sm font-bold flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-emerald-300" />
-                Catat Pembayaran Iuran
-              </h3>
-              <button onClick={() => setPayIuranModal(null)} className="text-slate-300 hover:text-white">
+          <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+            <div className="bg-emerald-950 p-4 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <span>🎯</span>
+                  {editingCampaignId ? 'Edit Program / Milestone Dana Sosial' : 'Buat Program / Milestone Baru'}
+                </h3>
+                <p className="text-[11px] text-emerald-200/80 mt-0.5">
+                  Atur judul, kategori, target milestone (Rp), dana terkumpul, dan status program.
+                </p>
+              </div>
+              <button onClick={() => setIsCampaignModalOpen(false)} className="text-slate-300 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleConfirmPayIuran} className="p-5 space-y-4 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-slate-500 block text-[11px]">Nama Personel:</span>
-                <span className="font-bold text-slate-900 text-sm block">{payIuranModal.namaLengkap}</span>
-                <span className="text-slate-400 text-[11px]">
-                  NRP: {payIuranModal.nrp} &bull; {payIuranModal.polda}
-                </span>
-                <div className="mt-2 pt-2 border-t border-slate-200 flex justify-between text-[11px]">
-                  <span>
-                    Tagihan: <b>{formatRupiah(payIuranModal.totalTagihan)}</b>
-                  </span>
-                  <span>
-                    Sudah Bayar: <b className="text-emerald-700">{formatRupiah(payIuranModal.totalTerbayar)}</b>
-                  </span>
+            <form onSubmit={handleSaveCampaign} className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Kategori Program</label>
+                  <select
+                    value={cmpCategory}
+                    onChange={(e) => setCmpCategory(e.target.value as CampaignCategory)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-900"
+                  >
+                    <option value="ANAK_YATIM">🤲 Bantu Anak Yatim &amp; Beasiswa</option>
+                    <option value="ANGGOTA_SAKIT">🏥 Bantu Anggota yang Sakit</option>
+                    <option value="ANGGOTA_MD">🕊️ Bantu Anggota yang MD (Duka Cita)</option>
+                    <option value="EVENT_BAKSOS">🤝 Event Leting / Baksos / Milestone</option>
+                    <option value="LAINNYA">🎯 Program Sosial Lainnya</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Status Program</label>
+                  <select
+                    value={cmpStatus}
+                    onChange={(e) => setCmpStatus(e.target.value as 'AKTIF' | 'TERCAPAI' | 'SELESAI')}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-900"
+                  >
+                    <option value="AKTIF">● AKTIF MENGGALANG</option>
+                    <option value="TERCAPAI">🏆 MILESTONE TERCAPAI</option>
+                    <option value="SELESAI">SELESAI / DITUTUP</option>
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Nominal Setoran yang Diterima</label>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {[1, 3, 6, 12].map((bln) => {
-                    const nom = financeConfig.iuranWajibPerBulan * bln;
-                    return (
-                      <button
-                        key={bln}
-                        type="button"
-                        onClick={() => setPayNominal(nom)}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]"
-                      >
-                        {bln} Bln ({formatRupiah(nom)})
-                      </button>
-                    );
-                  })}
+                <label className="block font-bold text-slate-700 mb-1">Judul Program / Event Penggalangan Dana</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Santunan Anak Yatim / Bantuan Medis / Milestone Baksos WS96"
+                  value={cmpTitle}
+                  onChange={(e) => setCmpTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Target Milestone (Rp) — {formatRupiah(cmpTarget)}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step="any"
+                    value={cmpTarget}
+                    onChange={(e) => setCmpTarget(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-black text-emerald-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Target Tanggal / Batas Waktu</label>
+                  <input
+                    type="date"
+                    value={cmpDeadline}
+                    onChange={(e) => setCmpDeadline(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <label className="block font-bold text-slate-600 mb-1">Dana Terkumpul (Rp)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={cmpCollected}
+                    onChange={(e) => setCmpCollected(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600 mb-1">Telah Disalurkan (Rp)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    value={cmpDisbursed}
+                    onChange={(e) => setCmpDisbursed(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-600 mb-1">Jumlah Donatur</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={cmpDonors}
+                    onChange={(e) => setCmpDonors(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white font-bold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Deskripsi &amp; Tujuan Penggalangan Dana</label>
+                <textarea
+                  rows={2}
+                  placeholder="Jelaskan peruntukan dana sosial atau milestone event ini..."
+                  value={cmpDesc}
+                  onChange={(e) => setCmpDesc(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                {editingCampaignId ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCampaign(editingCampaignId)}
+                    className="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 font-bold inline-flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Hapus Program
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCampaignModalOpen(false)}
+                    className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold shadow-md"
+                  >
+                    Simpan Milestone
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 3B: CATAT DONASI / SALURKAN DANA PADA MILESTONE          */}
+      {/* ============================================================== */}
+      {milestoneActionModal && canInputKas && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+            <div
+              className={`p-4 text-white flex items-center justify-between ${
+                milestoneActionModal.mode === 'DONASI' ? 'bg-emerald-800' : 'bg-amber-600 text-slate-950'
+              }`}
+            >
+              <div>
+                <h3 className="text-sm font-extrabold">
+                  {milestoneActionModal.mode === 'DONASI'
+                    ? '+ Catat Donasi Masuk ke Milestone'
+                    : 'Salurkan Dana dari Milestone'}
+                </h3>
+                <p className="text-[11px] opacity-85 mt-0.5">{milestoneActionModal.campaign.title}</p>
+              </div>
+              <button onClick={() => setMilestoneActionModal(null)} className="opacity-80 hover:opacity-100">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitMilestoneAction} className="p-5 space-y-4 text-xs">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="font-bold text-slate-700">Nominal (Rupiah)</label>
+                  <span className="font-extrabold text-emerald-700">{formatRupiah(mlsNominal)}</span>
                 </div>
                 <input
                   type="number"
+                  required
                   min={1}
                   step="any"
-                  value={payNominal}
-                  onChange={(e) => setPayNominal(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-black text-slate-900"
+                  value={mlsNominal}
+                  onChange={(e) => setMlsNominal(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-base font-black text-slate-900"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  Jumlah yang dibukukan: {formatRupiah(payNominal)}
-                </span>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {[500000, 1000000, 2500000, 5000000, 10000000].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setMlsNominal(preset)}
+                      className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px]"
+                    >
+                      {formatRupiah(preset)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {milestoneActionModal.mode === 'DONASI'
+                    ? 'Pilih Anggota Donatur (Atau Ketik Nama)'
+                    : 'Nama Penerima Manfaat / Tujuan Penyaluran'}
+                </label>
+                <input
+                  type="text"
+                  placeholder="Cari nama personel / NRP..."
+                  value={mlsMemberQuery}
+                  onChange={(e) => setMlsMemberQuery(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs mb-1.5"
+                />
+                <select
+                  value={mlsNrp}
+                  onChange={(e) => {
+                    const nrp = e.target.value;
+                    setMlsNrp(nrp);
+                    const found = alumniMembers.find((m) => m.nrp === nrp);
+                    if (found) {
+                      setMlsPihak(found.namaLengkap);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold mb-2"
+                >
+                  <option value="">-- Pilih dari Direktori WS96 (Opsional) --</option>
+                  {alumniMembers
+                    .filter(
+                      (m) =>
+                        !mlsMemberQuery.trim() ||
+                        m.namaLengkap.toLowerCase().includes(mlsMemberQuery.toLowerCase()) ||
+                        m.nrp.includes(mlsMemberQuery.trim())
+                    )
+                    .slice(0, 200)
+                    .map((m) => (
+                      <option key={m.nrp} value={m.nrp}>
+                        {m.namaLengkap} ({m.nrp})
+                      </option>
+                    ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Nama Donatur / Penerima Manfaat"
+                  value={mlsPihak}
+                  onChange={(e) => setMlsPihak(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Keterangan (Otomatis Tercatat di Buku Kas)</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={mlsKeterangan}
+                  onChange={(e) => setMlsKeterangan(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setPayIuranModal(null)}
+                  onClick={() => setMilestoneActionModal(null)}
                   className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-colors"
+                  className={`px-5 py-2 rounded-lg font-extrabold shadow-md ${
+                    milestoneActionModal.mode === 'DONASI'
+                      ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                      : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+                  }`}
                 >
-                  Simpan Pembayaran
+                  Simpan &amp; Sinkron Buku Kas
                 </button>
               </div>
             </form>
@@ -2450,7 +3372,196 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
       )}
 
       {/* ============================================================== */}
-      {/* MODAL 4: PENGATURAN KEBENDAHARAAN (TARIF IURAN & KATEGORI)     */}
+      {/* MODAL 3C: CATAT PARTISIPAN DANA INVESTASI (BAGI YANG MAU IKUT) */}
+      {/* ============================================================== */}
+      {isInvestModalOpen && canInputKas && (
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+            <div className="bg-indigo-950 p-4 text-white flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-300" />
+                  {editingInvestId
+                    ? 'Edit Partisipan Dana Investasi'
+                    : 'Catat Partisipan Dana Investasi (Bagi yang Mau Ikut)'}
+                </h3>
+                <p className="text-[11px] text-indigo-200/80 mt-0.5">
+                  Kepesertaan bersifat sukarela bagi rekan leting yang berminat ikut serta.
+                </p>
+              </div>
+              <button onClick={() => setIsInvestModalOpen(false)} className="text-slate-300 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInvestment} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Cari &amp; Pilih Anggota yang Ikut Investasi</label>
+                <input
+                  type="text"
+                  placeholder="Ketik nama atau NRP untuk memfilter daftar..."
+                  value={invMemberQuery}
+                  onChange={(e) => setInvMemberQuery(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs mb-1.5"
+                />
+                <select
+                  value={invNrp}
+                  onChange={(e) => {
+                    const selectedNrp = e.target.value;
+                    setInvNrp(selectedNrp);
+                    const found = alumniMembers.find((m) => m.nrp === selectedNrp);
+                    if (found) {
+                      setInvNama(found.namaLengkap);
+                      setInvPangkat(found.pangkat);
+                      setInvPolda(found.polda);
+                    }
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold"
+                >
+                  <option value="">-- Pilih dari Direktori Personel WS96 --</option>
+                  {alumniMembers
+                    .filter(
+                      (m) =>
+                        !invMemberQuery.trim() ||
+                        m.namaLengkap.toLowerCase().includes(invMemberQuery.toLowerCase()) ||
+                        m.nrp.includes(invMemberQuery.trim())
+                    )
+                    .slice(0, 250)
+                    .map((m) => (
+                      <option key={m.nrp} value={m.nrp}>
+                        {m.namaLengkap} ({m.pangkat} — {m.polda})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">Nama Lengkap Partisipan</label>
+                  <input
+                    type="text"
+                    required
+                    value={invNama}
+                    onChange={(e) => setInvNama(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Pangkat</label>
+                  <input
+                    type="text"
+                    value={invPangkat}
+                    onChange={(e) => setInvPangkat(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nama Program / Instrumen Investasi</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Pool Investasi SBN / Usaha Bersama WS96"
+                    value={invProgram}
+                    onChange={(e) => setInvProgram(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tanggal Bergabung</label>
+                  <input
+                    type="date"
+                    value={invTanggal}
+                    onChange={(e) => setInvTanggal(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Modal Penyertaan (Rp) — {formatRupiah(invNominal)}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step="any"
+                    value={invNominal}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setInvNominal(val);
+                      if (!editingInvestId) setInvEstimasi(val);
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-black text-indigo-950"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Estimasi Nilai Saat Ini (Rp) — {formatRupiah(invEstimasi)}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={0}
+                    step="any"
+                    value={invEstimasi}
+                    onChange={(e) => setInvEstimasi(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-black text-emerald-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan / Keterangan Bagi Hasil (Opsional)</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Penyertaan Tahap I / Bagi hasil per semester"
+                  value={invCatatan}
+                  onChange={(e) => setInvCatatan(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300"
+                />
+              </div>
+
+              {!editingInvestId && (
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={invRecordToKas}
+                    onChange={(e) => setInvRecordToKas(e.target.checked)}
+                    className="rounded border-indigo-400 text-indigo-700"
+                  />
+                  <span className="text-[11px] font-bold text-indigo-950">
+                    Catat otomatis setoran modal ini ke Buku Kas Masuk (Kategori: Penyertaan Dana Investasi)
+                  </span>
+                </label>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsInvestModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 font-semibold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white font-bold shadow-md"
+                >
+                  Simpan Partisipan Investasi
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* MODAL 4: PENGATURAN MASTER KATEGORI KAS MASUK & KAS KELUAR     */}
       {/* ============================================================== */}
       {isConfigModalOpen && canInputKas && (
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-2.5 pt-16 pb-20 sm:p-4">
@@ -2459,10 +3570,10 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
               <div>
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <Settings className="w-4 h-4 text-amber-400" />
-                  Pengaturan Iuran &amp; Kategori Kas
+                  Pengaturan Master Kategori Kas Masuk &amp; Kas Keluar
                 </h3>
                 <p className="text-[11px] text-slate-300 mt-0.5">
-                  Perubahan tarif iuran otomatis memperbarui target tahunan seluruh anggota.
+                  Kelola daftar sub-kategori penerimaan dan penyaluran dana sosial, investasi, serta kas cadangan.
                 </p>
               </div>
               <button onClick={() => setIsConfigModalOpen(false)} className="text-slate-300 hover:text-white">
@@ -2471,70 +3582,12 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             </div>
 
             <form onSubmit={handleSaveFinanceConfig} className="p-5 space-y-5 text-xs max-h-[80vh] overflow-y-auto">
-              {/* Bagian 1: Tarif Iuran Wajib Bulanan */}
-              <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-amber-950 text-xs">
-                    1. Tarif Iuran Wajib Bulanan
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-200/80 text-amber-950 font-bold text-[10px]">
-                    Target Tahunan: {formatRupiah((Number(draftIuranPerBulan) || 0) * 12)} / Tahun
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-2">
-                    <label className="block font-bold text-slate-700 mb-1">
-                      Nominal Iuran Wajib Bulanan (Rp)
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min={0}
-                      step="any"
-                      value={draftIuranPerBulan}
-                      onChange={(e) => setDraftIuranPerBulan(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-lg border border-amber-300 bg-white text-sm font-black text-slate-900"
-                    />
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {[200000, 250000, 300000, 500000, 1000000].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setDraftIuranPerBulan(preset)}
-                          className={`px-2.5 py-1 rounded-lg font-bold text-[10px] border transition-all ${
-                            draftIuranPerBulan === preset
-                              ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-100'
-                          }`}
-                        >
-                          {formatRupiah(preset)} / bln
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Tahun Buku</label>
-                    <input
-                      type="number"
-                      required
-                      min={2024}
-                      max={2035}
-                      value={draftTahunBuku}
-                      onChange={(e) => setDraftTahunBuku(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm font-bold text-slate-900"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Bagian 2: Master Sub-Kategori Saldo Masuk & Saldo Keluar */}
+              {/* Master Sub-Kategori Saldo Masuk & Saldo Keluar */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Sub-Kategori Saldo Masuk */}
                 <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 space-y-3">
                   <div className="font-extrabold text-emerald-950 flex items-center justify-between">
-                    <span>2A. Kategori Kas Masuk</span>
+                    <span>1. Kategori Kas Masuk</span>
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
                       {draftSubMasuk.length} Kategori
                     </span>
@@ -2550,7 +3603,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                           <span className="font-bold text-slate-800 block text-[11px]">{cat.label}</span>
                           <span className="font-mono text-[9px] text-slate-400">{cat.code}</span>
                         </div>
-                        {cat.code !== 'IURAN_WAJIB_BULANAN' && draftSubMasuk.length > 1 && (
+                        {draftSubMasuk.length > 1 && (
                           <button
                             type="button"
                             onClick={() => handleRemoveSubKategori('MASUK', cat.code)}
@@ -2586,7 +3639,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 {/* Sub-Kategori Saldo Keluar */}
                 <div className="p-4 rounded-xl border border-red-200 bg-red-50/30 space-y-3">
                   <div className="font-extrabold text-red-950 flex items-center justify-between">
-                    <span>2B. Kategori Kas Keluar</span>
+                    <span>2. Kategori Kas Keluar</span>
                     <span className="text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
                       {draftSubKeluar.length} Kategori
                     </span>

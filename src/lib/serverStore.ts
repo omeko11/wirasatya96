@@ -44,34 +44,135 @@ export interface FinanceCategoryOption {
   label: string;
 }
 
+export type CampaignCategory =
+  | 'ANAK_YATIM'
+  | 'ANGGOTA_SAKIT'
+  | 'ANGGOTA_MD'
+  | 'EVENT_BAKSOS'
+  | 'LAINNYA';
+
+export interface FundraisingCampaign {
+  id: string;
+  title: string;
+  category: CampaignCategory;
+  targetAmount: number;
+  collectedAmount: number;
+  disbursedAmount: number;
+  donorCount: number;
+  description: string;
+  status: 'AKTIF' | 'TERCAPAI' | 'SELESAI';
+  deadline?: string;
+  updatedAt: string;
+}
+
+export interface InvestmentParticipant {
+  id: string;
+  nrp: string;
+  namaLengkap: string;
+  pangkat: string;
+  polda: string;
+  namaProgram: string;
+  nominalPenyertaan: number;
+  estimasiNilaiSaatIni: number;
+  tanggalBergabung: string;
+  statusPartisipasi: 'AKTIF' | 'CAIR';
+  catatan: string;
+}
+
 export interface FinanceConfig {
-  iuranWajibPerBulan: number; // default 250000
+  iuranWajibPerBulan: number; // legacy compatibility
   tahunBuku: number; // default 2026
   subKategoriMasuk: FinanceCategoryOption[];
   subKategoriKeluar: FinanceCategoryOption[];
+  campaigns?: FundraisingCampaign[];
+  investmentParticipants?: InvestmentParticipant[];
   updatedAt: string;
   updatedBy: string;
 }
 
+export const DEFAULT_CAMPAIGNS: FundraisingCampaign[] = [
+  {
+    id: 'cmp-anak-yatim',
+    title: 'Santunan & Beasiswa Anak Yatim Keluarga Besar WS96',
+    category: 'ANAK_YATIM',
+    targetAmount: 100000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Program dana sosial sukarela untuk santunan berkala dan dukungan biaya pendidikan putra-putri rekan leting Wira Satya 96 yang telah mendahului (Almarhum).',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cmp-anggota-sakit',
+    title: 'Dana Solidaritas Besuk & Bantuan Medis Anggota Sakit',
+    category: 'ANGGOTA_SAKIT',
+    targetAmount: 75000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Gotong royong dana sosial untuk besuk, pendampingan rawat inap, dan tali asih pemulihan medis rekan-rekan Batalyon Wira Satya 96 yang sedang sakit.',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cmp-anggota-md',
+    title: 'Tali Asih Duka Cita & Santunan Anggota yang MD',
+    category: 'ANGGOTA_MD',
+    targetAmount: 100000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Dana sosial kehormatan untuk tali asih duka cita, karangan bunga, dan santunan keluarga rekan Wira Satya 96 yang Meninggal Dunia (MD).',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'cmp-event-baksos',
+    title: 'Milestone Baksos & Kegiatan Silaturahmi Leting WS96',
+    category: 'EVENT_BAKSOS',
+    targetAmount: 150000000,
+    collectedAmount: 0,
+    disbursedAmount: 0,
+    donorCount: 0,
+    description:
+      'Penggalangan dana sukarela (milestone event) untuk kegiatan Bakti Sosial, Reuni, dan acara kebersamaan Batalyon Wira Satya 96.',
+    status: 'AKTIF',
+    deadline: '2026-12-31',
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 export const DEFAULT_FINANCE_CONFIG: FinanceConfig = {
-  iuranWajibPerBulan: 250000,
+  iuranWajibPerBulan: 0,
   tahunBuku: 2026,
   subKategoriMasuk: [
-    { code: 'IURAN_WAJIB_BULANAN', label: 'Iuran Wajib Bulanan Anggota' },
-    { code: 'SUMBANGAN_SUKARELA', label: 'Sumbangan Sukarela / Donasi Leting' },
-    { code: 'PENCAIRAN_ASET_INVESTASI', label: 'Bagi Hasil / Pencairan Aset Berharga (SBN/Valas/Crypto)' },
-    { code: 'DANA_KEGIATAN_REUNI', label: 'Sumbangan Khusus Kegiatan / Reuni' },
+    { code: 'DANA_SOSIAL_YATIM', label: 'Donasi Sosial: Santunan Anak Yatim' },
+    { code: 'DANA_SOSIAL_SAKIT', label: 'Donasi Sosial: Bantuan Anggota Sakit' },
+    { code: 'DANA_SOSIAL_MD', label: 'Donasi Sosial: Santunan Anggota MD (Duka Cita)' },
+    { code: 'DONASI_MILESTONE_EVENT', label: 'Penggalangan Dana Event / Milestone Baksos' },
+    { code: 'SUMBANGAN_SUKARELA', label: 'Kas Sukarela / Komponen Cadangan Leting' },
+    { code: 'DANA_INVESTASI_ANGGOTA', label: 'Penyertaan Dana Investasi (Bagi yang Mau Ikut)' },
+    { code: 'PENCAIRAN_ASET_INVESTASI', label: 'Bagi Hasil / Pencairan Aset & Investasi' },
     { code: 'PEMASUKAN_LAINNYA', label: 'Penerimaan Kas Lainnya' },
   ],
   subKategoriKeluar: [
-    { code: 'SANTUNAN_KESEHATAN', label: 'Santunan Kesehatan / Rekan Sakit' },
-    { code: 'SANTUNAN_DUKA_CITA', label: 'Santunan Duka Cita Keluarga Besar' },
-    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Bantuan Pendidikan Putra-Putri Leting' },
-    { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Pembelian Aset Berharga (SBN / Valas / Crypto / Emas)' },
-    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Operasional & Kesekretariatan Paguyuban' },
-    { code: 'KEGIATAN_REUNI_LETING', label: 'Biaya Kegiatan Reuni & Silaturahmi Leting' },
+    { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Penyaluran Santunan Anak Yatim & Pendidikan' },
+    { code: 'SANTUNAN_KESEHATAN', label: 'Penyaluran Bantuan Anggota Sakit / Medis' },
+    { code: 'SANTUNAN_DUKA_CITA', label: 'Penyaluran Santunan Anggota MD / Duka Cita' },
+    { code: 'KEGIATAN_REUNI_LETING', label: 'Penyaluran Dana Event / Baksos / Reuni' },
+    { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Penempatan Dana Investasi & Pembelian Aset' },
+    { code: 'OPERASIONAL_PAGUYUBAN', label: 'Pengeluaran Kas Cadangan / Operasional' },
     { code: 'PENGELUARAN_LAINNYA', label: 'Pengeluaran Kas Lainnya' },
   ],
+  campaigns: DEFAULT_CAMPAIGNS,
+  investmentParticipants: [],
   updatedAt: new Date().toISOString(),
   updatedBy: 'Sistem Default Kebendaharaan WS96',
 };
@@ -2832,6 +2933,19 @@ export const serverStore = {
     if (!globalStore.financeConfig) {
       globalStore.financeConfig = { ...DEFAULT_FINANCE_CONFIG };
     }
+    if (!Array.isArray(globalStore.financeConfig.campaigns)) {
+      globalStore.financeConfig.campaigns = DEFAULT_CAMPAIGNS.map((c) => ({ ...c }));
+    }
+    if (!Array.isArray(globalStore.financeConfig.investmentParticipants)) {
+      globalStore.financeConfig.investmentParticipants = [];
+    }
+    // Migrate legacy default category if IURAN_WAJIB_BULANAN is still the first category
+    if (
+      Array.isArray(globalStore.financeConfig.subKategoriMasuk) &&
+      globalStore.financeConfig.subKategoriMasuk.some((c) => c.code === 'IURAN_WAJIB_BULANAN')
+    ) {
+      globalStore.financeConfig.subKategoriMasuk = DEFAULT_FINANCE_CONFIG.subKategoriMasuk.map((c) => ({ ...c }));
+    }
     return globalStore.financeConfig;
   },
 
@@ -2841,7 +2955,7 @@ export const serverStore = {
     }
 
     if (patch.iuranWajibPerBulan !== undefined) {
-      const nextMonthly = Math.max(0, Number(patch.iuranWajibPerBulan) || 250000);
+      const nextMonthly = Math.max(0, Number(patch.iuranWajibPerBulan) || 0);
       globalStore.financeConfig.iuranWajibPerBulan = nextMonthly;
       const annualTarget = nextMonthly * 12;
 
@@ -2877,6 +2991,14 @@ export const serverStore = {
 
     if (Array.isArray(patch.subKategoriKeluar) && patch.subKategoriKeluar.length > 0) {
       globalStore.financeConfig.subKategoriKeluar = patch.subKategoriKeluar;
+    }
+
+    if (Array.isArray(patch.campaigns)) {
+      globalStore.financeConfig.campaigns = patch.campaigns;
+    }
+
+    if (Array.isArray(patch.investmentParticipants)) {
+      globalStore.financeConfig.investmentParticipants = patch.investmentParticipants;
     }
 
     globalStore.financeConfig.updatedAt = new Date().toISOString();

@@ -69,16 +69,43 @@ export async function POST(req: NextRequest) {
     const { action } = body;
 
     if (action === 'UPDATE_FINANCE_CONFIG') {
-      const { iuranWajibPerBulan, tahunBuku, subKategoriMasuk, subKategoriKeluar, updatedBy } = body;
+      const {
+        iuranWajibPerBulan,
+        tahunBuku,
+        subKategoriMasuk,
+        subKategoriKeluar,
+        campaigns,
+        investmentParticipants,
+        linkedTransaction,
+        updatedBy,
+      } = body;
+      const actorName = updatedBy || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara');
       const updatedConfig = updateFinanceConfig(
         {
           ...(iuranWajibPerBulan !== undefined ? { iuranWajibPerBulan: Number(iuranWajibPerBulan) } : {}),
           ...(tahunBuku !== undefined ? { tahunBuku: Number(tahunBuku) } : {}),
           ...(Array.isArray(subKategoriMasuk) ? { subKategoriMasuk } : {}),
           ...(Array.isArray(subKategoriKeluar) ? { subKategoriKeluar } : {}),
+          ...(Array.isArray(campaigns) ? { campaigns } : {}),
+          ...(Array.isArray(investmentParticipants) ? { investmentParticipants } : {}),
         },
-        updatedBy || session?.nama || (effectiveRole === 'SUPERADMIN' ? 'Superadmin' : 'Bendahara')
+        actorName
       );
+
+      if (linkedTransaction && linkedTransaction.jenis && linkedTransaction.nominal && linkedTransaction.keterangan) {
+        serverStore.addTransaction({
+          nomorReferensi: linkedTransaction.nomorReferensi || 'WS96-MLS-' + Date.now().toString().slice(-4),
+          tanggal: linkedTransaction.tanggal || new Date().toISOString().split('T')[0],
+          jenis: linkedTransaction.jenis,
+          kategori: linkedTransaction.kategori || 'SUMBANGAN_SUKARELA',
+          nominal: Number(linkedTransaction.nominal),
+          keterangan: linkedTransaction.keterangan,
+          pihakTerkait: linkedTransaction.pihakTerkait || '-',
+          nrpTerkait: linkedTransaction.nrpTerkait || '',
+          dicatatOleh: actorName,
+        });
+      }
+
       await serverStore.flushCloud();
       await cacheInvalidatePrefix('ws96:finance:');
       const financeData = serverStore.getFinance();
@@ -86,16 +113,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message:
-          'Pengaturan kebendaharaan (Tarif Iuran Wajib & Kategori Cashflow) berhasil diperbarui oleh Bendahara / Superadmin',
+          'Data Program Sosial / Milestone, Dana Investasi & Pengaturan Kebendaharaan berhasil diperbarui oleh Bendahara / Superadmin',
         data: {
           summary,
           iuran: financeData.iuranList,
           iuranList: financeData.iuranList,
+          transactions: financeData.transactions,
           financeConfig: updatedConfig,
         },
         summary,
         iuran: financeData.iuranList,
         iuranList: financeData.iuranList,
+        transactions: financeData.transactions,
         financeConfig: updatedConfig,
       });
     }
