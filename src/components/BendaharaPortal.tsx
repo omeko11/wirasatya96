@@ -122,14 +122,14 @@ export const DEFAULT_CAMPAIGNS: FundraisingCampaign[] = [
   },
   {
     id: 'cmp-anggota-md',
-    title: 'Tali Asih Duka Cita & Santunan Anggota yang MD',
+    title: 'Dana Duka & Tali Asih Keluarga Besar WS96',
     category: 'ANGGOTA_MD',
     targetAmount: 100000000,
     collectedAmount: 0,
     disbursedAmount: 0,
     donorCount: 0,
     description:
-      'Dana sosial kehormatan untuk tali asih duka cita, karangan bunga, dan santunan keluarga rekan Wira Satya 96 yang Meninggal Dunia (MD).',
+      'Dana duka kehormatan untuk tali asih, karangan bunga, dan santunan keluarga rekan Wira Satya 96 yang berpulang.',
     status: 'AKTIF',
     deadline: '2026-12-31',
     updatedAt: new Date().toISOString(),
@@ -156,7 +156,7 @@ const DEFAULT_FINANCE_CONFIG: FinanceConfig = {
   subKategoriMasuk: [
     { code: 'DANA_SOSIAL_YATIM', label: 'Donasi Sosial: Santunan Anak Yatim' },
     { code: 'DANA_SOSIAL_SAKIT', label: 'Donasi Sosial: Bantuan Anggota Sakit' },
-    { code: 'DANA_SOSIAL_MD', label: 'Donasi Sosial: Santunan Anggota MD (Duka Cita)' },
+    { code: 'DANA_SOSIAL_MD', label: 'Donasi Sosial: Dana Duka' },
     { code: 'DONASI_MILESTONE_EVENT', label: 'Penggalangan Dana Event / Milestone Baksos' },
     { code: 'SUMBANGAN_SUKARELA', label: 'Kas Sukarela Leting' },
     { code: 'DANA_INVESTASI_ANGGOTA', label: 'Penyertaan Dana Investasi' },
@@ -166,7 +166,7 @@ const DEFAULT_FINANCE_CONFIG: FinanceConfig = {
   subKategoriKeluar: [
     { code: 'BANTUAN_PENDIDIKAN_ANAK', label: 'Penyaluran Santunan Anak Yatim & Pendidikan' },
     { code: 'SANTUNAN_KESEHATAN', label: 'Penyaluran Bantuan Anggota Sakit / Medis' },
-    { code: 'SANTUNAN_DUKA_CITA', label: 'Penyaluran Santunan Anggota MD / Duka Cita' },
+    { code: 'SANTUNAN_DUKA_CITA', label: 'Penyaluran Dana Duka' },
     { code: 'KEGIATAN_REUNI_LETING', label: 'Penyaluran Dana Event / Baksos / Reuni' },
     { code: 'PEMBELIAN_ASET_INVESTASI', label: 'Penempatan Dana Investasi & Pembelian Aset' },
     { code: 'OPERASIONAL_PAGUYUBAN', label: 'Pengeluaran Operasional Paguyuban' },
@@ -199,7 +199,7 @@ const CAMPAIGN_CATEGORY_META: Record<
     defaultOutflowCode: 'SANTUNAN_KESEHATAN',
   },
   ANGGOTA_MD: {
-    label: 'Duka Cita (MD)',
+    label: 'Dana Duka',
     icon: '🕊️',
     badge: 'bg-amber-100 text-amber-900 border-amber-200',
     barGradient: 'from-amber-500 to-orange-600',
@@ -327,10 +327,20 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
   const [assetCategoryFilter, setAssetCategoryFilter] = useState<'SEMUA' | AssetCategory>('SEMUA');
 
   // Derived Campaigns & Investment Participants from financeConfig
-  const campaigns: FundraisingCampaign[] =
+  const rawCampaigns: FundraisingCampaign[] =
     Array.isArray(financeConfig.campaigns) && financeConfig.campaigns.length > 0
       ? financeConfig.campaigns
       : DEFAULT_CAMPAIGNS;
+  const campaigns: FundraisingCampaign[] = rawCampaigns.map((c) =>
+    c.id === 'cmp-anggota-md' && c.title.includes('Anggota yang MD')
+      ? {
+          ...c,
+          title: 'Dana Duka & Tali Asih Keluarga Besar WS96',
+          description:
+            'Dana duka kehormatan untuk tali asih, karangan bunga, dan santunan keluarga rekan Wira Satya 96 yang berpulang.',
+        }
+      : c
+  );
   const investmentParticipants: InvestmentParticipant[] = Array.isArray(financeConfig.investmentParticipants)
     ? financeConfig.investmentParticipants
     : [];
@@ -1483,7 +1493,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     </button>
                   </div>
                   <ul className="space-y-1 text-slate-200">
-                    <li>&bull; <b>1. Dana Sosial:</b> Milestone sukarela (Anak Yatim, Sakit, Duka Cita/MD, Event).</li>
+                    <li>&bull; <b>1. Dana Sosial:</b> Milestone sukarela (Anak Yatim, Anggota Sakit, Dana Duka, Event).</li>
                     <li>&bull; <b>2. Dana Investasi:</b> Penempatan Rupiah pada instrumen investasi/aset.</li>
                     <li>&bull; <b>Buku Kas:</b> Terbagi 2 (Kas Dana Sosial &amp; Kas Dana Investasi).</li>
                   </ul>
@@ -1916,7 +1926,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                 {activeTooltip === 'milestone' && (
                   <div className="absolute left-0 top-full mt-1.5 w-72 p-3 rounded-xl bg-slate-900 text-white text-[11px] leading-relaxed shadow-xl z-40">
                     Penggalangan dana sukarela untuk <b>Anak Yatim</b>, <b>Anggota Sakit</b>,{' '}
-                    <b>Duka Cita (MD)</b>, dan <b>Event/Baksos</b> dengan target milestone fleksibel yang dapat diedit oleh Bendahara.
+                    <b>Dana Duka</b>, dan <b>Event/Baksos</b> dengan target milestone fleksibel yang dapat diedit oleh Bendahara.
                   </div>
                 )}
               </div>
@@ -2155,7 +2165,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                         : 'bg-emerald-200/70 text-emerald-900'
                     }`}
                   >
-                    Yatim / Sakit / MD / Event
+                    Yatim / Sakit / Dana Duka / Event
                   </span>
                 </div>
                 <p className="text-lg font-black mt-1">{formatRupiah(saldoKasSosial)}</p>
@@ -3152,11 +3162,11 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     onChange={(e) => setCmpCategory(e.target.value as CampaignCategory)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold text-slate-900"
                   >
-                    <option value="ANAK_YATIM">🤲 Bantu Anak Yatim &amp; Beasiswa</option>
-                    <option value="ANGGOTA_SAKIT">🏥 Bantu Anggota yang Sakit</option>
-                    <option value="ANGGOTA_MD">🕊️ Bantu Anggota yang MD (Duka Cita)</option>
-                    <option value="EVENT_BAKSOS">🤝 Event Leting / Baksos / Milestone</option>
-                    <option value="LAINNYA">🎯 Program Sosial Lainnya</option>
+                    <option value="ANAK_YATIM">🤲 Anak Yatim</option>
+                    <option value="ANGGOTA_SAKIT">🏥 Anggota Sakit</option>
+                    <option value="ANGGOTA_MD">🕊️ Dana Duka</option>
+                    <option value="EVENT_BAKSOS">🤝 Event &amp; Baksos</option>
+                    <option value="LAINNYA">🎯 Lainnya</option>
                   </select>
                 </div>
 
