@@ -106,7 +106,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
     },
     {
       id: 'cmp-anggota-md',
-      title: 'Tali Asih & Santunan Anggota yang MD',
+      title: 'Dana Duka',
       category: 'ANGGOTA_MD',
       targetAmount: 100000000,
       collectedAmount: 0,
@@ -117,6 +117,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
   ]);
   const [widgetInvestTotal, setWidgetInvestTotal] = useState<number>(0);
   const [widgetInvestCount, setWidgetInvestCount] = useState<number>(0);
+  const [showTodWidgetInfo, setShowTodWidgetInfo] = useState<boolean>(false);
+  const [showDanaWidgetInfo, setShowDanaWidgetInfo] = useState<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
@@ -875,8 +877,8 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                       {currentUser.role === 'KETUA'
                         ? 'Ketua Angkatan'
                         : currentUser.role === 'SEKRETARIAT'
-                        ? 'Sekretaris Angkatan'
-                        : 'Bendahara Angkatan'}
+                        ? 'Sekretaris'
+                        : 'Bendahara'}
                     </span>
                   </div>
                 )}
@@ -892,7 +894,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 onClick={() => setSelectedMember(currentMemberObj)}
                 className="w-full mt-3 py-1.5 px-3 rounded-lg border border-red-800 text-red-900 hover:bg-red-50 font-bold text-xs transition-colors"
               >
-                Lihat Profil Saya
+                Profil Saya
               </button>
             </div>
           </div>
@@ -904,14 +906,24 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 <Briefcase className="w-3.5 h-3.5 text-red-800" />
                 <span className="sm:hidden">TOD</span>
                 <span className="hidden sm:inline">Tour of Duty</span>
-                <span title="Sebaran penempatan personel aktif di Mabes Polri, 38 Polda, dan Luar Struktur">
-                  <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowTodWidgetInfo((prev) => !prev)}
+                  title="Sebaran penempatan personel aktif di Mabes Polri, 38 Polda, dan Luar Struktur"
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                </button>
               </span>
               <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-full">
                 {publicMembers.length} Personel
               </span>
             </div>
+            {showTodWidgetInfo && (
+              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                Sebaran penempatan personel aktif di Mabes Polri, 38 Polda, dan Luar Struktur.
+              </div>
+            )}
             {onNavigateToJabatan && (
               <button
                 onClick={onNavigateToJabatan}
@@ -943,14 +955,14 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
                 <span className="font-bold text-slate-900 flex items-center gap-1.5">
                   <Search className="w-3.5 h-3.5 text-red-800 shrink-0" />
-                  <span className="truncate">Hasil Pencarian Cepat: &ldquo;{externalSearch}&rdquo;</span>
+                  <span className="truncate">Hasil Pencarian: &ldquo;{externalSearch}&rdquo;</span>
                 </span>
                 {onNavigateToJabatan && (
                   <button
                     onClick={onNavigateToJabatan}
                     className="text-red-800 font-bold hover:underline flex items-center gap-0.5 shrink-0"
                   >
-                    <span>Buka Menu Jabatan</span>
+                    <span>Menu Jabatan</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -984,7 +996,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                         </div>
                       </div>
                       <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded flex-shrink-0">
-                        Lihat Profil
+                        Profil
                       </span>
                     </div>
                   ))}
@@ -1046,7 +1058,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                 className="flex items-center gap-1.5 sm:gap-2 hover:text-amber-600 transition-colors p-1 whitespace-nowrap"
               >
                 <PenSquare className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Tulis Artikel</span>
+                <span>Artikel</span>
               </button>
             </div>
           </div>
@@ -1116,7 +1128,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   }}
                   className="text-xs font-bold text-red-900 hover:underline"
                 >
-                  + Buat Postingan Baru
+                  Buat Postingan
                 </button>
               </div>
             )}
@@ -1169,7 +1181,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                           }`}
                         >
                           {isUrgent && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                          {isUrgent ? 'ATENSI KHUSUS' : 'TERPANTAU'}
+                          {isUrgent ? 'ATENSI' : 'TERPANTAU'}
                         </span>
                       </div>
 
@@ -1185,13 +1197,13 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                           rel="noreferrer"
                           className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1"
                         >
-                          <Phone className="w-3 h-3" /> Kirim Doa &amp; Semangat
+                          <Phone className="w-3 h-3" /> Kirim Doa
                         </a>
                         <button
                           onClick={() => setSelectedMember(m)}
                           className="text-[10px] font-bold text-red-900 hover:underline"
                         >
-                          Detail Medis →
+                          Detail →
                         </button>
                       </div>
                     </div>
@@ -1211,14 +1223,24 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               <span className="font-bold text-slate-900 flex items-center gap-1.5">
                 <Wallet className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Dana Sosial &amp; Investasi</span>
-                <span title="Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Anggota MD, Event), Kas Sukarela Cadangan, dan Dana Investasi (Bagi yang Mau Ikut)">
-                  <Info className="w-3.5 h-3.5 text-slate-400 cursor-help" />
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowDanaWidgetInfo((prev) => !prev)}
+                  title="Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Dana Duka, Event), Dana Investasi, dan Buku Kas"
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer focus:outline-none"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                </button>
               </span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
                 Sukarela
               </span>
             </div>
+            {showDanaWidgetInfo && (
+              <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                Program Penggalangan Dana Sosial (Anak Yatim, Anggota Sakit, Dana Duka, Event), Dana Investasi, dan Buku Kas.
+              </div>
+            )}
 
             {/* Active Milestone Programs (Kitabisa / Saweria style) */}
             <div className="space-y-2">
@@ -1302,7 +1324,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                   onClick={onNavigateToBendahara}
                   className="w-full py-1.5 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs transition-colors"
                 >
-                  Buka Dana Sosial &amp; Investasi →
+                  Buka Bendahara →
                 </button>
               )}
               <span

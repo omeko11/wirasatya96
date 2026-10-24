@@ -1353,7 +1353,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                       <span>Daftar ADC / Ajudan / Spri Pendamping Pimpinan (Opsional)</span>
                     </label>
                     <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                      Klik <strong>&ldquo;+ Tambah ADC&rdquo;</strong> untuk menambahkan data Ajudan/ADC. Jika NRP ADC diisi, ADC dapat login mewakili Pimpinan dan seluruh aktivitas tercatat di Log Audit.
+                      Klik <strong>&ldquo;Tambah ADC&rdquo;</strong> untuk menambahkan data Ajudan/ADC. Jika NRP ADC diisi, ADC dapat login mewakili Pimpinan dan seluruh aktivitas tercatat di Log Audit.
                     </p>
                   </div>
                   <button
@@ -1368,7 +1368,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
 
                 {(!formData.daftarAdc || formData.daftarAdc.length === 0) && (
                   <div className="p-3 rounded-xl border border-dashed border-slate-300 bg-white/70 text-center text-xs text-slate-400">
-                    Belum ada akun / kontak ADC yang ditambahkan. Klik tombol <strong>&ldquo;+ Tambah ADC&rdquo;</strong> di atas untuk menginput data ADC.
+                    Belum ada akun / kontak ADC yang ditambahkan. Klik tombol <strong>&ldquo;Tambah ADC&rdquo;</strong> di atas untuk menginput data ADC.
                   </div>
                 )}
 

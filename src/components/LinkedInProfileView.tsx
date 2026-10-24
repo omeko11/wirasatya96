@@ -553,7 +553,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
             onClick={onClose}
             className="text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            ← Kembali ke Direktori
+            ← Kembali
           </button>
         </div>
       )}
@@ -808,7 +808,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                       title="Pengaturan Profil & Keamanan (2FA, PIN, TOTP, Passkey)"
                     >
                       <Shield className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Pengaturan &amp; Keamanan</span>
+                      <span>Keamanan</span>
                     </button>
                   )}
                   {canEdit && (
@@ -847,14 +847,14 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                       if (st === 'ALMARHUM') {
                         return (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-300">
-                            🕊️ Almarhum / Gugur
+                            🕊️ Almarhum
                           </span>
                         );
                       }
                       if (st === 'PURNA_TUGAS') {
                         return (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                            🎖️ Purna Tugas Polri
+                            🎖️ Purna Tugas
                           </span>
                         );
                       }
@@ -890,7 +890,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                         <span>
                           {effectiveRole === 'SUPERADMIN'
                             ? 'SUPERADMIN'
-                            : `🎖️ Jabatan Angkatan: ${jabatanAngkatanLabel}`}
+                            : `🎖️ ${jabatanAngkatanLabel}`}
                         </span>
                       </span>
                     </div>
@@ -907,20 +907,20 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                       onClick={() => setShowContactModal(true)}
                       className="text-red-900 font-bold hover:underline cursor-pointer"
                     >
-                      Info Kontak
+                      Kontak
                     </button>
                   </p>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5 pt-4 mt-2 border-t border-slate-100">
+              <div className="flex flex-wrap items-center gap-2 pt-4 mt-2 border-t border-slate-100">
                 {localMember.noHp && (
                   <a
                     href={getWaUrl(localMember.noHp)}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-5 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                    className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
                   >
                     <Phone className="w-4 h-4" />
                     <span>WhatsApp</span>
@@ -930,10 +930,10 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                 {!isSelf && onOpenChat && (
                   <button
                     onClick={() => onOpenChat(localMember)}
-                    className="px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                    className="px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                   >
                     <MessageSquare className="w-4 h-4 text-amber-400" />
-                    <span>Kirim Pesan</span>
+                    <span>Pesan</span>
                   </button>
                 )}
 
@@ -943,7 +943,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     className="px-4 py-2 rounded-full bg-red-800 hover:bg-red-900 text-white font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
                     <Edit3 className="w-4 h-4" />
-                    <span>Edit Profil</span>
+                    <span>Edit</span>
                   </button>
                 ) : (
                   <span className="text-xs text-slate-500 font-medium px-3 py-1.5 bg-slate-100 rounded-full border border-slate-200">
@@ -956,9 +956,10 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                     type="button"
                     onClick={() => setShowSecurityModal(true)}
                     className="px-4 py-2 rounded-full border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    title="Pengaturan Keamanan & 2FA"
                   >
                     <Shield className="w-4 h-4 text-blue-600" />
-                    <span>Keamanan &amp; 2FA</span>
+                    <span>2FA</span>
                   </button>
                 )}
 
@@ -980,7 +981,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
                   className="px-4 py-2 rounded-full border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold text-xs sm:text-sm transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Info Kontak</span>
+                  <span>Kontak</span>
                 </button>
               </div>
 

@@ -2725,7 +2725,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
                     }}
                     className="text-[11px] font-bold text-amber-700 hover:text-amber-800 underline"
                   >
-                    + Kelola Master Kategori
+                    Kelola Kategori
                   </button>
                 </div>
 

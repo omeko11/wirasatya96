@@ -29,7 +29,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'DEFAULT',
     title: 'Default: Semua (Kombinasi Utama & Status Jabatan)',
-    shortLabel: 'Default: Semua (Status • Pangkat • Level Satker • NRP • Nama • Role)',
+    shortLabel: 'Default (Semua)',
     formula: 'Status (Aktif → Purna → PTDH → Almarhum) • Pangkat • Level Satker • NRP • Nama • Role',
     description:
       'Menggabungkan urutan utama Menu User (Pangkat • Level Satker • NRP • Nama • Role) dengan pengelompokan Status Kedinasan Menu Jabatan (Aktif → Purna Tugas → PTDH → Almarhum).',
@@ -41,7 +41,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'PANGKAT_UTAMA',
     title: 'Kombinasi Pangkat Utama (Pangkat • Level Satker • NRP • Nama • Role)',
-    shortLabel: 'Semua: Pangkat • Level Satker • NRP • Nama • Role • Status',
+    shortLabel: 'Pangkat Utama',
     formula: 'Pangkat • Level Satker • NRP • Nama • Role • Status (Aktif → Purna → PTDH → Almarhum)',
     description:
       'Mengurutkan murni dari Pangkat tertinggi (Jenderal → Bharada) dan Level Satker (Mabes → Polsek), dikombinasikan dengan NRP, Nama, Role, dan Status Kedinasan.',
@@ -53,7 +53,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'STATUS',
     title: 'By Status Kedinasan & NRP (Urutan Menu Jabatan)',
-    shortLabel: 'By Status (Aktif [NRP Kecil] → Purna → PTDH → Almarhum)',
+    shortLabel: 'Status Dinas',
     formula: 'Status (Aktif → Purna → PTDH → Almarhum) • NRP Kecil • Pangkat • Level Satker • Nama • Role',
     description:
       'Mengelompokkan personel Aktif di urutan teratas (diurutkan dari NRP terkecil/senioritas), diikuti Purna Tugas, PTDH, dan Almarhum di bagian bawah.',
@@ -64,7 +64,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'PANGKAT',
     title: 'By Pangkat Polri',
-    shortLabel: 'By Pangkat (Jenderal Polisi → Bharada)',
+    shortLabel: 'Pangkat',
     formula: 'Pangkat (PATI → PAMEN → PAMA → Bintara/Tamtama) • Status • Level Satker • NRP',
     description:
       'Mengurutkan berdasarkan hierarki kepangkatan Polri (Irjen Pol, Brigjen Pol, Kombes Pol, AKBP, dst.) dengan tetap memprioritaskan Status Kedinasan.',
@@ -75,7 +75,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'LEVEL_SATKER',
     title: 'By Level Satker (Tingkat Kesatuan)',
-    shortLabel: 'By Level Satker (Mabes → Polda → Polres → Polsek)',
+    shortLabel: 'Level Satker',
     formula: 'Level Satker (Mabes/Kemen-Lembaga → Polda → Polres/ta/bes → Polsek) • Status • Pangkat',
     description:
       'Mengurutkan dari penugasan tingkat pusat (Mabes Polri & Kementerian/Lembaga), tingkat Polda, Polres/Polrestabes, hingga Polsek.',
@@ -86,7 +86,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'NRP',
     title: 'By NRP (Nomor Registrasi Pokok)',
-    shortLabel: 'By NRP (Angka Kecil ↔ Besar)',
+    shortLabel: 'NRP',
     formula: 'NRP 8 Digit (Tahun Kelahiran & Nomor Urut) • Status • Pangkat • Level Satker',
     description:
       'Mengurutkan berdasarkan angka NRP 8 digit (senioritas tahun kelahiran 71... s.d. 75...) yang dikombinasikan dengan Status Kedinasan.',
@@ -97,7 +97,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'NAMA',
     title: 'By Nama Lengkap Personel',
-    shortLabel: 'By Nama (Abjad A ↔ Z)',
+    shortLabel: 'Nama (A–Z)',
     formula: 'Nama Lengkap Tanpa Gelar Pangkat (A – Z / Z – A) • Status • Pangkat',
     description:
       'Mengurutkan berdasarkan abjad nama lengkap perwira (setelah pangkat dan gelar depan dibersihkan).',
@@ -108,7 +108,7 @@ export const UNIFIED_SORT_OPTIONS: UnifiedSortOption[] = [
   {
     key: 'ROLE',
     title: 'By Role / Jabatan Angkatan',
-    shortLabel: 'By Role (Ketua → Sekretaris → Bendahara → Anggota)',
+    shortLabel: 'Role',
     formula: 'Role Pengurus (Ketua → Sekretaris → Bendahara → Anggota) • Status • Pangkat • Level Satker',
     description:
       'Menampilkan pengurus inti Paguyuban Wira Satya 96 (Ketua, Sekretaris, Bendahara) terlebih dahulu sebelum Anggota.',
@@ -142,15 +142,15 @@ export const SortTriggerBar: React.FC<SortTriggerBarProps> = ({
         type="button"
         onClick={onOpenModal}
         className="flex items-center min-w-0 text-left hover:bg-slate-50 transition-colors focus:outline-none group"
-        title="Klik untuk membuka Pop-up Daftar Pengurutan (Pilih Kriteria & Ascend / Descend)"
+        title={`${currentOption.title}: ${currentOption.formula} (Klik untuk pilih urutan)`}
       >
-        <div className="pl-2.5 pr-2 py-1.5 flex items-center gap-1.5 text-red-800 bg-red-50/80 group-hover:bg-red-100/80 border-r border-slate-200 transition-colors shrink-0">
+        <div className="pl-2 pr-1.5 py-1.5 flex items-center gap-1 text-red-800 bg-red-50/80 group-hover:bg-red-100/80 border-r border-slate-200 transition-colors shrink-0">
           <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
-          <span className="text-[10px] font-extrabold uppercase tracking-wider">Urutkan</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider">Urut</span>
         </div>
         <div
-          className={`px-2.5 py-1.5 flex items-center gap-1.5 min-w-0 ${
-            compact ? 'max-w-[240px] sm:max-w-[340px]' : 'max-w-[260px] sm:max-w-[440px]'
+          className={`px-2 py-1.5 flex items-center gap-1 min-w-0 ${
+            compact ? 'max-w-[160px] sm:max-w-[200px]' : 'max-w-[180px] sm:max-w-[220px]'
           }`}
         >
           <span className="text-xs font-semibold text-slate-700 truncate">

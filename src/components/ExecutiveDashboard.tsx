@@ -35,6 +35,7 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
   };
 
   const [activeSubTab, setActiveSubTab] = useState<'kesehatan' | 'hunian' | 'usaha' | 'pemetaan' | 'keuangan'>(getInitialSubTab());
+  const [showAnevInfo, setShowAnevInfo] = useState<boolean>(false);
 
   // Exclude behind-the-scenes Superadmin from all alumni counts, recaps, and exports
   const alumniMembers = React.useMemo(
@@ -177,30 +178,40 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
   return (
     <div className="space-y-6 pb-24 md:pb-12">
       {/* Executive Header Banner */}
-      <div className="bg-gradient-to-r from-polri-navy via-slate-900 to-polri-navyLight p-4 sm:p-5 rounded-2xl border border-polri-gold/40 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="p-2.5 rounded-xl bg-polri-gold/20 text-polri-gold border border-polri-gold/30">
-            <BarChart3 className="w-5 h-5" />
-          </span>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-extrabold text-white">
-              Anev &amp; Statistik
-            </h2>
-            <span
-              className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-help text-[11px] font-bold"
-              title="Ikhtisar kesehatan personel, kesiapan hunian purna tugas, katalog usaha, dan sebaran penugasan se-Indonesia."
-            >
-              <Info className="w-3.5 h-3.5" />
+      <div className="bg-gradient-to-r from-polri-navy via-slate-900 to-polri-navyLight p-4 sm:p-5 rounded-2xl border border-polri-gold/40 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <span className="p-2.5 rounded-xl bg-polri-gold/20 text-polri-gold border border-polri-gold/30">
+              <BarChart3 className="w-5 h-5" />
             </span>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-extrabold text-white">
+                Anev &amp; Statistik
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowAnevInfo((prev) => !prev)}
+                className="w-5 h-5 rounded-full bg-white/15 hover:bg-white/25 text-amber-300 inline-flex items-center justify-center cursor-pointer text-[11px] font-bold focus:outline-none"
+                title="Ikhtisar kesehatan personel, kesiapan hunian purna tugas, katalog usaha, dan sebaran penugasan se-Indonesia."
+              >
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
+          {showAnevInfo && (
+            <p className="text-[11px] text-slate-300 mt-2 pl-12 leading-relaxed">
+              Ikhtisar kesehatan personel, kesiapan hunian purna tugas, katalog usaha, dan sebaran penugasan se-Indonesia.
+            </p>
+          )}
         </div>
 
         <button
           onClick={handleExportCSV}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-bold text-xs shadow-lg transition-all self-start sm:self-auto"
+          title="Unduh Rekapitulasi Anev ke CSV"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-polri-gold hover:bg-polri-goldDark text-polri-navy font-bold text-xs shadow-lg transition-all self-start sm:self-auto"
         >
           <Download className="w-4 h-4" />
-          <span>Unduh CSV</span>
+          <span>CSV</span>
         </button>
       </div>
 
@@ -258,10 +269,10 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
       {/* Actionable Solution Tabs */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Sub-tab Navigation */}
-        <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-2 overflow-x-auto">
+        <div className="flex border-b border-slate-200 bg-slate-50/70 p-2 gap-1.5 overflow-x-auto">
           <button
             onClick={() => setActiveSubTab('kesehatan')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'kesehatan'
                 ? 'bg-red-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
@@ -273,50 +284,50 @@ export const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ members,
 
           <button
             onClick={() => setActiveSubTab('hunian')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'hunian'
                 ? 'bg-amber-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Home className="w-4 h-4" />
-            Hunian &amp; Purna Tugas ({stillRenting.length})
+            Hunian ({stillRenting.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('usaha')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'usaha'
                 ? 'bg-emerald-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Briefcase className="w-4 h-4" />
-            Katalog Usaha ({withBusiness.length})
+            Usaha ({withBusiness.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('pemetaan')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'pemetaan'
                 ? 'bg-blue-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <MapPin className="w-4 h-4" />
-            Sebaran Wilayah ({regionalStats.length})
+            Wilayah ({regionalStats.length})
           </button>
 
           <button
             onClick={() => setActiveSubTab('keuangan')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               activeSubTab === 'keuangan'
                 ? 'bg-purple-700 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-200/60'
             }`}
           >
             <Wallet className="w-4 h-4" />
-            Pendidikan &amp; Pensiun
+            Pendidikan
           </button>
         </div>
 

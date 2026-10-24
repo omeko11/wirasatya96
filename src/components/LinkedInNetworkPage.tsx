@@ -182,10 +182,10 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Users className="w-5 h-5 text-red-800" />
-                  Direktori Jaringan Leting Wira Satya 96
+                  Direktori Jaringan ({filteredMembers.length})
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Menampilkan <b>{filteredMembers.length}</b> perwira leting Akpol 1996 di seluruh wilayah penugasan.
+                  Perwira leting Akpol 1996 di seluruh wilayah penugasan.
                 </p>
               </div>
 
@@ -193,10 +193,11 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
               {isLeadership && onAddNewMember && (
                 <button
                   onClick={onAddNewMember}
+                  title="Input Anggota Baru"
                   className="px-3.5 py-1.5 rounded-lg bg-red-800 hover:bg-red-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all whitespace-nowrap self-start sm:self-auto"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>+ Input Anggota Baru</span>
+                  <span>Tambah</span>
                 </button>
               )}
             </div>
@@ -207,7 +208,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Cari nama perwira, NRP, jabatan, atau satuan kerja..."
+                  placeholder="Cari nama, NRP, jabatan, satker..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-red-800"
@@ -219,7 +220,7 @@ export const LinkedInNetworkPage: React.FC<LinkedInNetworkPageProps> = ({
                   onClick={() => setSearchPolda('SEMUA')}
                   className="text-xs text-red-600 font-bold hover:underline px-2 whitespace-nowrap"
                 >
-                  Reset Filter
+                  Reset
                 </button>
               )}
             </div>
