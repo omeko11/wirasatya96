@@ -83,7 +83,7 @@ graph LR
 
 ### Menggunakan Docker Compose:
 ```bash
-git clone https://github.com/omeko11/wirasatya96.git
+git clone https://github.com/omeko42/wirasatya96.git
 cd wirasatya96
 cp .env.example .env
 docker-compose up --build -d
@@ -169,7 +169,7 @@ graph LR
 
 ### Using Docker Compose:
 ```bash
-git clone https://github.com/omeko11/wirasatya96.git
+git clone https://github.com/omeko42/wirasatya96.git
 cd wirasatya96
 cp .env.example .env
 docker-compose up --build -d

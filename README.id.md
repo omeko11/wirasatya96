@@ -145,7 +145,7 @@ Cara tercepat untuk menjalankan seluruh layanan (Frontend, Backend, PostgreSQL, 
 
 ### 1. Kloning Repositori & Siapkan Variabel Lingkungan:
 ```bash
-git clone https://github.com/omeko11/wirasatya96.git
+git clone https://github.com/omeko42/wirasatya96.git
 cd wirasatya96
 cp .env.example .env
 ```

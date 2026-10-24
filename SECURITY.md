@@ -42,7 +42,7 @@ Platform **Sistem Informasi Batalyon Wira Satya Akpol 1996** dirancang dengan st
 > [!CAUTION]
 > **JANGAN** membuka *Public Issue* atau *Discussion* terbuka di GitHub untuk melaporkan celah keamanan.
 
-1. Gunakan fitur **GitHub Private Vulnerability Reporting** pada tab **Security** → **Report a vulnerability** di repositori [https://github.com/omeko11/wirasatya96](https://github.com/omeko11/wirasatya96).
+1. Gunakan fitur **GitHub Private Vulnerability Reporting** pada tab **Security** → **Report a vulnerability** di repositori [https://github.com/omeko42/wirasatya96](https://github.com/omeko42/wirasatya96).
 2. Sertakan deskripsi teknis kerentanan, langkah reproduksi (*Proof of Concept*), dan dampak potensial.
 3. Tim pengembang akan meninjau laporan secara tertutup dalam waktu **1 × 24 jam**.
 
@@ -82,6 +82,6 @@ The **Wira Satya 1996 Alumni Information System** is engineered following **Defe
 > [!CAUTION]
 > **DO NOT** open a public GitHub Issue or Discussion to report a security vulnerability.
 
-1. Use **GitHub Private Vulnerability Reporting** by navigating to the **Security** tab → **Report a vulnerability** at [https://github.com/omeko11/wirasatya96](https://github.com/omeko11/wirasatya96).
+1. Use **GitHub Private Vulnerability Reporting** by navigating to the **Security** tab → **Report a vulnerability** at [https://github.com/omeko42/wirasatya96](https://github.com/omeko42/wirasatya96).
 2. Include a clear description of the issue, reproduction steps (PoC), and potential impact.
 3. Our maintainers will acknowledge your report within **24 hours** and coordinate remediation prior to any public disclosure.

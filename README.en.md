@@ -145,7 +145,7 @@ The fastest way to launch the entire stack (Frontend, Backend, PostgreSQL, and M
 
 ### 1. Clone the Repository & Configure Environment Variables:
 ```bash
-git clone https://github.com/omeko11/wirasatya96.git
+git clone https://github.com/omeko42/wirasatya96.git
 cd wirasatya96
 cp .env.example .env
 ```
