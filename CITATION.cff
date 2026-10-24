@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: "Wira Satya 96 (WS96) - Digital Pocketbook, Tour of Duty & Social Fund Governance Portal for Akpol 1996 Alumni"
+message: "If you reference this software architecture or digital alumni governance platform in technical or academic publications, please cite it as below."
+type: software
+authors:
+  - family-names: "Agung"
+    given-names: "Eko"
+    alias: "omeko42"
+    affiliation: "Paguyuban Alumni Akpol 1996 - Batalyon Wira Satya"
+version: "2.0.0"
+date-released: "2026-10-24"
+url: "https://github.com/omeko42/wirasatya96"
+repository-code: "https://github.com/omeko42/wirasatya96"
+license: "Proprietary"
+keywords:
+  - "Wira Satya 96"
+  - "Akpol 1996"
+  - "Buku Saku Digital"
+  - "Tour of Duty Polri"
+  - "Dana Sosial"
+  - "React 19"
+  - "TypeScript"
+  - "Supabase Realtime"
+  - "FIDO2 WebAuthn"
+abstract: >-
+  Cloud-synchronized digital pocketbook (Buku Saku Digital), 38-Polda and
+  28-function Tour of Duty directory, executive welfare analytics (Anev),
+  delegated Aide-de-Camp (ADC) governance, and dual-chamber social fund
+  portal engineered for Paguyuban Alumni Akademi Kepolisian (Akpol) 1996
+  — Batalyon Wira Satya (261 verified senior officers).

@@ -1,71 +1,43 @@
-<div align="center">
+# Pedoman Tata Kelola & Kontribusi / Governance & Contribution Guidelines - Wira Satya 96 (WS96) - Paguyuban Alumni Akpol 1996
 
-# 🤝 PANDUAN KONTRIBUSI / CONTRIBUTING GUIDELINES
-### Sistem Informasi Batalyon Wira Satya Akpol 1996
-
-**[🇮🇩 Bahasa Indonesia](#-panduan-kontribusi-bahasa-indonesia)** · **[🇬🇧 English Version](#-contributing-guidelines-english-version)**
-
-</div>
+> 🌐 **Daftar Isi / Sections:** [**🇮🇩 Bagian I: Bahasa Indonesia**](#-bagian-i-pedoman-tata-kelola--kontribusi-bahasa-indonesia) &nbsp;|&nbsp; [**🇬🇧 Part II: English Version**](#-part-ii-governance--contribution-guidelines-english)
 
 ---
 
-<a id="-panduan-kontribusi-bahasa-indonesia"></a>
+## 🇮🇩 Bagian I: Pedoman Tata Kelola & Kontribusi (Bahasa Indonesia)
 
-# 🇮🇩 Panduan Kontribusi (Bahasa Indonesia)
+Dokumen ini mengatur standar teknis, keamanan, dan alur pemutakhiran data bagi **Tim Pengembang** serta **Pengurus Paguyuban Wira Satya 96 (*Ketua, Sekretaris, Bendahara*)** dan **Ajudan/ADC** dalam mengelola data direktori, laporan keuangan, maupun pengembangan fitur pada portal **Wira Satya 96 (WS96)**.
 
-Terima kasih atas kontribusi Anda pada pengembangan **Sistem Informasi Batalyon Wira Satya Akpol 1996** (`#SelaluBahagia`). Dokumen ini memuat standar alur kerja Git, konvensi penulisan kode, serta aturan keamanan data sebelum mengajukan *Pull Request*.
+### 1. Alur Pemutakhiran Data Anggota & Mutasi Jabatan
+Pembaruan data profil, foto terbaru, mutasi jabatan (*TR Mutasi*), maupun informasi keluarga di dalam portal **Wira Satya 96 (WS96)** dapat dilakukan melalui tiga jalur resmi:
+1. **Pembaruan Mandiri oleh Anggota**: Masuk menggunakan NRP masing-masing → klik **"Lihat Profil Saya"** → klik **"Edit Profil"** atau **"Tambah Jabatan"**.
+2. **Pembaruan melalui Ajudan / Pendamping (`Mode Pendamping / ADC`)**: Anggota yang sibuk berdinas dapat mendaftarkan NRP Ajudan pada profilnya. Ajudan masuk menggunakan `WS96@<NRP_ADC>` untuk membantu memperbarui foto dan riwayat jabatan pimpinan tanpa dapat membuka menu keuangan.
+3. **Rekonsiliasi Terpusat oleh Sekretaris / Admin**: Sekretaris Paguyuban dapat memperbarui data personel, mengatur jabatan kepengurusan, serta membantu *reset* kata sandi anggota melalui menu **Kelola Akun**.
 
-## 1. Alur Kerja Git (Git Workflow)
-1. Pastikan branch `main` selalu dalam keadaan siap *deploy* (lolos `npx tsc --noEmit` dan `npm run build`).
-2. Buat branch fitur atau perbaikan dari `main`:
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b feature/nama-fitur
-   ```
-
-## 2. Konvensi Pesan Commit (Conventional Commits)
-| Prefix | Penggunaan | Contoh |
-| :--- | :--- | :--- |
-| `feat` | Penambahan fitur baru | `feat(finance): add crowdfunding milestone campaign tracker` |
-| `fix` | Perbaikan bug logika atau tampilan | `fix(beranda): keep footer visible during mobile feed scroll` |
-| `ui` | Peningkatan responsivitas antarmuka PC/HP | `ui(responsive): separate desktop and mobile button labels` |
-| `docs` | Pembaruan dokumentasi (ID/EN) | `docs(readme): provide bilingual Indonesian and English docs` |
-| `chore` | Pemeliharaan konfigurasi atau dependensi | `chore(security): sanitize environment templates` |
-
-## 3. Standar Desain, Responsivitas, & Keamanan Data
-- **Tema Warna**: Gunakan palet resmi *Bareskrim Crimson Red* (`#8B0000`, `bg-red-800`, `text-red-900`) dan aksen *Gold* (`#D97706`, `amber-500`).
-- **Responsivitas PC vs HP**: Pastikan tampilan Desktop (`sm:` / `lg:`) mempertahankan tata letak penuh dan teks deskriptif, sedangkan tampilan HP (`< sm` / `< lg`) menggunakan label ringkas (`sm:hidden`) dan *header* kartu yang dapat dibuka-tutup (*collapsible*).
-- **Pencegahan Kebocoran Data (*Zero Data Leak*)**: **Dilarang keras** meng-commit berkas `.env`, kata sandi asli, kunci API/token rahasia, berkas presentasi internal, atau *dump* basis data pribadi ke repositori publik.
+### 2. Standar Rekayasa Kode & Keamanan Repositori (Bagi Tim Pengembang)
+Setiap perubahan pada kode sumber (`src/`) dan skema basis data (`supabase/`) wajib mematuhi prinsip berikut:
+1. **Kebijakan Tanpa Rahasia (*Zero-Secret*) & Kepatuhan UU PDP**:
+   - **Dilarang keras** melakukan *commit* file `.env`, kunci privat `SUPABASE_SERVICE_ROLE_KEY`, kata sandi basis data, sandi/PIN pribadi anggota, maupun dokumen paparan internal (`.pptx` / `.pdf`) ke dalam repositori Git publik.
+   - Seluruh konfigurasi koneksi wajib dipanggil melalui variabel lingkungan (`import.meta.env.VITE_*`).
+2. **Integritas Pembagian Hak Akses (RBAC) & Isolasi Kas**:
+   - Menu **Anev & Statistik** wajib dibatasi hanya untuk peran Pengurus (`KETUA`, `WAKIL_KETUA`, `SEKRETARIS`, `BENDAHARA`, `ADMIN`) dan tertutup bagi akun Ajudan (`!isCompanionMode`).
+   - Tombol pencatatan keuangan pada menu **Dana Sosial & Investasi** wajib dibatasi hanya untuk **Bendahara**, **Ketua/Wakil**, dan **Admin**.
+3. **Kesesuaian Tampilan Layar HP (*Mobile-First Ergonomics*)**:
+   - Setiap penambahan komponen baru pada halaman **Beranda** wajib menjaga kerapian tampilan di layar HP (menggunakan kartu akordeon ringkas untuk panel informasi samping serta mempertahankan posisi kartu `#SELALUBAHAGIA` dan identitas `BATALYON WIRA SATYA 1996` di bagian bawah).
 
 ---
----
 
-<a id="-contributing-guidelines-english-version"></a>
+## 🇬🇧 Part II: Governance & Contribution Guidelines (English)
 
-# 🇬🇧 Contributing Guidelines (English Version)
+This document defines the technical, security, and operational data maintenance standards for the **Development Team**, **Paguyuban Wira Satya 96 Executive Board (*Ketua, Sekretaris, Bendahara*)**, and authorized **Aides-de-Camp (*Ajudan/ADC*)** contributing to **Wira Satya 96 (WS96)**.
 
-Thank you for contributing to the **Wira Satya 1996 Alumni Information System** (`#SelaluBahagia`). This document outlines our Git workflow, coding conventions, and data security rules prior to submitting a Pull Request.
+### 1. Personnel Directory & Career Mutation Update Workflows
+Profile updates, official portrait uploads, career mutation updates (*TR Mutasi*), and family welfare updates can be performed through three authorized channels:
+1. **Self-Service Member Update**: Log in with the officer's 8-digit NRP → open **"Lihat Profil Saya"** → click **"Edit Profil"** or **"Tambah Jabatan"**.
+2. **Delegated Aide-de-Camp Update (`Mode Pendamping / ADC`)**: Registered ADCs log in using `WS96@<NRP_ADC>` to update their principal officer's biography, photo, and assignment history while remaining strictly locked out of financial menus (`Dana Sosial & Kas`).
+3. **Centralized Board Administration (`Sekretaris / Admin`)**: The Secretary/Admin can manage all 261 personnel profiles, assign board roles, and assist with password resets via the account administration panel.
 
-## 1. Git Workflow
-1. Keep the `main` branch production-ready at all times (must pass `npx tsc --noEmit` and `npm run build`).
-2. Create a feature or bugfix branch from `main`:
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b feature/your-feature-name
-   ```
-
-## 2. Commit Message Conventions (Conventional Commits)
-| Prefix | Purpose | Example |
-| :--- | :--- | :--- |
-| `feat` | New feature implementation | `feat(finance): add crowdfunding milestone campaign tracker` |
-| `fix` | Bug fix in logic or UI | `fix(beranda): keep footer visible during mobile feed scroll` |
-| `ui` | Desktop/Mobile responsive UI improvements | `ui(responsive): separate desktop and mobile button labels` |
-| `docs` | Documentation updates (ID/EN) | `docs(readme): provide bilingual Indonesian and English docs` |
-| `chore` | Configuration or dependency maintenance | `chore(security): sanitize environment templates` |
-
-## 3. Design, Responsiveness, & Data Security Standards
-- **Color Palette**: Adhere to the signature *Bareskrim Crimson Red* (`#8B0000`, `bg-red-800`, `text-red-900`) and *Officer Gold* (`#D97706`, `amber-500`) design tokens.
-- **Desktop vs Mobile Responsiveness**: Preserve full 3-column layouts and descriptive labels on Desktop (`sm:` / `lg:`), while providing compact single-line labels (`sm:hidden`) and collapsible card headers on Mobile (`< sm` / `< lg`).
-- **Zero Data Leak Policy**: **Never** commit `.env` files, plaintext passwords, private API keys/tokens, internal presentation decks, or personal database dumps to the public repository.
+### 2. Engineering & Security Standards (For Developers)
+1. **Strict Zero-Secret & UU PDP Compliance**: Never commit `.env` files, `SUPABASE_SERVICE_ROLE_KEY` secrets, database passwords, personal member credentials/PINs, or internal presentation decks (`.pptx`/`.pdf`) into Git. Always load runtime keys via `import.meta.env.VITE_*`.
+2. **RBAC & Companion Mode Isolation Invariants**: Keep the **Anev & Statistik** view restricted to board roles (`KETUA`, `WAKIL_KETUA`, `SEKRETARIS`, `BENDAHARA`, `ADMIN`) and completely lock **Dana Sosial & Investasi** from `isCompanionMode` (ADC) sessions.
+3. **Mobile-First Responsive Discipline**: Preserve compact tap-to-expand accordion headers on mobile viewports and maintain the bottom-anchored `#SELALUBAHAGIA` card and `BATALYON WIRA SATYA 1996` identity footer.
