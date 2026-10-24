@@ -441,7 +441,7 @@ export const LinkedInProfileView: React.FC<LinkedInProfileViewProps> = ({
       : `${localMember.nrp}@polri.go.id`;
   const secondaryEmail =
     localMember.secondaryEmail ||
-    (localMember.nrp === '98010710' ? 'agungkrisdianto98@gmail.com' : '—');
+    (localMember.nrp === '98010710' ? 'superadmin@example.com' : '—');
 
   const copyToClipboard = (key: string, val: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {

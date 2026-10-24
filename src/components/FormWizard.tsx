@@ -261,7 +261,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
         secondaryEmail:
           existingMember.secondaryEmail ||
           (isSelf ? currentUser.secondaryEmail : undefined) ||
-          (existingMember.nrp === '98010710' ? 'agungkrisdianto98@gmail.com' : ''),
+          (existingMember.nrp === '98010710' ? 'superadmin@example.com' : ''),
         bio: existingMember.bio || (isSelf ? currentUser.bio : '') || '',
       });
 
@@ -1132,7 +1132,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Contoh: Eko Agung Krisdianto, S.Kom."
+                    placeholder="Contoh: Eko Agung"
                     value={formData.namaLengkap || ''}
                     onChange={(e) => handleInputChange('namaLengkap', e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"
@@ -1147,7 +1147,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     type="text"
                     required
                     readOnly={currentUser.role === 'ANGGOTA' && !!existingMember}
-                    placeholder="Contoh: 98010710"
+                    placeholder="Contoh: 74000000"
                     value={formData.nrp || ''}
                     onChange={(e) => {
                       const val = e.target.value;
@@ -1264,7 +1264,7 @@ export const FormWizard: React.FC<FormWizardProps> = ({
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      placeholder="Contoh: 98010710@polri.go.id"
+                      placeholder="Contoh: 74000000@example.com"
                       value={formData.email || ''}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-polri-navy focus:outline-none"

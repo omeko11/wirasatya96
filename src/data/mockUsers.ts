@@ -5,10 +5,10 @@ export const PRESET_USERS: AuthUser[] = [
   {
     id: 'u-superadmin',
     nrp: '98010710',
-    nama: 'Eko Agung Krisdianto, S.Kom.',
+    nama: 'Eko Agung',
     pangkat: 'Briptu',
-    email: '98010710@polri.go.id',
-    secondaryEmail: 'agungkrisdianto98@gmail.com',
+    email: 'superadmin@example.com',
+    secondaryEmail: 'superadmin.ws96@example.com',
     role: 'SUPERADMIN',
     profileId: 'ws-98010710',
     mfaEnabled: false,

@@ -135,11 +135,11 @@ const NAMA_BULAN_ID = [
 
 /**
  * Extracts a default YYYY-MM-DD birth date from a Polri 8-digit NRP (first 4 digits = YYMM) if valid.
- * E.g. 98010710 -> 1998-01-07 (if 98010710) or 74090001 -> 1974-09-01.
+ * E.g. 98010710 -> 1998-01-01 (if 98010710) or 74090001 -> 1974-09-01.
  */
 export function deriveBirthDateFromNrp(nrp?: string | null): string {
   const digits = (nrp || '').replace(/[^0-9]/g, '');
-  if (digits === '98010710') return '1998-01-07';
+  if (digits === '98010710') return '1998-01-01';
   if (digits.length >= 4) {
     const yy = parseInt(digits.slice(0, 2), 10);
     const mm = parseInt(digits.slice(2, 4), 10);

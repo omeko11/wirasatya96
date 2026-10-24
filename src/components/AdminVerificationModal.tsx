@@ -1962,7 +1962,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               name="ws96_new_nrp"
               value={newNrp}
               onChange={(e) => handleNewNrpChange(e.target.value)}
-              placeholder="Contoh: 98010710"
+              placeholder="Contoh: 74000000"
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -2081,7 +2081,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
               name="ws96_new_email_sekunder"
               value={newSecondaryEmail}
               onChange={(e) => setNewSecondaryEmail(e.target.value)}
-              placeholder="Contoh: agungkrisdianto98@gmail.com"
+              placeholder="Contoh: superadmin@example.com"
               className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -3418,7 +3418,7 @@ export const AdminVerificationModal: React.FC<AdminVerificationModalProps> = ({
                       autoComplete="off"
                       value={editSecondaryEmail}
                       onChange={(e) => setEditSecondaryEmail(e.target.value)}
-                      placeholder="Contoh: agungkrisdianto98@gmail.com"
+                      placeholder="Contoh: superadmin@example.com"
                       className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:outline-none"
                     />
                   </div>

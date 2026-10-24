@@ -350,7 +350,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   </label>
                   <input
                     type="email"
-                    placeholder="Contoh: agungkrisdianto98@gmail.com"
+                    placeholder="Contoh: superadmin@example.com"
                     value={secondaryEmail}
                     onChange={(e) => setSecondaryEmail(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-red-800 focus:outline-none"

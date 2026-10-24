@@ -204,13 +204,13 @@ const INITIAL_REGISTRATIONS: PendingRegistration[] = [
   {
     id: 'reg-98010710',
     nrp: '98010710',
-    nama: 'Eko Agung Krisdianto, S.Kom.',
+    nama: 'Eko Agung',
     pangkat: 'Briptu',
     satker: 'Bareskrim Polri',
     polda: 'MABES POLRI',
-    noHp: '081298010710',
+    noHp: '081200000000',
     email: '98010710@polri.go.id',
-    secondaryEmail: 'agungkrisdianto98@gmail.com',
+    secondaryEmail: 'superadmin@example.com',
     alasanDaftar: 'Personel Bareskrim Polri (S1 Teknik Informatika) — Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.',
     password: 'WS96@98010710',
     status: 'AKTIF',
@@ -458,12 +458,12 @@ export function readDb(): GlobalStore {
           u.password = `WS96@${u.nrp}`;
         }
         if (u.nrp === '98010710') {
-          if (!u.nama || u.nama === 'Eko Agung') u.nama = 'Eko Agung Krisdianto, S.Kom.';
+          if (!u.nama || u.nama === 'Eko Agung') u.nama = 'Eko Agung';
           u.pangkat = u.pangkat || 'Briptu';
           if (!u.satker || u.satker.includes('Tim IT Developer')) u.satker = 'Bareskrim Polri';
           u.polda = u.polda || 'MABES POLRI';
           u.email = '98010710@polri.go.id';
-          u.secondaryEmail = u.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          u.secondaryEmail = u.secondaryEmail || 'superadmin@example.com';
           u.status = 'AKTIF';
           if (!u.bio) {
             u.bio =
@@ -605,7 +605,7 @@ export function readDb(): GlobalStore {
         m.satuanKerja = cleanSatkerRoleSuffix(m.satuanKerja, m.nrp);
         if (m.nrp === '98010710') {
           if (!m.namaLengkap || m.namaLengkap === 'Eko Agung') {
-            m.namaLengkap = 'Eko Agung Krisdianto, S.Kom.';
+            m.namaLengkap = 'Eko Agung';
           }
           m.pangkat = m.pangkat || 'Briptu';
           if (
@@ -623,7 +623,7 @@ export function readDb(): GlobalStore {
             m.pendidikanTerakhir = 'S1 Teknik Informatika';
           }
           m.email = '98010710@polri.go.id';
-          m.secondaryEmail = m.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          m.secondaryEmail = m.secondaryEmail || 'superadmin@example.com';
           if (!m.bio) {
             m.bio =
               'Personel Bareskrim Polri (S1 Teknik Informatika) yang bertugas sebagai Lead Developer & Superadmin Sistem Informasi Portal Wira Satya 96.';
@@ -742,10 +742,10 @@ export function readDb(): GlobalStore {
           }
         }
         if (r.nrp === '98010710') {
-          if (!r.nama || r.nama === 'Eko Agung') r.nama = 'Eko Agung Krisdianto, S.Kom.';
+          if (!r.nama || r.nama === 'Eko Agung') r.nama = 'Eko Agung';
           if (!r.satker || r.satker.includes('Tim IT Developer')) r.satker = 'Bareskrim Polri';
           r.email = '98010710@polri.go.id';
-          r.secondaryEmail = r.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          r.secondaryEmail = r.secondaryEmail || 'superadmin@example.com';
           r.status = 'AKTIF';
         }
       });
@@ -856,13 +856,13 @@ export function readDb(): GlobalStore {
         activeSession.satker = cleanSatkerRoleSuffix(activeSession.satker, activeSession.nrp);
         if (activeSession.nrp === '98010710') {
           if (!activeSession.nama || activeSession.nama === 'Eko Agung') {
-            activeSession.nama = 'Eko Agung Krisdianto, S.Kom.';
+            activeSession.nama = 'Eko Agung';
           }
           if (!activeSession.satker || activeSession.satker.includes('Tim IT Developer')) {
             activeSession.satker = 'Bareskrim Polri';
           }
           activeSession.email = '98010710@polri.go.id';
-          activeSession.secondaryEmail = activeSession.secondaryEmail || 'agungkrisdianto98@gmail.com';
+          activeSession.secondaryEmail = activeSession.secondaryEmail || 'superadmin@example.com';
           activeSession.status = 'AKTIF';
           if (!activeSession.bio) {
             activeSession.bio =

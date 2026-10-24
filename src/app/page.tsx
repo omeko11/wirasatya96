@@ -206,8 +206,8 @@ export default function Home() {
               nrp: mergedSource.nrp || prev.nrp,
               nama:
                 (mergedSource.nrp || prev.nrp) === '98010710' &&
-                (mergedSource.nama === 'Eko Agung' || mergedSource.nama === 'Eko Agung Krisdianto')
-                  ? 'Eko Agung Krisdianto, S.Kom.'
+                (mergedSource.nama === 'Eko Agung' || mergedSource.nama === 'Eko Agung')
+                  ? 'Eko Agung'
                   : mergedSource.nama || prev.nama,
               pangkat: mergedSource.pangkat || prev.pangkat,
               fotoUrl: resolveAvatarUrl(mergedSource.fotoUrl, prev.fotoUrl),
@@ -712,9 +712,9 @@ export default function Home() {
           activeNrp = parsed.nrp;
           if (
             parsed.nrp === '98010710' &&
-            (parsed.nama === 'Eko Agung' || parsed.nama === 'Eko Agung Krisdianto')
+            (parsed.nama === 'Eko Agung' || parsed.nama === 'Eko Agung')
           ) {
-            parsed.nama = 'Eko Agung Krisdianto, S.Kom.';
+            parsed.nama = 'Eko Agung';
             parsed.pangkat = parsed.pangkat || 'Briptu';
           }
           if (parsed.nama) {
