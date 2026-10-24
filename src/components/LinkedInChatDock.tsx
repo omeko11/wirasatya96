@@ -400,7 +400,7 @@ export const LinkedInChatDock: React.FC<LinkedInChatDockProps> = ({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-2xl text-white shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-red-400/30"
+          className="ws96-float-cta group relative flex items-center gap-2.5 pl-2.5 pr-3.5 py-2 rounded-2xl text-white shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-red-400/30"
           style={{
             background: 'linear-gradient(180deg, #D81818 0%, #B80A0A 52%, #9E0404 100%)',
             boxShadow:

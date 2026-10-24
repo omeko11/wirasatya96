@@ -1752,7 +1752,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
             </span>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden my-2">
               <div
-                className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all"
+                className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all ws96-progress-fill"
                 style={{ width: `${Math.max(milestoneOverallPct, totalTerkumpulMilestone > 0 ? 4 : 0)}%` }}
               />
             </div>
@@ -2053,7 +2053,7 @@ export const BendaharaPortal: React.FC<BendaharaPortalProps> = ({
 
                         <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden p-0.5">
                           <div
-                            className={`h-full bg-gradient-to-r ${meta.barGradient} rounded-full transition-all duration-500`}
+                            className={`h-full bg-gradient-to-r ${meta.barGradient} rounded-full transition-all duration-500 ws96-progress-fill`}
                             style={{ width: `${Math.max(pct, cmp.collectedAmount > 0 ? 4 : 0)}%` }}
                           />
                         </div>

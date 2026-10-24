@@ -1622,6 +1622,55 @@ export default function Home() {
     }
   };
 
+  // Smooth Scroll-Reveal & Staggered Card Entrance Observer
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('ws96-reveal-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.06, rootMargin: '0px 0px -18px 0px' }
+    );
+
+    const registerCards = () => {
+      const mainEl = document.querySelector('main');
+      if (!mainEl) return;
+      const cards = mainEl.querySelectorAll<HTMLElement>(
+        '.bg-white.rounded-xl, .bg-white.rounded-2xl, .ws96-gold-card'
+      );
+      cards.forEach((card, idx) => {
+        if (!card.dataset.ws96RevealBound) {
+          card.dataset.ws96RevealBound = '1';
+          card.style.transitionDelay = `${(idx % 5) * 45}ms`;
+          card.classList.add('ws96-reveal-init');
+          io.observe(card);
+        }
+      });
+    };
+
+    registerCards();
+    const mainNode = document.querySelector('main');
+    const mo = mainNode
+      ? new MutationObserver(() => {
+          registerCards();
+        })
+      : null;
+    if (mainNode && mo) {
+      mo.observe(mainNode, { childList: true, subtree: true });
+    }
+
+    return () => {
+      io.disconnect();
+      mo?.disconnect();
+    };
+  }, [activeTab, viewingMember]);
+
   return (
     <div className="min-h-screen flex flex-col bg-[#f4f2ee] selection:bg-red-800 selection:text-white">
       {/* Top Navbar */}
@@ -1728,6 +1777,7 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 pb-24 md:pb-6">
+        <div key={`${activeTab}-${viewingMember?.nrp || 'main'}`} className="ws96-tab-enter">
         {/* VIEWING SPECIFIC PROFILE (VIA NAVBAR SAYA / CONNECTION CARDS) */}
         {viewingMember ? (
           <LinkedInProfileView
@@ -1927,6 +1977,7 @@ export default function Home() {
             )}
           </>
         )}
+        </div>
       </main>
 
       {/* Manajemen Pengguna & Verifikasi Modal (Fallback if opened as modal) */}

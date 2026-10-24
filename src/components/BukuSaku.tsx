@@ -935,7 +935,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
             </div>
 
             {/* Expandable Details & Navigation (Terbuka saat di-klik di HP, selalu tampil di Desktop) */}
-            <div className={`${mobileOpenProfile ? 'block' : 'hidden'} lg:block px-4 pb-4`}>
+            <div className={`${mobileOpenProfile ? 'block ws96-accordion-body' : 'hidden'} lg:block px-4 pb-4`}>
               <div className="pt-3 border-t border-slate-100 lg:mt-3 text-left space-y-1.5 text-xs">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>NRP:</span>
@@ -1036,7 +1036,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             )}
 
-            <div className={`${mobileOpenTod ? 'block' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100 space-y-2.5`}>
+            <div className={`${mobileOpenTod ? 'block ws96-accordion-body' : 'hidden'} lg:block pt-2.5 mt-2.5 border-t border-slate-100 space-y-2.5`}>
               {/* Ringkasan angka penempatan khusus saat di-expand di HP */}
               <div className="lg:hidden grid grid-cols-3 gap-1.5 text-center">
                 <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-100">
@@ -1065,7 +1065,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           </div>
 
           {/* Slogan Banner khusus tampilan PC (di kolom kiri seperti semula) */}
-          <div className="hidden lg:block p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
+          <div className="hidden lg:block p-3 ws96-gold-card rounded-xl border border-amber-300/60 text-center">
             <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
               #SELALUBAHAGIA
             </span>
@@ -1086,7 +1086,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               className="flex items-center justify-between cursor-pointer lg:cursor-default select-none"
             >
               <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <Heart className="w-3.5 h-3.5 text-red-500 shrink-0 ws96-heartbeat" />
                 <span>Atensi Kesehatan</span>
               </span>
               <div className="flex items-center gap-1.5">
@@ -1102,7 +1102,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             </div>
 
-            <div className={`${mobileOpenHealth ? 'block' : 'hidden'} lg:block pt-3 mt-2.5 border-t border-slate-100 space-y-2.5`}>
+            <div className={`${mobileOpenHealth ? 'block ws96-accordion-body' : 'hidden'} lg:block pt-3 mt-2.5 border-t border-slate-100 space-y-2.5`}>
               {healthAttentionMembers.length > 0 ? (
                 <div className="space-y-2.5">
                   {healthAttentionMembers.map((m) => {
@@ -1223,7 +1223,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
               </div>
             )}
 
-            <div className={`${mobileOpenDana ? 'block' : 'hidden'} lg:block pt-3 mt-2.5 border-t border-slate-100 space-y-3`}>
+            <div className={`${mobileOpenDana ? 'block ws96-accordion-body' : 'hidden'} lg:block pt-3 mt-2.5 border-t border-slate-100 space-y-3`}>
               {/* Active Milestone Programs (Kitabisa / Saweria style) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -1262,7 +1262,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
                         </div>
                         <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1">
                           <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all"
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all ws96-progress-fill"
                             style={{ width: `${Math.max(pct, cmp.collectedAmount > 0 ? 4 : 0)}%` }}
                           />
                         </div>
@@ -1533,7 +1533,7 @@ export const BukuSaku: React.FC<BukuSakuProps> = ({
           </div>
 
           {/* Di atas tulisan paling bawah (Khusus HP): Card #SELALUBAHAGIA */}
-          <div className="lg:hidden p-3 bg-gradient-to-r from-amber-500/10 to-amber-500/5 rounded-xl border border-amber-300/40 text-center">
+          <div className="lg:hidden p-3 ws96-gold-card rounded-xl border border-amber-300/60 text-center">
             <span className="text-[11px] font-extrabold text-amber-900 tracking-wider">
               #SELALUBAHAGIA
             </span>
